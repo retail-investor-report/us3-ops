@@ -69,7 +69,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .admin-btn:hover,.admin-btn.active{color:var(--accent);border-color:var(--accent);background:rgba(26,127,232,.1);}
 
 /* MC BOTTOM PANEL */
-#mc-panel{flex:0 0 auto;max-height:25%;border-top:1.5px solid var(--borderb);background:var(--panel-bg);overflow-y:auto;padding:10px 22px;display:flex;flex-direction:column;gap:8px;}
+#mc-panel{flex:0 0 auto;max-height:35%;border-top:1.5px solid var(--borderb);background:var(--panel-bg);overflow-y:auto;padding:10px 22px;display:flex;flex-direction:column;gap:8px;}
 .mc-panel-title{font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);display:flex;align-items:center;gap:8px;}
 .mc-panel-title .mc-panel-line{flex:1;height:1px;background:var(--borderb);}
 .mc-panel-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
@@ -84,8 +84,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .mc-stat-row-val{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;}
 
 /* FLOATING PROJECT CARDS */
-.fp-card{position:absolute;z-index:50;width:155px;cursor:pointer;background:var(--card-bg);border:1.5px solid var(--borderb);border-radius:10px;backdrop-filter:blur(16px);transition:box-shadow .22s,border-color .22s,transform .18s;user-select:none;}
-.fp-card:hover{border-color:var(--accent);box-shadow:0 0 28px var(--glow);transform:translateY(-3px);}
+.fp-card{position:absolute;z-index:50;width:155px;cursor:pointer;background:linear-gradient(135deg,var(--card-bg) 0%,rgba(0,113,188,.08) 100%);border:1.5px solid var(--borderb);border-radius:10px;backdrop-filter:blur(16px);transition:box-shadow .22s,border-color .22s,transform .18s;user-select:none;}
+.fp-card:hover{border-color:var(--accent);box-shadow:0 0 40px rgba(0,113,188,.3),0 0 80px rgba(0,113,188,.1);transform:translateY(-4px);}
 .fp-inner{padding:18px 14px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;}
 .fp-icon{font-size:30px;line-height:1;}
 .fp-label{font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-align:center;line-height:1.2;}
@@ -395,11 +395,13 @@ body.light .fleet-btn-text{color:#1a1a2e!important;}
     <div class="am-filter active" onclick="amFilter('all',this)">All</div>
     <div class="am-filter" onclick="amFilter('available',this)">Available</div>
     <div class="am-filter" onclick="amFilter('reserved',this)">Reserved</div>
+    <div class="am-filter" onclick="amFilter('deployed',this)">Deployed</div>
     <div class="am-filter" onclick="amFilter('maintenance',this)">Maintenance</div>
-    <div class="am-legend">
-      <div class="am-leg"><div class="am-leg-dot" style="background:var(--available)"></div>Available</div>
-      <div class="am-leg"><div class="am-leg-dot" style="background:var(--reserved)"></div>Reserved</div>
-      <div class="am-leg"><div class="am-leg-dot" style="background:var(--maintenance)"></div>Maintenance</div>
+    <div class="am-legend" style="gap:20px;">
+      <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--available)"></div>Available</div>
+      <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--reserved)"></div>Reserved</div>
+      <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--deployed);box-shadow:0 0 8px var(--deployed);animation:deployPulse 2s ease-in-out infinite;"></div>Deployed</div>
+      <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--maintenance)"></div>Maintenance</div>
     </div>
   </div>
   <div class="am-canvas" id="amCanvas"></div>
@@ -435,14 +437,15 @@ body.light .fleet-btn-text{color:#1a1a2e!important;}
       <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Fleet Map</div>
       <div id="fleetFilters" style="display:flex;gap:8px;margin-left:12px;"></div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
-        <div onclick="fleetZoom(-2)" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
+        <div onclick="fleetZoom(-2)" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
         <div id="fleetSizeLabel" style="font-family:'Rajdhani',sans-serif;font-size:10px;color:var(--text);min-width:24px;text-align:center;"></div>
-        <div onclick="fleetZoom(2)" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">+</div>
+        <div onclick="fleetZoom(2)" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">+</div>
       </div>
-      <div style="display:flex;gap:14px;margin-left:auto;align-items:center;">
-        <div style="display:flex;align-items:center;gap:4px;font-family:'Rajdhani',sans-serif;font-size:9px;color:var(--text);text-transform:uppercase;letter-spacing:.08em;"><div style="width:10px;height:10px;border-radius:50%;background:var(--available)"></div>Available</div>
-        <div style="display:flex;align-items:center;gap:4px;font-family:'Rajdhani',sans-serif;font-size:9px;color:var(--text);text-transform:uppercase;letter-spacing:.08em;"><div style="width:10px;height:10px;border-radius:50%;background:var(--reserved)"></div>Reserved</div>
-        <div style="display:flex;align-items:center;gap:4px;font-family:'Rajdhani',sans-serif;font-size:9px;color:var(--text);text-transform:uppercase;letter-spacing:.08em;"><div style="width:10px;height:10px;border-radius:50%;background:var(--maintenance)"></div>Maintenance</div>
+      <div style="display:flex;gap:20px;margin-left:auto;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--available)"></div>Available</div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--reserved)"></div>Reserved</div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--deployed);box-shadow:0 0 8px var(--deployed)"></div>Deployed</div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--maintenance)"></div>Maintenance</div>
       </div>
     </div>
     <div style="display:flex;flex:1;overflow:hidden;">
@@ -1517,7 +1520,7 @@ function renderFleet(){
   var colors={
     available:'#00c49a',
     reserved:'#4a5568',
-    deployed:'#00c49a',
+    deployed:'#0071BC',
     maintenance:'#e8a020',
   };
 
