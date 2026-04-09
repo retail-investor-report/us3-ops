@@ -162,7 +162,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .am-section-title{font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
 .am-section-line{flex:1;height:1px;background:var(--border);}
 .am-dots{display:flex;flex-wrap:wrap;gap:8px;}
-.am-dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;position:relative;border:2px solid transparent;font-family:'Rajdhani',sans-serif;font-size:8px;}
+.am-dot{width:var(--am-dot-size,44px);height:var(--am-dot-size,44px);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;position:relative;border:2px solid transparent;font-family:'Rajdhani',sans-serif;font-size:8px;}
 .am-dot:hover{transform:scale(1.18);z-index:10;}
 .am-dot.available{background:rgba(0,196,154,.15);border-color:rgba(0,196,154,.5);color:var(--available);}
 .am-dot.reserved{background:rgba(74,85,104,.15);border-color:rgba(74,85,104,.5);color:var(--reserved);}
@@ -397,7 +397,12 @@ body.light .fleet-btn-text{color:#1a1a2e!important;}
     <div class="am-filter" onclick="amFilter('reserved',this)">Reserved</div>
     <div class="am-filter" onclick="amFilter('deployed',this)">Deployed</div>
     <div class="am-filter" onclick="amFilter('maintenance',this)">Maintenance</div>
-    <div class="am-legend" style="gap:20px;">
+    <div style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
+        <div onclick="amZoom(-2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;" onmouseover="this.style.background='rgba(0,113,188,.15)'" onmouseout="this.style.background='transparent'">−</div>
+        <div id="amSizeLabel" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--text);min-width:30px;text-align:center;"></div>
+        <div onclick="amZoom(2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;" onmouseover="this.style.background='rgba(0,113,188,.15)'" onmouseout="this.style.background='transparent'">+</div>
+      </div>
+      <div class="am-legend" style="gap:20px;">
       <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--available)"></div>Available</div>
       <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--reserved)"></div>Reserved</div>
       <div class="am-leg" style="font-size:13px;"><div class="am-leg-dot" style="width:14px;height:14px;background:var(--deployed);box-shadow:0 0 8px var(--deployed);animation:deployPulse 2s ease-in-out infinite;"></div>Deployed</div>
@@ -437,11 +442,11 @@ body.light .fleet-btn-text{color:#1a1a2e!important;}
       <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Fleet Map</div>
       <div id="fleetFilters" style="display:flex;gap:8px;margin-left:12px;"></div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
-        <div onclick="fleetZoom(-2)" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
+        <div onclick="fleetZoom(-2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
         <div id="fleetSizeLabel" style="font-family:'Rajdhani',sans-serif;font-size:10px;color:var(--text);min-width:24px;text-align:center;"></div>
-        <div onclick="fleetZoom(2)" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">+</div>
+        <div onclick="fleetZoom(2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">+</div>
       </div>
-      <div style="display:flex;gap:20px;margin-left:auto;align-items:center;">
+      <div style="display:flex;gap:20px;margin-left:16px;align-items:center;">
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--available)"></div>Available</div>
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--reserved)"></div>Reserved</div>
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--deployed);box-shadow:0 0 8px var(--deployed)"></div>Deployed</div>
@@ -571,7 +576,7 @@ var PJ_LINKS = [
 
 // ═══ STATE ═══
 var adminMode=false, openPin=null, selectedQ='all', editingOff=null;
-var amFilterState='all', schWeekOffset=0;
+var amFilterState='all', amDotSize=44, schWeekOffset=0;
 var pinPos={}, fpPos={}, kCounts={};
 var decommLog=[
   {id:'FF-D01',type:'flex-flow',reason:'broken',  date:'2026-01-14',notes:'Logger fried'},
@@ -587,54 +592,16 @@ var inProd=[
   {qty:5,type:'cric',eta:'2026-04-22',notes:'Assembly in progress'},
 ];
 var reservations=[
-  // ═══ REAL LIVE JOBS from US3 Jobs Sheet — Hach SFM ═══
-  // Long-running contracts
-  {type:'hach',loc:'downey',qty:6,job:'Thousand Oaks WW',jobNum:'TOAK_032524',location:'City of Thousand Oaks',start:'2024-06-24',end:'2026-12-31'},
-  {type:'hach',loc:'downey',qty:8,job:'Culver City 5yr',jobNum:'CULV_071524',location:'City of Culver City',start:'2024-08-05',end:'2029-08-05'},
-  {type:'hach',loc:'elcajon',qty:4,job:'IRWD Maintenance',jobNum:'IRWD_071624',location:'Irvine, CA',start:'2024-08-09',end:'2026-08-09'},
-  {type:'hach',loc:'elcajon',qty:6,job:'City of Corona',jobNum:'CORO_041625',location:'City of Corona',start:'2025-08-06',end:'2026-08-06'},
-  {type:'hach',loc:'elcajon',qty:4,job:'Oceanside SFM',jobNum:'SOPA_080425',location:'City of Oceanside, CA',start:'2025-08-20',end:'2026-02-20'},
-  // Active recent jobs
-  {type:'hach',loc:'downey',qty:3,job:'Torrance SFM',jobNum:'BBSI_090925',location:'City of Torrance, CA',start:'2025-09-18',end:'2026-06-18'},
-  {type:'hach',loc:'downey',qty:4,job:'West Hollywood',jobNum:'RADF_102725',location:'City of West Hollywood, CA',start:'2025-12-11',end:'2026-06-11'},
-  {type:'hach',loc:'elcajon',qty:2,job:'Corona DWE',jobNum:'DWEI_010526',location:'City of Corona, CA',start:'2026-01-06',end:'2026-04-06'},
-  {type:'hach',loc:'elcajon',qty:2,job:'Arvada CO',jobNum:'SWAR_011426',location:'Arvada, CO',start:'2026-01-20',end:'2026-04-20'},
-  {type:'hach',loc:'downey',qty:3,job:'SM Blvd 2901',jobNum:'SMHC_011326',location:'2901 Santa Monica Blvd',start:'2026-01-23',end:'2026-04-23'},
-  {type:'hach',loc:'downey',qty:3,job:'SM Lincoln 1441',jobNum:'SMHC_011225',location:'1441 Lincoln Blvd, SM',start:'2026-01-23',end:'2026-04-23'},
-  {type:'hach',loc:'elcajon',qty:3,job:'Santa Margarita',jobNum:'SMWD_012826',location:'Santa Margarita WD',start:'2026-02-02',end:'2026-05-02'},
-  {type:'hach',loc:'downey',qty:2,job:'SM Orr Partners',jobNum:'ORRP_072825-CO1',location:'City of Santa Monica',start:'2026-02-11',end:'2026-05-11'},
-  {type:'hach',loc:'downey',qty:2,job:'Pomona Howard',jobNum:'HBCO_010626',location:'City of Pomona, CA',start:'2026-02-23',end:'2026-05-23'},
-  {type:'hach',loc:'elcajon',qty:4,job:'UCI Nature',jobNum:'UCIN_100925',location:'University of Irvine',start:'2026-02-24',end:'2026-08-24'},
-  {type:'hach',loc:'elcajon',qty:2,job:'Shafter SFM',jobNum:'SHAF_022426',location:'City of Shafter, CA',start:'2026-02-26',end:'2026-05-26'},
-  {type:'hach',loc:'elcajon',qty:6,job:'Seaside Wallace',jobNum:'WALL_102425',location:'Seaside County',start:'2026-03-02',end:'2026-09-02'},
-  {type:'hach',loc:'elcajon',qty:3,job:'Sand City Wallace',jobNum:'WALL_121725',location:'Sand City, CA',start:'2026-03-02',end:'2026-06-02'},
-  {type:'hach',loc:'downey',qty:2,job:'Chino CVC',jobNum:'CVCI_021126',location:'City of Chino, CA',start:'2026-03-03',end:'2026-06-03'},
-  {type:'hach',loc:'downey',qty:5,job:'Cerritos PSOMAS',jobNum:'PSMS_022626',location:'City of Cerritos, CA',start:'2026-03-04',end:'2026-06-04'},
-  {type:'hach',loc:'downey',qty:5,job:'Winchester VA',jobNum:'VALL_031626',location:'City of Winchester, VA',start:'2026-03-17',end:'2026-06-17'},
-  {type:'hach',loc:'elcajon',qty:2,job:'Santa Ana Optima',jobNum:'OPTI_031026',location:'City of Santa Ana, CA',start:'2026-03-23',end:'2026-06-23'},
-  {type:'hach',loc:'elcajon',qty:4,job:'Lakewood CO',jobNum:'CRAF_030926',location:'Lakewood, CO',start:'2026-03-23',end:'2026-06-23'},
-  {type:'hach',loc:'elcajon',qty:4,job:'Claremont KH',jobNum:'KIML_030826',location:'City of Claremont, CA',start:'2026-03-24',end:'2026-06-24'},
-  {type:'hach',loc:'elcajon',qty:4,job:'Lancaster Thienes',jobNum:'THIE_072925',location:'City of Lancaster, CA',start:'2026-03-25',end:'2026-06-25'},
-  {type:'hach',loc:'elcajon',qty:3,job:'Newport Fuscoe',jobNum:'FUSC_020526',location:'Newport Beach',start:'2026-03-26',end:'2026-06-26'},
-  {type:'hach',loc:'downey',qty:3,job:'Torrance Hunsaker',jobNum:'HUNS_032626',location:'City of Torrance, CA',start:'2026-03-27',end:'2026-06-27'},
-  {type:'hach',loc:'downey',qty:2,job:'Long Beach LP',jobNum:'LBLP_031326',location:'Long Beach, CA',start:'2026-03-30',end:'2026-06-30'},
-  {type:'hach',loc:'downey',qty:3,job:'SM Rhyton',jobNum:'RHYT_031726',location:'City of Santa Monica',start:'2026-03-31',end:'2026-06-30'},
-  {type:'hach',loc:'puertorico',qty:8,job:'Yauco Parsons',jobNum:'PRSN_102725',location:'Yauco, PR',start:'2026-04-01',end:'2026-10-01'},
-  {type:'hach',loc:'puertorico',qty:8,job:'Las Piedras Ardurra',jobNum:'ARDU_051225',location:'Las Piedras, PR',start:'2026-04-02',end:'2026-10-02'},
-  {type:'hach',loc:'downey',qty:4,job:'San Gabriel Olson',jobNum:'TOCO_032426',location:'City of San Gabriel',start:'2026-04-02',end:'2026-07-02'},
-  {type:'hach',loc:'downey',qty:2,job:'Whittier Purunjian',jobNum:'PURU_032526',location:'Whittier, CA',start:'2026-04-03',end:'2026-07-03'},
-  {type:'hach',loc:'elcajon',qty:3,job:'San Dimas RC',jobNum:'RCHI_031026',location:'San Dimas, CA',start:'2026-04-03',end:'2026-07-03'},
-  // Arold Rentals (Kingston NY)
-  {type:'hach',loc:'downey',qty:2,job:'Kingston Rental',jobNum:'ACCI_031226',location:'Kingston, NY',start:'2026-03-13',end:'2026-04-13'},
-  {type:'hach',loc:'downey',qty:2,job:'Kingston Rental',jobNum:'ACCI_031626',location:'Kingston, NY',start:'2026-03-16',end:'2026-04-16'},
-  {type:'hach',loc:'downey',qty:2,job:'Kingston Rental',jobNum:'ACCI_032426',location:'Kingston, NY',start:'2026-03-24',end:'2026-04-24'},
-  // ═══ Level (West County WW) ═══
-  {type:'cric',loc:'elcajon',qty:32,job:'West County WW',jobNum:'WCWD_020526',location:'Richmond, CA',start:'2026-04-01',end:'2026-10-01'},
-  // ═══ Flex Flow — keep some test data ═══
-  {type:'ff',loc:'elcajon',qty:4,job:'Riverside Q2',jobNum:'FF-RIV-01',location:'Riverside, CA',start:'2026-04-01',end:'2026-05-15'},
-  {type:'ff',loc:'downey',qty:6,job:'Anaheim Storm',jobNum:'FF-ANA-01',location:'Anaheim, CA',start:'2026-04-21',end:'2026-06-01'},
-  // ═══ Rain Gauge ═══
-  {type:'rg',loc:'elcajon',qty:4,job:'SD County Rain',jobNum:'RG-SDC-01',location:'San Diego County',start:'2026-04-07',end:'2026-06-30'},
+  // Test Job 1-4: Single device type
+  {type:'hach',loc:'elcajon',qty:4,job:'Test Job 1',jobNum:'TEST-001',location:'City of Riverside, CA',start:'2026-04-07',end:'2026-06-15',sites:4,devices:{hach:4},contact:'Tim H.',notes:'4 Hach sites, routine SFM'},
+  {type:'hach',loc:'downey',qty:6,job:'Test Job 2',jobNum:'TEST-002',location:'City of Torrance, CA',start:'2026-04-14',end:'2026-07-01',sites:6,devices:{hach:6},contact:'Katie O.',notes:'6 Hach sites, capacity study'},
+  {type:'ff',loc:'elcajon',qty:3,job:'Test Job 3',jobNum:'TEST-003',location:'City of Corona, CA',start:'2026-04-21',end:'2026-06-30',sites:3,devices:{ff:3},contact:'Alana G.',notes:'3 FlexFlow sites, storm diversion'},
+  {type:'cric',loc:'elcajon',qty:8,job:'Test Job 4',jobNum:'TEST-004',location:'Richmond, CA',start:'2026-04-01',end:'2026-10-01',sites:8,devices:{cric:8},contact:'Gordon T.',notes:'8 Level sites, West County WW'},
+  // Test Job 5-8: Mixed device types (listed by primary type but contain mixed)
+  {type:'hach',loc:'downey',qty:3,job:'Test Job 5',jobNum:'TEST-005',location:'City of Culver City',start:'2026-04-07',end:'2026-05-30',sites:5,devices:{hach:3,ff:1,rg:1},contact:'Hong W.',notes:'Mixed: 3 Hach + 1 FF + 1 RG'},
+  {type:'hach',loc:'elcajon',qty:2,job:'Test Job 6',jobNum:'TEST-006',location:'Newport Beach, CA',start:'2026-05-01',end:'2026-07-15',sites:4,devices:{hach:2,cric:1,rg:1},contact:'Susan W.',notes:'Mixed: 2 Hach + 1 Level + 1 RG'},
+  {type:'ff',loc:'puertorico',qty:4,job:'Test Job 7',jobNum:'TEST-007',location:'Yauco, PR',start:'2026-04-14',end:'2026-08-01',sites:7,devices:{ff:4,hach:2,cric:1},contact:'William R.',notes:'Mixed: 4 FF + 2 Hach + 1 Level'},
+  {type:'hach',loc:'downey',qty:5,job:'Test Job 8',jobNum:'TEST-008',location:'City of San Diego, CA',start:'2026-05-15',end:'2026-08-30',sites:8,devices:{hach:5,ff:2,cric:1},contact:'Stephen C.',notes:'Mixed: 5 Hach + 2 FF + 1 Level'},
 ];
 
 // ═══ STORAGE ═══
@@ -1115,6 +1082,12 @@ function renderCompanyStrip(){
 }
 
 // ═══ ASSET MAP PAGE ═══
+function amZoom(delta){
+  amDotSize=Math.max(12,Math.min(60,amDotSize+delta));
+  var label=document.getElementById('amSizeLabel');
+  if(label)label.textContent=amDotSize+'px';
+  renderAssetMap();
+}
 function amFilter(state,el){
   amFilterState=state;
   document.querySelectorAll('.am-filter').forEach(function(f){f.classList.remove('active');});
@@ -1124,6 +1097,8 @@ function amFilter(state,el){
 
 function renderAssetMap(){
   var canvas=document.getElementById('amCanvas');canvas.innerHTML='';
+  canvas.style.setProperty('--am-dot-size',amDotSize+'px');
+  var label=document.getElementById('amSizeLabel');if(label)label.textContent=amDotSize+'px';
   var tip=document.getElementById('dotTip');
   var statuses=['available','reserved','deployed','maintenance'];
 
@@ -1171,13 +1146,13 @@ function renderAssetMap(){
   });
 }
 
-// ═══ SCHEDULE PAGE — COMPANY-WIDE, ONE ROW PER JOB ═══
+// ═══ SCHEDULE PAGE — ONE ROW PER JOB, CLICK FOR DETAILS ═══
 function schNav(dir){schWeekOffset+=dir;renderSched();}
 
 function renderSched(){
   var baseDate=new Date();
   baseDate.setDate(baseDate.getDate()-baseDate.getDay()+schWeekOffset*7);
-  var weeks=8;
+  var weeks=10;
   var days=[];
   for(var w=0;w<weeks;w++){var d=new Date(baseDate);d.setDate(d.getDate()+w*7);days.push(d);}
 
@@ -1189,79 +1164,106 @@ function renderSched(){
   var table=document.getElementById('schTable');table.innerHTML='';
   var thead=document.createElement('thead');
   var hrow=document.createElement('tr');
-  hrow.innerHTML='<th class="row-head" style="min-width:120px">Job #</th><th style="min-width:140px;text-align:left;padding-left:8px">Location</th>'+
-    days.map(function(d){return '<th>Wk of '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</th>';}).join('');
+  hrow.innerHTML='<th class="row-head" style="min-width:110px">Job #</th><th style="min-width:150px;text-align:left;padding-left:8px;">Location</th>'+
+    days.map(function(d){return '<th>Wk '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</th>';}).join('');
   thead.appendChild(hrow);table.appendChild(thead);
 
   var tbody=document.createElement('tbody');
 
-  // Order: Hach, Flex Flow, Rain Gauge, Level
-  var schedOrder=['hach','ff','rg','cric'];
-  schedOrder.forEach(function(pid){
-    var p=PRODUCTS.find(function(x){return x.id===pid;});
+  // Deduplicate: one row per jobNum
+  var seen={};
+  var uniqueJobs=[];
+  reservations.forEach(function(r){
+    if(!seen[r.jobNum]){seen[r.jobNum]=true;uniqueJobs.push(r);}
+  });
+  uniqueJobs.sort(function(a,b){return (a.location||'').localeCompare(b.location||'');});
 
-    // Get all jobs for this product, sorted by location
-    var jobsForProduct=reservations.filter(function(r){return r.type===pid;});
-    if(jobsForProduct.length===0) return;
-    jobsForProduct.sort(function(a,b){return (a.location||a.job).localeCompare(b.location||b.job);});
+  uniqueJobs.forEach(function(res){
+    var row=document.createElement('tr');
+    row.style.cursor='pointer';
+    row.onclick=(function(r){return function(){showJobPopup(r);};})(res);
+    row.onmouseover=function(){this.style.background='rgba(0,113,188,.04)';};
+    row.onmouseout=function(){this.style.background='';};
 
-    // Section header
-    var secRow=document.createElement('tr');secRow.className='sch-section-row';
-    secRow.innerHTML='<td colspan="'+(weeks+2)+'" style="color:'+p.color+'">'+p.icon+' '+p.label+' ('+jobsForProduct.length+' jobs)</td>';
-    tbody.appendChild(secRow);
+    var jobCell=document.createElement('td');jobCell.className='row-head';
+    jobCell.style.fontSize='12px';jobCell.style.color='var(--accent)';
+    jobCell.textContent=res.jobNum;
+    row.appendChild(jobCell);
 
-    // One row per job
-    jobsForProduct.forEach(function(res){
-      var row=document.createElement('tr');
+    var locCell=document.createElement('td');
+    locCell.style.cssText="padding-left:8px;font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;";
+    locCell.textContent=res.location||res.job;
+    row.appendChild(locCell);
 
-      // Job # column
-      var jobCell=document.createElement('td');jobCell.className='row-head';
-      jobCell.style.color=p.color;
-      jobCell.style.fontSize='11px';
-      jobCell.textContent=res.jobNum||res.job;
-      jobCell.title=res.qty+' '+p.label+' \u2014 '+res.job+' ('+res.loc+') '+res.start+' \u2192 '+res.end;
-      row.appendChild(jobCell);
+    var totalSites=res.sites||res.qty;
 
-      // Location column
-      var locCell=document.createElement('td');
-      locCell.style.cssText="padding-left:8px;font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;";
-      locCell.textContent=res.location||res.job;
-      locCell.title=res.location||res.job;
-      row.appendChild(locCell);
+    days.forEach(function(weekStart){
+      var td=document.createElement('td');
+      var weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
+      var rs=new Date(res.start),re=new Date(res.end);
+      var active=rs<=weekEnd&&re>=weekStart;
 
-      days.forEach(function(weekStart){
-        var td=document.createElement('td');
-        var weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
-        var rs=new Date(res.start),re=new Date(res.end);
-        var active=rs<=weekEnd&&re>=weekStart;
-
-        var cell=document.createElement('div');
-        if(active){
-          cell.className='sch-cell reserved';
-          cell.style.color=p.color;
-          cell.textContent=res.qty+' '+p.label;
-          cell.title=res.qty+' '+p.label+' \u2014 '+res.job+'\n'+res.start+' \u2192 '+res.end;
-        } else {
-          cell.className='sch-cell empty';
-          if(adminMode){
-            cell.title='Click to add reservation';
-            (function(pid2,weekStart2){
-              cell.onclick=function(){
-                document.getElementById('res-type').value=pid2;
-                document.getElementById('res-start').value=weekStart2.toISOString().split('T')[0];
-                var endD=new Date(weekStart2);endD.setDate(endD.getDate()+13);
-                document.getElementById('res-end').value=endD.toISOString().split('T')[0];
-                openAddRes();
-              };
-            })(pid,weekStart);
-          }
-        }
-        td.appendChild(cell);row.appendChild(td);
-      });
-      tbody.appendChild(row);
+      var cell=document.createElement('div');
+      if(active){
+        cell.className='sch-cell reserved';
+        cell.textContent=totalSites+' sites';
+        cell.style.fontSize='11px';
+      } else {
+        cell.className='sch-cell empty';
+      }
+      td.appendChild(cell);row.appendChild(td);
     });
+    tbody.appendChild(row);
   });
   table.appendChild(tbody);
+}
+
+function showJobPopup(res){
+  var totalDevices=0;
+  var deviceList='';
+  if(res.devices){
+    var devKeys=Object.keys(res.devices);
+    devKeys.forEach(function(k){
+      var p=PRODUCTS.find(function(x){return x.id===k;});
+      var label=p?p.label:k;
+      totalDevices+=res.devices[k];
+      deviceList+='<div style="display:flex;justify-content:space-between;padding:3px 0;"><span>'+label+'</span><span style="font-weight:700;color:var(--accent)">'+res.devices[k]+'</span></div>';
+    });
+  } else {
+    totalDevices=res.qty;
+    var p=PRODUCTS.find(function(x){return x.id===res.type;});
+    deviceList='<div style="display:flex;justify-content:space-between;padding:3px 0;"><span>'+(p?p.label:res.type)+'</span><span style="font-weight:700;color:var(--accent)">'+res.qty+'</span></div>';
+  }
+
+  var startD=new Date(res.start);
+  var endD=new Date(res.end);
+  var durationWeeks=Math.ceil((endD-startD)/(7*24*60*60*1000));
+
+  var popup=document.createElement('div');
+  popup.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:var(--overlay-bg);padding:20px;';
+  popup.onclick=function(e){if(e.target===popup)popup.remove();};
+
+  popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid var(--accent);border-radius:8px;padding:24px;width:100%;max-width:420px;box-shadow:0 0 50px var(--glow);">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'+
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">'+res.jobNum+'</div>'+
+      '<div style="cursor:pointer;font-size:18px;color:var(--muted);padding:4px;" onclick="this.closest(\'div[style*=fixed]\').remove()">\u2715</div>'+
+    '</div>'+
+    '<div style="font-family:\'Rajdhani\',sans-serif;font-size:14px;color:var(--text);line-height:1.8;">'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Location</span><span style="font-weight:600;">'+(res.location||'')+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Duration</span><span style="font-weight:600;">'+durationWeeks+' weeks</span></div>'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Total Devices</span><span style="font-weight:600;color:var(--accent)">'+totalDevices+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Install Date</span><span>'+startD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Removal Date</span><span>'+endD.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Contact</span><span>'+(res.contact||'\u2014')+'</span></div>'+
+      '<div style="border-bottom:1px solid var(--border);padding:6px 0;"><div style="color:var(--muted);margin-bottom:4px;">Devices</div>'+deviceList+'</div>'+
+      (res.notes?'<div style="padding:6px 0;color:var(--muted);font-size:12px;">'+res.notes+'</div>':'')+
+    '</div>'+
+    '<div style="display:flex;gap:10px;margin-top:16px;">'+
+      '<a href="https://drive.google.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Google Drive</a>'+
+      '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(popup);
 }
 
 function openAddRes(){document.getElementById('addResModal').classList.add('open');}
