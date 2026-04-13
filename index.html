@@ -251,6 +251,16 @@ body.light .dc-table-wrap{border-color:rgba(0,0,0,.12);}
 body.light .dc-table td{border-bottom-color:rgba(0,0,0,.08);}
 .dc-table tbody tr:nth-child(even){background:rgba(0,113,188,.04);}
 .dc-table tbody tr:hover{background:rgba(0,113,188,.12);}
+
+.dc-table-wrap{max-height:420px;overflow-y:auto;margin:20px auto;max-width:1050px;border-radius:8px;border:1px solid rgba(255,255,255,.1);}
+body.light .dc-table-wrap{border-color:rgba(0,0,0,.12);}
+.dc-table{width:100%;border-collapse:collapse;font-family:'Rajdhani',sans-serif;font-size:14px;}
+.dc-table thead{position:sticky;top:0;z-index:1;}
+.dc-table th{background:#0071BC;color:#fff;padding:10px 14px;text-align:left;font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:1px;}
+.dc-table td{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:var(--t1);}
+body.light .dc-table td{border-bottom-color:rgba(0,0,0,.08);}
+.dc-table tbody tr:nth-child(even){background:rgba(0,113,188,.04);}
+.dc-table tbody tr:hover{background:rgba(0,113,188,.12);}
 /* ═══ DECOMMISSION ═══ */
 #page-decomm{background:var(--bg);overflow-y:auto;}
 .dc-inner{padding:24px 28px;}
@@ -342,6 +352,27 @@ body.light #themeBtn{color:var(--text)!important;background:rgba(255,255,255,.8)
 
 
 body.light .fleet-btn-text{color:#1a1a2e!important;}
+
+/* ═══ MOBILE RESPONSIVE ═══ */
+@media (max-width: 768px) {
+  #nav{height:auto;flex-wrap:wrap;}
+  .ntabs{flex-wrap:wrap;overflow-x:auto;}
+  .ntab{padding:0 10px;font-size:9px;min-height:42px;}
+  .nb{padding:4px 8px !important;}
+  .nb img{height:28px !important;}
+  .mc-bottom{flex-direction:column;gap:12px;}
+  .dc-board{flex-wrap:wrap;justify-content:center;}
+  .dc-card{min-width:120px;max-width:160px;}
+  .dc-table{font-size:11px;}
+  .dc-table th,.dc-table td{padding:6px 8px;}
+  .am-toolbar,.sch-toolbar,.fm-toolbar{flex-wrap:wrap;gap:8px;}
+  .sch-table{font-size:10px;}
+  .modal{max-width:95vw;padding:16px;}
+  .exp-box{min-width:130px;}
+  .avail-grid{flex-wrap:wrap;}
+  .page{padding:8px;}
+}
+
 </style>
 </head>
 <body>
@@ -1158,20 +1189,14 @@ var decommLog=[
   {id:'5127',type:'hawaii',date:'2024-11-27',notes:'Hawaii legacy'}
 ];
 var inProd=[
-  {qty:8,type:'ff',  eta:'2026-04-15',notes:'Shenzhen batch'},
-  {qty:5,type:'cric',eta:'2026-04-22',notes:'Assembly in progress'},
+  {qty:30,type:'ff',  eta:'2026-04-20',notes:'El Cajon production batch'},
+  {qty:150,type:'cric',eta:'2026-04-27',notes:'El Cajon production batch'},
 ];
 var reservations=[
-  // Test Job 1-4: Single device type
-  {type:'hach',loc:'elcajon',qty:4,job:'Test Job 1',jobNum:'TEST-001',location:'City of Riverside, CA',start:'2026-04-07',end:'2026-06-15',sites:4,devices:{hach:4},contact:'Tim H.',notes:'4 Hach sites, routine SFM'},
-  {type:'hach',loc:'downey',qty:6,job:'Test Job 2',jobNum:'TEST-002',location:'City of Torrance, CA',start:'2026-04-14',end:'2026-07-01',sites:6,devices:{hach:6},contact:'Katie O.',notes:'6 Hach sites, capacity study'},
-  {type:'ff',loc:'elcajon',qty:3,job:'Test Job 3',jobNum:'TEST-003',location:'City of Corona, CA',start:'2026-04-21',end:'2026-06-30',sites:3,devices:{ff:3},contact:'Alana G.',notes:'3 FlexFlow sites, storm diversion'},
-  {type:'cric',loc:'elcajon',qty:8,job:'Test Job 4',jobNum:'TEST-004',location:'Richmond, CA',start:'2026-04-01',end:'2026-10-01',sites:8,devices:{cric:8},contact:'Gordon T.',notes:'8 Level sites, West County WW'},
-  // Test Job 5-8: Mixed device types (listed by primary type but contain mixed)
-  {type:'hach',loc:'downey',qty:3,job:'Test Job 5',jobNum:'TEST-005',location:'City of Culver City',start:'2026-04-07',end:'2026-05-30',sites:5,devices:{hach:3,ff:1,rg:1},contact:'Hong W.',notes:'Mixed: 3 Hach + 1 FF + 1 RG'},
-  {type:'hach',loc:'elcajon',qty:2,job:'Test Job 6',jobNum:'TEST-006',location:'Newport Beach, CA',start:'2026-05-01',end:'2026-07-15',sites:4,devices:{hach:2,cric:1,rg:1},contact:'Susan W.',notes:'Mixed: 2 Hach + 1 Level + 1 RG'},
-  {type:'ff',loc:'puertorico',qty:4,job:'Test Job 7',jobNum:'TEST-007',location:'Yauco, PR',start:'2026-04-14',end:'2026-08-01',sites:7,devices:{ff:4,hach:2,cric:1},contact:'William R.',notes:'Mixed: 4 FF + 2 Hach + 1 Level'},
-  {type:'hach',loc:'downey',qty:5,job:'Test Job 8',jobNum:'TEST-008',location:'City of San Diego, CA',start:'2026-05-15',end:'2026-08-30',sites:8,devices:{hach:5,ff:2,cric:1},contact:'Stephen C.',notes:'Mixed: 5 Hach + 2 FF + 1 Level'},
+  {type:'cric',loc:'elcajon',qty:17,job:'West County Wastewater',jobNum:'WCWD_020526',location:'Richmond, CA',start:'2026-04-13',end:'2027-04-13',sites:17,devices:{cric:17},contact:'Gordon Times',notes:'17 Level Cricket kits, 1 year study'},
+  {type:'ff',loc:'puertorico',qty:19,job:'Parsons',jobNum:'PRSN_102725',location:'Puerto Rico',start:'2026-04-27',end:'2026-05-27',sites:19,devices:{ff:19,rg:5},contact:'',notes:'19 FlexFlow + 5 Rain Gauge, 30 day study. Equipment from PR inventory'},
+  {type:'ff',loc:'puertorico',qty:33,job:'Ardurra',jobNum:'ARDU_051225',location:'Puerto Rico',start:'2026-05-04',end:'2026-08-02',sites:33,devices:{ff:33,rg:3},contact:'',notes:'33 FlexFlow + 3 Rain Gauge, 90 day study. 5 FF from PR, 28 FF from El Cajon production batch, 3 RG from El Cajon'},
+  {type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO_041625',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow currently deployed from El Cajon. Being removed 4/20, returning to maintenance at El Cajon'},
 ];
 
 // ═══ STORAGE ═══
@@ -1188,20 +1213,20 @@ function loadStorage(){
   Object.keys(DEF_FP).forEach(function(id){if(!fpPos[id])fpPos[id]={x:DEF_FP[id].x,y:DEF_FP[id].y};});
   // Defaults: per-location (available, reserved, maintenance only)
   var defs={
-    elcajon_ff_available:8, elcajon_ff_reserved:4, elcajon_ff_maintenance:2,
-    elcajon_cric_available:12,elcajon_cric_reserved:3,elcajon_cric_maintenance:2,
-    elcajon_hach_available:6, elcajon_hach_reserved:2, elcajon_hach_maintenance:1,
-    elcajon_rg_available:4,   elcajon_rg_reserved:0,   elcajon_rg_maintenance:0,
-    downey_ff_available:6,    downey_ff_reserved:2,    downey_ff_maintenance:1,
-    downey_hach_available:4,  downey_hach_reserved:0,  downey_hach_maintenance:0,
-    downey_cric_available:8,  downey_cric_reserved:0,  downey_cric_maintenance:1,
+    elcajon_ff_available:0,  elcajon_ff_reserved:0,   elcajon_ff_maintenance:23,
+    elcajon_cric_available:7,elcajon_cric_reserved:17,elcajon_cric_maintenance:0,
+    elcajon_hach_available:5, elcajon_hach_reserved:0, elcajon_hach_maintenance:0,
+    elcajon_rg_available:2,   elcajon_rg_reserved:4,   elcajon_rg_maintenance:0,
+    downey_ff_available:4,    downey_ff_reserved:0,    downey_ff_maintenance:0,
+    downey_hach_available:17, downey_hach_reserved:0,  downey_hach_maintenance:0,
+    downey_cric_available:0,  downey_cric_reserved:0,  downey_cric_maintenance:0,
     downey_rg_available:2,    downey_rg_reserved:0,    downey_rg_maintenance:0,
-    puertorico_ff_available:6,puertorico_ff_reserved:0,puertorico_ff_maintenance:0,
-    puertorico_cric_available:10,puertorico_cric_reserved:0,puertorico_cric_maintenance:1,
-    puertorico_rg_available:3,puertorico_rg_reserved:0,puertorico_rg_maintenance:0,
+    puertorico_ff_available:0,puertorico_ff_reserved:24,puertorico_ff_maintenance:0,
+    puertorico_cric_available:4,puertorico_cric_reserved:0,puertorico_cric_maintenance:0,
+    puertorico_rg_available:0,puertorico_rg_reserved:4,puertorico_rg_maintenance:0,
     houston_ff_available:0,   houston_hach_available:0,
-    // Company-wide deployed
-    company_ff_deployed:30, company_cric_deployed:28, company_hach_deployed:8, company_rg_deployed:4,
+    // Company-wide deployed (not tracked yet - will add over time)
+    company_ff_deployed:49, company_cric_deployed:0, company_hach_deployed:0, company_rg_deployed:0,
   };
   OFFICES.forEach(function(o){
     var prods=o.products||['ff','hach'];
@@ -1292,7 +1317,9 @@ function renderMCPanel(){
   });
 
   html+='</div>';
+  html+='<div style="margin-top:16px;padding:0 12px 12px;"><div id="fleetOverviewPanel"></div></div>';
   panel.innerHTML=html;
+  renderFleetOverview();
 }
 
 function tick(){
@@ -1877,7 +1904,7 @@ function renderDecomm(){
     '<div class="dc-sub">Asset write-offs \u00B7 Quarterly reporting for Tony (CFO)</div>'+
     (thisQ.length>0?'<div class="cfto">\u26A0 '+thisQ.length+' write-off'+(thisQ.length!==1?'s':'')+' this quarter (Q'+cQ+' '+cY+') \u2014 export CSV for Tony</div>':'')+
     '<div class="dc-board">'+cards.map(function(c,i){return '<div class="dc-card"><div class="dc-card-top"><div class="dc-icon" style="color:'+c.color+';animation-delay:'+i*.45+'s">'+(c.icon||'')+'</div><div class="dc-name" style="color:'+c.color+'">'+c.name+'</div><div class="dc-num" style="color:'+c.color+'">'+c.cnt+'</div><div class="dc-lbl">decommissioned</div></div><div class="dc-bar" style="background:'+c.color+'55"></div></div>';}).join('')+'</div>'+
-    '<div class="dc-period"><span class="dc-period-lbl">Period</span>'+sortedQs.map(function(q){return '<div class="qchip '+(q===selectedQ?'active':'')+'" onclick="setQ(\''+q+'\')">'+((q==='all')?'All time':q)+'</div>';}).join('')+'</div>'+
+    '<div class="dc-period"><span class="dc-period-lbl">Period</span>'+sortedQs.map(function(q){return '<div class="qchip '+(q===selectedQ?'active':'')+'" onclick="setQ(\''+q+'\')">'+(q==='all'?'All time':q)+'</div>';}).join('')+'</div>'+
     '<div class="dc-actions">'+
       '<button class="dc-btn export" onclick="exportDc()">\u2193 Export CSV for Tony</button>'+
       (adminMode?'<button class="dc-btn export" onclick="openAddDc()">+ Add Entry</button>':'')+
@@ -1899,6 +1926,48 @@ function saveAddDc(){
 }
 
 // ═══ PROJECTS ═══
+function renderFleetOverview(){
+  var container=document.getElementById('fleetOverviewPanel');
+  if(!container)return;
+  var products=[
+    {id:'ff',label:'Flex Flow',color:'#0071BC'},
+    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'hach',label:'Hach',color:'#A7A9AC'},
+    {id:'rg',label:'Rain Gauge',color:'#44bb88'},
+  ];
+  var offices=['elcajon','downey','puertorico','houston'];
+  var ssUrl='https://app.smartsheet.com';
+  var rows=products.map(function(p){
+    var avail=0,reserved=0,maint=0,deployed=gc('company',p.id,'deployed')||0;
+    offices.forEach(function(o){avail+=gc(o,p.id,'available');reserved+=gc(o,p.id,'reserved');maint+=gc(o,p.id,'maintenance');});
+    var activeJobs=reservations.filter(function(r){var devs=r.devices||{};return devs[p.id]&&devs[p.id]>0;}).length;
+    var logoHtml=prodLogoHtml(p.id,32);
+    if(!logoHtml)logoHtml='<span style="font-size:14px;font-weight:700;color:'+p.color+'">'+p.label+'</span>';
+    return '<tr onclick="window.open(\''+ssUrl+'\',\'_blank\')" style="cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);">'+
+      '<td style="padding:10px 14px;">'+logoHtml+'</td>'+
+      '<td style="padding:10px 8px;text-align:center;color:#00c49a;font-weight:700;font-size:20px;">'+avail+'</td>'+
+      '<td style="padding:10px 8px;text-align:center;color:#4a5568;font-weight:700;font-size:20px;">'+reserved+'</td>'+
+      '<td style="padding:10px 8px;text-align:center;color:#0071BC;font-weight:700;font-size:20px;">'+deployed+'</td>'+
+      '<td style="padding:10px 8px;text-align:center;color:#e8a020;font-weight:700;font-size:20px;">'+maint+'</td>'+
+      '<td style="padding:10px 8px;text-align:center;color:var(--text);font-weight:700;font-size:20px;">'+activeJobs+'</td></tr>';
+  }).join('');
+  rows+='<tr onclick="window.open(\''+ssUrl+'\',\'_blank\')" style="cursor:pointer;">'+
+    '<td style="padding:10px 14px;"><span style="font-size:14px;font-weight:700;color:#88aacc;">Rentals</span></td>'+
+    '<td colspan="4" style="padding:10px 8px;text-align:center;color:var(--muted);font-size:12px;">See Smartsheet</td>'+
+    '<td style="padding:10px 8px;text-align:center;color:var(--text);font-weight:700;font-size:20px;">'+reservations.length+'</td></tr>';
+  container.innerHTML=
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:10px;">\u25C8 Fleet Overview <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">Company-Wide \u00B7 Click logo \u2192 Smartsheet</span></div>'+
+    '<table style="width:100%;border-collapse:collapse;font-family:\'Rajdhani\',sans-serif;">'+
+    '<thead><tr style="border-bottom:2px solid var(--accent);">'+
+      '<th style="padding:8px 14px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Product</th>'+
+      '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#00c49a;">Avail</th>'+
+      '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#4a5568;">Resv</th>'+
+      '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#0071BC;">Depl</th>'+
+      '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#e8a020;">Maint</th>'+
+      '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Jobs</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
 function renderProjects(){
   document.getElementById('pjGrid').innerHTML=PJ_LINKS.map(function(p){
     var logoHtml='';
