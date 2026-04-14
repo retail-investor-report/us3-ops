@@ -482,9 +482,25 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
 <!-- AVAILABILITY -->
 <div class="page" id="page-avail">
   <div class="av-inner">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>
+        <div class="av-title" style="margin-bottom:0;">Availability</div>
+        <div class="av-sub">Kit counts by location and product type</div>
+      </div>
+      <div class="admin-btn" id="availAdminBtn" onclick="toggleAdmin()" style="font-size:12px;padding:6px 12px;cursor:pointer;">⬡ Admin Off</div>
+    </div>
+    <div id="availAdminBanner" style="display:none;margin-bottom:16px;padding:10px 16px;border-left:3px solid var(--accent);background:rgba(26,127,232,.06);border-radius:0 6px 6px 0;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--accent);font-weight:600;">ADMIN: Edit inventory below. Changes update Fleet Map and Mission Control automatically.</div>
+    </div>
+    <div onclick="window.open('https://houstontx.uscubed.com/login.aspx','_blank')" style="cursor:pointer;margin-bottom:16px;padding:18px 22px;background:#0071BC;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .2s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,113,188,.4)'" onmouseout="this.style.boxShadow='none'">
+      <div>
+        <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;">Houston Level Project</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;margin-top:2px;">~3,000 Cricket Units Deployed</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:11px;opacity:.7;margin-top:4px;">Tracked separately — not included in fleet counts below.</div>
+      </div>
+      <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 16px;border:1.5px solid rgba(255,255,255,.4);border-radius:4px;">View Portal →</div>
+    </div>
     <div id="avail-stats-panel" style="margin-bottom:24px;background:var(--panel-bg);padding:10px 22px;display:flex;flex-direction:column;gap:8px;border-radius:10px;border:1px solid var(--borderb);"></div>
-    <div class="av-title">Availability</div>
-    <div class="av-sub">Kit counts by location and product type</div>
     <div class="av-grid" id="avGrid"></div>
   </div>
 </div>
@@ -522,6 +538,7 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
     <div class="sch-period" id="schPeriod"></div>
     <button class="sch-nav-btn" onclick="schNav(1)">Next &rarr;</button>
     <button class="add-res-btn" onclick="openAddRes()">+ Add Reservation</button>
+    <button class="add-res-btn" onclick="openCheckAvail()" style="background:rgba(232,160,32,.12);border-color:#e8a020;color:#e8a020;">Check Availability</button>
   </div>
   <div class="sch-body"><table class="sch-table" id="schTable"></table></div>
 </div>
@@ -533,7 +550,22 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
 
 <!-- PARTS -->
 <div class="page" id="page-parts">
-  <div class="stub"><div class="stub-i">🔧</div><div class="stub-t">Parts Inventory</div><div class="stub-s">Admin only · Parts stock, China orders, production queue — coming next</div></div>
+  <div style="padding:20px 24px;max-width:1200px;margin:0 auto;overflow-y:auto;height:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Failure Point Analysis</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">Device return tracking and failure categorization</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="admin-btn" id="fishboneToggle" onclick="toggleFishbone()" style="font-size:11px;padding:5px 12px;cursor:pointer;">Fishbone View</button>
+      </div>
+    </div>
+    <div id="partsAdminForm" style="display:none;margin-bottom:20px;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);"></div>
+    <div id="paretoChart" style="margin-bottom:20px;"></div>
+    <div id="fishboneView" style="display:none;margin-bottom:20px;"></div>
+    <div id="partsStats" style="margin-bottom:16px;"></div>
+    <div id="partsTable"></div>
+  </div>
 </div>
 
 <!-- FLEET MAP -->
@@ -556,6 +588,7 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
       <div style="flex:1;"></div>
       <div class="admin-btn" id="fleetAdminBtn" onclick="toggleFleetAdmin()">⬡ Admin Off</div>
     </div>
+    <div id="fleetHoustonBanner" style="display:none;padding:6px 22px;background:rgba(0,113,188,.06);border-bottom:1px solid rgba(0,113,188,.15);font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);flex-shrink:0;">Note: Houston Level Project (~3,000 units) tracked separately at <a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="color:var(--accent);text-decoration:underline;">houstontx.uscubed.com</a></div>
     <div style="display:flex;flex:1;overflow:hidden;">
       <div id="fleetLabels" style="flex-shrink:0;overflow-y:hidden;border-right:1px solid var(--border);background:var(--nav-bg);"></div>
       <div id="fleetWrap" style="flex:1;overflow:auto;position:relative;">
@@ -612,6 +645,20 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
     <div class="form-row"><label>Start</label><input id="res-start" type="date"></div>
     <div class="form-row"><label>End</label><input id="res-end" type="date"></div>
     <div class="modal-actions"><button class="btn btn-s" onclick="closeAddRes()">Cancel</button><button class="btn btn-p" onclick="saveAddRes()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="checkAvailModal">
+  <div class="modal" style="max-width:440px;">
+    <h2 style="color:#e8a020;">Check Availability</h2>
+    <div class="modal-sub">Request a reservation — admin will confirm</div>
+    <div class="form-row"><label>Product</label><select id="ca-type"><option value="hach">Hach</option><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="rg">Rain Gauge</option></select></div>
+    <div class="form-row"><label>Quantity Needed</label><input id="ca-qty" type="number" min="1" value="1"></div>
+    <div class="form-row"><label>Start Date</label><input id="ca-start" type="date"></div>
+    <div class="form-row"><label>End Date</label><input id="ca-end" type="date"></div>
+    <div class="form-row"><label>Requestor Name</label><input id="ca-requestor" placeholder="Your name"></div>
+    <div class="form-row"><label>Notes</label><textarea id="ca-notes" rows="2" placeholder="Additional details..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:'Rajdhani',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-s" onclick="closeCheckAvail()">Cancel</button><button class="btn btn-p" style="background:rgba(232,160,32,.15);border-color:#e8a020;color:#e8a020;" onclick="submitCheckAvail()">Submit Request</button></div>
   </div>
 </div>
 
@@ -1317,6 +1364,7 @@ function sw(id,el){
   if(id==='assetmap') renderAssetMap();
   if(id==='sched')    renderSched();
   if(id==='fleet')    renderFleet();
+  if(id==='parts')    renderParts();
 }
 
 // ═══ STATS ═══
@@ -1365,6 +1413,7 @@ function toggleAdmin(){
   document.getElementById('editBtn').style.display=adminMode?'block':'none';
   updateHelpBadge();
   renderMC();
+  if(document.getElementById('page-avail').classList.contains('active'))renderAvail();
 }
 
 // ═══ MISSION CONTROL ═══
@@ -1411,17 +1460,20 @@ function renderJobPins(){
     var devKeys=res.devices?Object.keys(res.devices):[];
     var totalDevices=devKeys.reduce(function(s,k){return s+(res.devices[k]||0);},0);
     var isOpen=openJobPin===idx;
+    var isReq=res.status==='requested';
+    var pinColor=isReq?'#e8a020':'#ED1C24';
 
     var pin=document.createElement('div');
     pin.className='job-pin'+(isOpen?' open':'');
+    if(isReq){pin.style.cssText+='--jp-color:#e8a020;';}
     pin.style.left=px+'px';pin.style.top=py+'px';
     pin.innerHTML='<div class="job-pin-body">'+
-      '<div class="job-pin-circle" onclick="toggleJobPin('+idx+')">'+
-        (isOpen?'<div class="job-pin-ring"></div>':'')+
-        '<div class="job-pin-ico">\uD83D\uDCCD</div>'+
+      '<div class="job-pin-circle" onclick="toggleJobPin('+idx+')" style="border-color:'+pinColor+';">'+
+        (isOpen?'<div class="job-pin-ring" style="border-color:'+pinColor+';"></div>':'')+
+        '<div class="job-pin-ico">'+(isReq?'\u25C8':'\uD83D\uDCCD')+'</div>'+
         '<div class="job-pin-cnt">'+totalDevices+'</div>'+
       '</div>'+
-      '<div class="job-pin-lbl" onclick="toggleJobPin('+idx+')" title="'+res.job+'">'+res.job+'</div>'+
+      '<div class="job-pin-lbl" onclick="toggleJobPin('+idx+')" title="'+res.job+'" style="'+(isReq?'background:rgba(232,160,32,.12);border-color:rgba(232,160,32,.3);':'')+'">'+res.job+'</div>'+
       '<div class="pin-drag">drag to move</div>'+
     '</div>';
     makeDrag(pin,pinKey,W,H,jobPinPos,function(){sv('us3_job_pins',jobPinPos);},false);
@@ -1638,8 +1690,7 @@ function renderPins(){
             ipRow='<div class="exp-row"><span class="exp-row-lbl">In Production</span><span class="exp-row-num inprod">'+ipQty+'</span></div><div class="exp-row"><span class="exp-row-lbl" style="font-size:8px">ETA '+(eta?new Date(eta.eta).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'')+'</span></div>';
           }
         }
-        var editBtn=adminMode?'<div class="exp-row" style="margin-top:4px;border-top:1px solid rgba(50,100,180,.15);padding-top:4px"><button style="width:100%;font-family:\'Share Tech Mono\',monospace;font-size:8px;padding:3px 6px;border:1px solid rgba(50,130,255,.3);border-radius:2px;background:transparent;color:#1a7fe8;cursor:pointer;text-transform:uppercase;letter-spacing:.1em" onclick="openEditFor(\''+off.id+'\',\''+card.id+'\')">✎ Edit</button></div>':'';
-        wrap.innerHTML='<div class="exp-box"><div class="exp-head"><div class="exp-head-icon">'+card.icon+'</div><div class="exp-head-label" style="color:'+card.color+'">'+card.label+'</div></div><div class="exp-head-bar" style="background:'+card.color+'44"></div><div class="exp-rows">'+rowsHtml+ipRow+editBtn+'</div></div>';
+        wrap.innerHTML='<div class="exp-box"><div class="exp-head"><div class="exp-head-icon">'+card.icon+'</div><div class="exp-head-label" style="color:'+card.color+'">'+card.label+'</div></div><div class="exp-head-bar" style="background:'+card.color+'44"></div><div class="exp-rows">'+rowsHtml+ipRow+'</div></div>';
       }
       mc.appendChild(wrap);
     });
@@ -1749,6 +1800,10 @@ function saveEditPanel(){
 // ═══ AVAILABILITY PAGE ═══
 function renderAvail(){
   renderStats();
+  var avAdminBtn=document.getElementById('availAdminBtn');
+  if(avAdminBtn){avAdminBtn.classList.toggle('active',adminMode);avAdminBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
+  var avBanner=document.getElementById('availAdminBanner');
+  if(avBanner)avBanner.style.display=adminMode?'block':'none';
   var grid=document.getElementById('avGrid');grid.innerHTML='';
   // Location cards (available, reserved, maintenance only)
   OFFICES.forEach(function(off){
@@ -1906,15 +1961,24 @@ function renderSched(){
   uniqueJobs.sort(function(a,b){return (a.location||'').localeCompare(b.location||'');});
 
   uniqueJobs.forEach(function(res){
+    var isRequested=res.status==='requested';
+    var resIdx=reservations.indexOf(res);
     var row=document.createElement('tr');
     row.style.cursor='pointer';
-    row.onclick=(function(r){return function(){showJobPopup(r);};})(res);
-    row.onmouseover=function(){this.style.background='rgba(0,113,188,.04)';};
+    if(isRequested){row.style.borderLeft='3px solid #e8a020';}
+    row.onclick=(function(r,ri,req){return function(){showJobPopup(r,ri,req);};})(res,resIdx,isRequested);
+    var hoverBg=isRequested?'rgba(232,160,32,.08)':'rgba(0,113,188,.04)';
+    row.onmouseover=(function(bg){return function(){this.style.background=bg;};})(hoverBg);
     row.onmouseout=function(){this.style.background='';};
 
     var jobCell=document.createElement('td');jobCell.className='row-head';
-    jobCell.style.fontSize='12px';jobCell.style.color='var(--accent)';
-    jobCell.textContent=res.jobNum;
+    jobCell.style.fontSize='12px';
+    if(isRequested){
+      jobCell.innerHTML='<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:rgba(232,160,32,.15);color:#e8a020;font-size:9px;font-weight:700;margin-right:4px;vertical-align:middle;">REQUESTED</span><span style="color:#e8a020;">'+res.jobNum+'</span>';
+    } else {
+      jobCell.style.color='var(--accent)';
+      jobCell.textContent=res.jobNum;
+    }
     row.appendChild(jobCell);
 
     var locCell=document.createElement('td');
@@ -1932,8 +1996,14 @@ function renderSched(){
 
       var cell=document.createElement('div');
       if(active){
-        cell.className='sch-cell reserved';
-        cell.textContent=totalSites+' sites';
+        if(isRequested){
+          cell.className='sch-cell reserved';
+          cell.style.background='rgba(232,160,32,.12)';cell.style.borderColor='#e8a020';cell.style.color='#e8a020';
+          cell.textContent=totalSites+' requested';
+        } else {
+          cell.className='sch-cell reserved';
+          cell.textContent=totalSites+' sites';
+        }
         cell.style.fontSize='11px';
       } else {
         cell.className='sch-cell empty';
@@ -1945,7 +2015,7 @@ function renderSched(){
   table.appendChild(tbody);
 }
 
-function showJobPopup(res){
+function showJobPopup(res,resIdx,isRequested){
   var totalDevices=0;
   var deviceList='';
   if(res.devices){
@@ -1985,10 +2055,15 @@ function showJobPopup(res){
       '<div style="border-bottom:1px solid var(--border);padding:6px 0;"><div style="color:var(--muted);margin-bottom:4px;">Devices</div>'+deviceList+'</div>'+
       (res.notes?'<div style="padding:6px 0;color:var(--muted);font-size:12px;">'+res.notes+'</div>':'')+
     '</div>'+
-    '<div style="display:flex;gap:10px;margin-top:16px;">'+
-      '<a href="https://drive.google.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Google Drive</a>'+
-      '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
-    '</div>'+
+    (isRequested&&adminMode?
+      '<div style="display:flex;gap:10px;margin-top:16px;">'+
+        '<button onclick="confirmReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #00c49a;background:rgba(0,196,154,.12);color:#00c49a;">Confirm Reservation</button>'+
+        '<button onclick="declineReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;">Decline</button>'+
+      '</div>':
+      '<div style="display:flex;gap:10px;margin-top:16px;">'+
+        '<a href="https://drive.google.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Google Drive</a>'+
+        '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
+      '</div>')+
   '</div>';
   document.body.appendChild(popup);
 }
@@ -2005,6 +2080,259 @@ function saveAddRes(){
     end:  document.getElementById('res-end').value,
   };
   reservations.push(r);sv('us3_res',reservations);closeAddRes();renderSched();
+}
+
+function openCheckAvail(){
+  var today=new Date();
+  document.getElementById('ca-start').value=today.toISOString().split('T')[0];
+  var fut=new Date(today);fut.setDate(fut.getDate()+30);
+  document.getElementById('ca-end').value=fut.toISOString().split('T')[0];
+  document.getElementById('ca-qty').value='1';
+  document.getElementById('ca-requestor').value='';
+  document.getElementById('ca-notes').value='';
+  document.getElementById('checkAvailModal').classList.add('open');
+}
+function closeCheckAvail(){document.getElementById('checkAvailModal').classList.remove('open');}
+function submitCheckAvail(){
+  var typ=document.getElementById('ca-type').value;
+  var qty=parseInt(document.getElementById('ca-qty').value)||1;
+  var start=document.getElementById('ca-start').value;
+  var end=document.getElementById('ca-end').value;
+  var requestor=document.getElementById('ca-requestor').value.trim()||'Unknown';
+  var notes=document.getElementById('ca-notes').value.trim();
+  if(!start||!end){alert('Please enter start and end dates.');return;}
+  var p=PRODUCTS.find(function(x){return x.id===typ;});
+  var r={
+    type:typ,loc:'elcajon',qty:qty,
+    job:requestor,jobNum:'REQ_'+Date.now(),
+    location:'TBD',start:start,end:end,sites:qty,
+    devices:{},contact:requestor,
+    notes:(notes?notes+' ':'')+('[Requested by '+requestor+']'),
+    status:'requested'
+  };
+  r.devices[typ]=qty;
+  reservations.push(r);sv('us3_res',reservations);
+  closeCheckAvail();renderSched();
+  showFleetToast('Availability request submitted');
+}
+function confirmReservation(idx){
+  if(reservations[idx]){reservations[idx].status='confirmed';sv('us3_res',reservations);renderSched();}
+}
+function declineReservation(idx){
+  if(!confirm('Decline this reservation request?'))return;
+  reservations.splice(idx,1);sv('us3_res',reservations);renderSched();
+}
+
+// ═══ PARTS / FAILURE ANALYSIS ═══
+var FAIL_CATS=['Sensor Failure','Battery/Power','Antenna/Comms','Water Damage','Cable/Connector','Enclosure Damage','Software/Firmware','Unknown','No Fault Found'];
+var FAIL_SEV=['Critical - Unit Dead','Major - Degraded Function','Minor - Cosmetic/Non-Critical'];
+var FISHBONE_MAP={'Sensor Failure':'Hardware','Battery/Power':'Hardware','Antenna/Comms':'Hardware','Water Damage':'Environment','Cable/Connector':'Materials','Enclosure Damage':'Environment','Software/Firmware':'Software','Unknown':'Process','No Fault Found':'Human'};
+var _fishboneMode=false;
+
+function getReturns(){return lv('us3_returns')||[];}
+function saveReturns(arr){sv('us3_returns',arr);}
+
+function renderParts(){
+  var returns=getReturns();
+  // Admin form
+  var formDiv=document.getElementById('partsAdminForm');
+  if(adminMode){
+    formDiv.style.display='block';
+    formDiv.innerHTML=
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Log Device Return</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'+
+        '<div class="form-row"><label>Device ID</label><input id="pr-id" placeholder="e.g. 4501"></div>'+
+        '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
+        '<div class="form-row"><label>Return Date</label><input id="pr-date" type="date"></div>'+
+        '<div class="form-row"><label>Failure Category</label><select id="pr-fail">'+FAIL_CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
+        '<div class="form-row"><label>Severity</label><select id="pr-sev">'+FAIL_SEV.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div>'+
+        '<div class="form-row"><label>Repairable</label><select id="pr-repair"><option value="yes">Yes</option><option value="no">No</option></select></div>'+
+      '</div>'+
+      '<div class="form-row" style="margin-top:8px;"><label>Notes</label><textarea id="pr-notes" rows="2" placeholder="Details..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea></div>'+
+      '<div style="margin-top:10px;"><button class="btn btn-p" onclick="saveReturn()">Log Return</button></div>';
+    var dEl=document.getElementById('pr-date');
+    if(dEl&&!dEl.value)dEl.value=new Date().toISOString().split('T')[0];
+  } else {
+    formDiv.style.display='none';
+  }
+
+  // Pareto chart
+  renderPareto(returns);
+  // Fishbone
+  renderFishbone(returns);
+  // Stats
+  renderPartsStats(returns);
+  // Table
+  renderPartsTable(returns);
+}
+
+function saveReturn(){
+  var r={
+    deviceId:document.getElementById('pr-id').value.trim()||'N/A',
+    type:document.getElementById('pr-type').value,
+    date:document.getElementById('pr-date').value,
+    failure:document.getElementById('pr-fail').value,
+    severity:document.getElementById('pr-sev').value,
+    repairable:document.getElementById('pr-repair').value,
+    notes:document.getElementById('pr-notes').value.trim()
+  };
+  var arr=getReturns();arr.unshift(r);saveReturns(arr);
+  document.getElementById('pr-id').value='';document.getElementById('pr-notes').value='';
+  renderParts();
+}
+
+function renderPareto(returns){
+  var div=document.getElementById('paretoChart');
+  if(_fishboneMode){div.style.display='none';return;}
+  div.style.display='block';
+  if(returns.length===0){div.innerHTML='<div style="padding:20px;text-align:center;font-family:\'Rajdhani\',sans-serif;font-size:14px;color:var(--muted);">No returns logged yet. Use the form above (admin mode) to log device returns.</div>';return;}
+  var counts={};FAIL_CATS.forEach(function(c){counts[c]=0;});
+  returns.forEach(function(r){if(counts[r.failure]!==undefined)counts[r.failure]++;else counts[r.failure]=1;});
+  var sorted=Object.keys(counts).filter(function(k){return counts[k]>0;}).sort(function(a,b){return counts[b]-counts[a];});
+  var max=sorted.length?counts[sorted[0]]:1;
+  var total=returns.length;
+  var cumul=0;
+  var sevColors={'Critical - Unit Dead':'#e05252','Major - Degraded Function':'#e8a020','Minor - Cosmetic/Non-Critical':'#00c49a'};
+
+  var html='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Failure Pareto Chart</div>';
+  sorted.forEach(function(cat){
+    var cnt=counts[cat];cumul+=cnt;
+    var pct=Math.round(cnt/total*100);
+    var cumPct=Math.round(cumul/total*100);
+    var barW=Math.max(2,Math.round(cnt/max*100));
+    // Severity breakdown for this category
+    var sevCounts={};FAIL_SEV.forEach(function(s){sevCounts[s]=0;});
+    returns.forEach(function(r){if(r.failure===cat)sevCounts[r.severity]++;});
+    var barHtml='';
+    FAIL_SEV.forEach(function(s){
+      if(sevCounts[s]>0){var sw2=Math.round(sevCounts[s]/cnt*100);barHtml+='<div style="width:'+sw2+'%;height:100%;background:'+(sevColors[s]||'var(--accent)')+';"></div>';}
+    });
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
+      '<div style="width:140px;font-family:\'Rajdhani\',sans-serif;font-size:12px;color:var(--text);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+cat+'">'+cat+'</div>'+
+      '<div style="flex:1;height:20px;background:var(--card-bg);border-radius:3px;overflow:hidden;display:flex;">'+barHtml+'</div>'+
+      '<div style="width:30px;font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;color:var(--text);text-align:right;">'+cnt+'</div>'+
+      '<div style="width:40px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-align:right;">'+pct+'%</div>'+
+      '<div style="width:45px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--accent);text-align:right;">'+cumPct+'% cum</div>'+
+    '</div>';
+  });
+  html+='<div style="display:flex;gap:16px;margin-top:10px;justify-content:center;">'+
+    FAIL_SEV.map(function(s){return '<div style="display:flex;align-items:center;gap:4px;font-family:\'Rajdhani\',sans-serif;font-size:10px;color:var(--muted);"><div style="width:10px;height:10px;border-radius:2px;background:'+sevColors[s]+'"></div>'+s.split(' - ')[0]+'</div>';}).join('')+
+  '</div></div>';
+  div.innerHTML=html;
+}
+
+function toggleFishbone(){
+  _fishboneMode=!_fishboneMode;
+  var btn=document.getElementById('fishboneToggle');
+  if(btn){btn.classList.toggle('active',_fishboneMode);btn.textContent=_fishboneMode?'Pareto View':'Fishbone View';}
+  renderParts();
+}
+
+function renderFishbone(returns){
+  var div=document.getElementById('fishboneView');
+  if(!_fishboneMode){div.style.display='none';return;}
+  div.style.display='block';
+  var branches={'Environment':[],'Hardware':[],'Software':[],'Human':[],'Materials':[],'Process':[]};
+  returns.forEach(function(r){var b=FISHBONE_MAP[r.failure]||'Process';branches[b].push(r);});
+  var bKeys=Object.keys(branches);
+  var topBranches=bKeys.slice(0,3);
+  var botBranches=bKeys.slice(3);
+
+  var html='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:16px;">Fishbone / Ishikawa Diagram</div>'+
+    '<div style="position:relative;min-height:320px;padding:20px 0;">';
+  // Spine
+  html+='<div style="position:absolute;top:50%;left:40px;right:40px;height:3px;background:var(--accent);transform:translateY(-50%);"></div>';
+  html+='<div style="position:absolute;top:50%;right:20px;transform:translateY(-50%);font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;color:#e05252;text-transform:uppercase;letter-spacing:.08em;background:var(--panel-bg);padding:4px 10px;border:2px solid #e05252;border-radius:4px;">DEVICE FAILURE</div>';
+  // Top branches
+  var spacing=100/(topBranches.length+1);
+  topBranches.forEach(function(bk,i){
+    var xPct=spacing*(i+1);
+    var items=branches[bk];
+    var itemsHtml=items.length?items.slice(0,5).map(function(r){return '<div style="font-size:10px;color:var(--muted);padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="'+r.failure+'">'+r.failure+(r.deviceId!=='N/A'?' #'+r.deviceId:'')+'</div>';}).join(''):'<div style="font-size:10px;color:var(--muted);font-style:italic;">none</div>';
+    html+='<div style="position:absolute;left:'+xPct+'%;top:8px;transform:translateX(-50%);text-align:center;">'+
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text);margin-bottom:4px;">'+bk+' <span style="color:var(--accent);">('+items.length+')</span></div>'+
+      '<div style="padding:4px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:4px;">'+itemsHtml+'</div>'+
+      '<div style="width:2px;height:30px;background:var(--accent);margin:4px auto 0;"></div>'+
+    '</div>';
+  });
+  // Bottom branches
+  var bSpacing=100/(botBranches.length+1);
+  botBranches.forEach(function(bk,i){
+    var xPct=bSpacing*(i+1);
+    var items=branches[bk];
+    var itemsHtml=items.length?items.slice(0,5).map(function(r){return '<div style="font-size:10px;color:var(--muted);padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="'+r.failure+'">'+r.failure+(r.deviceId!=='N/A'?' #'+r.deviceId:'')+'</div>';}).join(''):'<div style="font-size:10px;color:var(--muted);font-style:italic;">none</div>';
+    html+='<div style="position:absolute;left:'+xPct+'%;bottom:8px;transform:translateX(-50%);text-align:center;">'+
+      '<div style="width:2px;height:30px;background:var(--accent);margin:0 auto 4px;"></div>'+
+      '<div style="padding:4px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:4px;">'+itemsHtml+'</div>'+
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text);margin-top:4px;">'+bk+' <span style="color:var(--accent);">('+items.length+')</span></div>'+
+    '</div>';
+  });
+  html+='</div></div>';
+  div.innerHTML=html;
+}
+
+function renderPartsStats(returns){
+  var div=document.getElementById('partsStats');
+  if(returns.length===0){div.innerHTML='';return;}
+  var total=returns.length;
+  var repairCount=returns.filter(function(r){return r.repairable==='yes';}).length;
+  var repairRate=Math.round(repairCount/total*100);
+  var failCounts={};returns.forEach(function(r){failCounts[r.failure]=(failCounts[r.failure]||0)+1;});
+  var topFail=Object.keys(failCounts).sort(function(a,b){return failCounts[b]-failCounts[a];})[0]||'N/A';
+  div.innerHTML=
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">'+
+      '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:700;color:var(--text);">'+total+'</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Total Returns</div></div>'+
+      '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;color:#e8a020;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+topFail+'">'+topFail+'</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Most Common</div></div>'+
+      '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:700;color:#00c49a;">'+repairRate+'%</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Repair Rate</div></div>'+
+      '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:700;color:#e05252;">'+(total-repairCount)+'</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Non-Repairable</div></div>'+
+    '</div>';
+}
+
+function renderPartsTable(returns){
+  var div=document.getElementById('partsTable');
+  if(returns.length===0){div.innerHTML='';return;}
+  var sevColors={'Critical - Unit Dead':'#e05252','Major - Degraded Function':'#e8a020','Minor - Cosmetic/Non-Critical':'#00c49a'};
+  var rows=returns.map(function(r,i){
+    var p=PRODUCTS.find(function(x){return x.id===r.type;});
+    var sc=sevColors[r.severity]||'var(--text)';
+    return '<tr style="border-bottom:1px solid var(--border);">'+
+      '<td style="padding:6px 8px;font-size:12px;">'+r.date+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;font-weight:700;">'+r.deviceId+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;">'+(p?p.label:r.type)+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;">'+r.failure+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;color:'+sc+';font-weight:600;">'+r.severity.split(' - ')[0]+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;color:'+(r.repairable==='yes'?'#00c49a':'#e05252')+';">'+r.repairable+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+r.notes+'">'+r.notes+'</td>'+
+      (adminMode?'<td style="padding:6px 4px;"><button onclick="deleteReturn('+i+')" style="font-size:10px;padding:2px 6px;border:1px solid #e05252;border-radius:3px;background:transparent;color:#e05252;cursor:pointer;">Del</button></td>':'')+
+    '</tr>';
+  }).join('');
+  div.innerHTML='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Return Log</div>'+
+    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-family:\'Rajdhani\',sans-serif;color:var(--text);">'+
+      '<thead><tr style="border-bottom:2px solid var(--accent);">'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Date</th>'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Device</th>'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Product</th>'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Failure</th>'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Severity</th>'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Repair</th>'+
+        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Notes</th>'+
+        (adminMode?'<th></th>':'')+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+function deleteReturn(idx){
+  var arr=getReturns();arr.splice(idx,1);saveReturns(arr);renderParts();
 }
 
 // ═══ DECOMMISSION ═══
@@ -2496,6 +2824,9 @@ function renderFleet(){
     btn.onclick=(function(pid2){return function(){fleetProduct=pid2;renderFleet();};})(pid);
     filDiv.appendChild(btn);
   });
+
+  var houstonBanner=document.getElementById('fleetHoustonBanner');
+  if(houstonBanner)houstonBanner.style.display=(fleetProduct==='cric')?'block':'none';
 
   var p=PRODUCTS.find(function(x){return x.id===fleetProduct;});
 
