@@ -2714,8 +2714,10 @@ var fleetProduct='hach';
 var fleetCellSize=18; // user-controlled dot size
 var _fleetAssets=[];
 var _fleetWeekStatus=[];
+var _fleetWeekJobInfo=[]; // parallel array: _fleetWeekJobInfo[row][col] = {job,jobNum,start,end} or null
 var _fleetNumRows=0;
 var _fleetNumCols=52;
+var _fleetWeeks=[]; // week start dates for tooltip use
 
 function fleetZoom(delta){
   fleetCellSize=Math.max(4,Math.min(40,fleetCellSize+delta));
@@ -2807,36 +2809,37 @@ function renderFleet(){
   if(totalUnits<1)totalUnits=1;
 
   // Build asset list: each unit gets an ID, a base status, and a location
+  // "reserved" in inventory = units earmarked for jobs. Treat as available for timeline assignment.
   var assets=[];
   var unitNum=1;
-  // Available units
+  // Available units first
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
     var cnt=gc(o.id,fleetProduct,'available');
-    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,status:'available',loc:o.label});}
+    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
   });
-  // Reserved units
+  // Reserved units (inventory reserved = earmarked for jobs, base=available on timeline)
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
     var cnt=gc(o.id,fleetProduct,'reserved');
-    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,status:'reserved',loc:o.label});}
+    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
   });
-  // Deployed units
-  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,status:'deployed',loc:'Field'});}
-  // Maintenance units
+  // Deployed units — blue all 52 weeks
+  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,base:'deployed',loc:'Field',officeId:'company'});}
+  // Maintenance units — orange all 52 weeks
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
     var cnt=gc(o.id,fleetProduct,'maintenance');
-    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,status:'maintenance',loc:o.label});}
+    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'maintenance',loc:o.label,officeId:o.id});}
   });
 
   var numRows=assets.length;
   var numCols=52;
 
-  // Compute week starts for 52 weeks starting from current week
+  // Compute week starts for 52 weeks starting from current week (Sunday)
   var now=new Date();
   var weekStart=new Date(now);weekStart.setDate(weekStart.getDate()-weekStart.getDay());
   weekStart.setHours(0,0,0,0);
@@ -2846,33 +2849,53 @@ function renderFleet(){
     weeks.push(ws);
   }
 
-  // Get reservations for this product
-  var prodRes=reservations.filter(function(r){return r.type===fleetProduct&&r.status==='confirmed';});
+  // Get confirmed reservations that use this product (check devices map too)
+  var prodRes=reservations.filter(function(r){
+    if(r.status!=='confirmed')return false;
+    // Primary product type match
+    if(r.type===fleetProduct)return true;
+    // Also check devices map for multi-product jobs (e.g. Parsons has {ff:19, rg:5})
+    if(r.devices&&r.devices[fleetProduct]>0)return true;
+    return false;
+  });
 
-  // Assign reservations to specific asset rows
-  // For each reservation, stamp out N rows (qty) for the duration
+  // Initialize grid: every dot starts at its base status
   var assetWeekStatus=[];
+  var assetWeekJobInfo=[];
   for(var r=0;r<numRows;r++){
     assetWeekStatus[r]=[];
+    assetWeekJobInfo[r]=[];
     for(var c=0;c<numCols;c++){
-      assetWeekStatus[r][c]=assets[r].status;
+      assetWeekStatus[r][c]=assets[r].base;
+      assetWeekJobInfo[r][c]=null;
     }
   }
 
-  // Stamp reservations onto available assets
+  // Stamp reservations onto available-base assets, only for the exact weeks covered
   prodRes.forEach(function(res){
-    var rs=new Date(res.start),re=new Date(res.end);
-    // Find which weeks this reservation covers
+    var rs=new Date(res.start+'T00:00:00'),re=new Date(res.end+'T00:00:00');
+    // How many units of THIS product does this job need?
+    var qtyNeeded=0;
+    if(res.devices&&res.devices[fleetProduct]>0){
+      qtyNeeded=res.devices[fleetProduct];
+    } else if(res.type===fleetProduct){
+      qtyNeeded=res.qty||0;
+    }
+    if(qtyNeeded<=0)return;
+
+    // Find which week columns this reservation covers
     var coveredWeeks=[];
     for(var c=0;c<numCols;c++){
-      var we=new Date(weeks[c]);we.setDate(we.getDate()+6);
-      if(rs<=we&&re>=weeks[c]) coveredWeeks.push(c);
+      var weekEnd=new Date(weeks[c]);weekEnd.setDate(weekEnd.getDate()+6);
+      if(rs<=weekEnd&&re>=weeks[c]) coveredWeeks.push(c);
     }
     if(coveredWeeks.length===0)return;
-    // Assign to available assets
+
+    var jobInfo={job:res.job||res.jobNum,jobNum:res.jobNum,start:res.start,end:res.end};
+    // Assign to available-base assets
     var assigned=0;
-    for(var r=0;r<numRows&&assigned<res.qty;r++){
-      if(assets[r].status!=='available')continue;
+    for(var r=0;r<numRows&&assigned<qtyNeeded;r++){
+      if(assets[r].base!=='available')continue;
       // Check if this asset is free for all covered weeks
       var free=true;
       for(var ci=0;ci<coveredWeeks.length;ci++){
@@ -2881,17 +2904,20 @@ function renderFleet(){
       if(free){
         for(var ci=0;ci<coveredWeeks.length;ci++){
           assetWeekStatus[r][coveredWeeks[ci]]='reserved_'+res.job;
+          assetWeekJobInfo[r][coveredWeeks[ci]]=jobInfo;
         }
         assigned++;
       }
     }
   });
 
-  // Store in globals for canvas rendering
+  // Store in globals for canvas rendering and tooltip
   _fleetAssets=assets;
   _fleetWeekStatus=assetWeekStatus;
+  _fleetWeekJobInfo=assetWeekJobInfo;
   _fleetNumRows=numRows;
   _fleetNumCols=numCols;
+  _fleetWeeks=weeks;
 
   // Sizing — user-controlled via +/- buttons
   var wrapEl=document.getElementById('fleetWrap');
@@ -2936,7 +2962,7 @@ function renderFleet(){
     var lbl=document.createElement('div');
     lbl.style.cssText='height:'+cellSize+'px;line-height:'+cellSize+'px;font-family:"Rajdhani",sans-serif;font-size:'+lblFontSize+'px;color:var(--text);padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
     lbl.textContent=p.icon+' #'+assets[r].id;
-    lbl.title=p.label+' #'+assets[r].id+' ('+assets[r].loc+') — '+assets[r].status;
+    lbl.title=p.label+' #'+assets[r].id+' ('+assets[r].loc+') — '+assets[r].base;
     labels.appendChild(lbl);
   }
 
@@ -2954,24 +2980,80 @@ function renderFleet(){
 
   redrawFleetCanvas();
 
-  // Tooltip on canvas hover (read-only)
+  // Hover tooltip (div-based, not canvas.title)
+  canvas.title='';
+  var _lastTipRow=-1,_lastTipCol=-1;
   canvas.onmousemove=function(e){
     var rect=canvas.getBoundingClientRect();
     var mx=e.clientX-rect.left, my=e.clientY-rect.top;
     var col=Math.floor(mx/cellSize);
     var row=Math.floor(my/cellSize);
     if(row>=0&&row<numRows&&col>=0&&col<numCols){
+      if(row===_lastTipRow&&col===_lastTipCol)return updateFleetTooltipPos(e);
+      _lastTipRow=row;_lastTipCol=col;
       var st=assetWeekStatus[row][col];
-      var jobName='';
-      if(st.indexOf('reserved_')===0) jobName=st.substring(9);
-      var weekLabel='Wk of '+weeks[col].toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      canvas.title=p.label+' #'+assets[row].id+' ('+assets[row].loc+')'+
-        '\\n'+weekLabel+
-        '\\nStatus: '+(jobName?'Reserved \u2014 '+jobName:st);
+      var ji=assetWeekJobInfo[row][col];
+      var asset=assets[row];
+      var baseSt=st;
+      var isReserved=st.indexOf('reserved')===0;
+      var statusLabel,statusColor,detail='';
+      if(isReserved){statusLabel='Reserved';statusColor='#4a5568';if(ji)detail=ji.job+' \u2014 '+fmtShort(ji.start)+' to '+fmtShort(ji.end);}
+      else if(st==='deployed'){statusLabel='Deployed';statusColor='#0071BC';detail='In Field';}
+      else if(st==='maintenance'){statusLabel='Maintenance';statusColor='#e8a020';detail='Under Assessment';}
+      else{statusLabel='Available';statusColor='#00c49a';}
+      var weekLabel=weeks[col].toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      showFleetDotTooltip(e,'#'+asset.id,statusLabel,statusColor,detail,asset.loc,weekLabel);
     } else {
-      canvas.title='';
+      _lastTipRow=-1;_lastTipCol=-1;
+      hideFleetDotTooltip();
     }
   };
+  canvas.onmouseleave=function(){_lastTipRow=-1;_lastTipCol=-1;hideFleetDotTooltip();};
+}
+
+function fmtShort(dateStr){
+  if(!dateStr)return '';
+  var d=new Date(dateStr+'T00:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function showFleetDotTooltip(e,unit,statusLabel,statusColor,detail,loc,weekLabel){
+  var tip=document.getElementById('fleetTooltip');
+  if(!tip){
+    tip=document.createElement('div');
+    tip.id='fleetTooltip';
+    tip.style.cssText='position:fixed;z-index:600;background:#0a0e1a;border:1px solid rgba(0,113,188,.35);border-radius:6px;padding:8px 12px;pointer-events:none;font-family:"Rajdhani",sans-serif;font-size:12px;color:#d0e0f0;max-width:220px;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,.5);line-height:1.5;';
+    document.body.appendChild(tip);
+  }
+  tip.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'+
+      '<span style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;color:#fff;">'+unit+'</span>'+
+      '<span style="font-size:10px;color:#8aa4c4;">'+weekLabel+'</span>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">'+
+      '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+statusColor+';"></span>'+
+      '<span style="font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'+
+    '</div>'+
+    (detail?'<div style="font-size:11px;color:#8aa4c4;">'+detail+'</div>':'')+
+    '<div style="font-size:10px;color:#556;margin-top:2px;">'+loc+'</div>';
+  tip.style.display='block';
+  updateFleetTooltipPos(e);
+}
+
+function updateFleetTooltipPos(e){
+  var tip=document.getElementById('fleetTooltip');
+  if(!tip)return;
+  var vw=window.innerWidth,vh=window.innerHeight;
+  var left=e.clientX+14,top=e.clientY-10;
+  if(left+230>vw)left=e.clientX-230;
+  if(top+100>vh)top=e.clientY-100;
+  tip.style.left=left+'px';
+  tip.style.top=top+'px';
+}
+
+function hideFleetDotTooltip(){
+  var tip=document.getElementById('fleetTooltip');
+  if(tip)tip.style.display='none';
 }
 
 function hexToRgb(hex){
