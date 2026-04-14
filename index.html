@@ -657,16 +657,20 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
   </div>
 </div>
 <div class="modal-ov" id="addResModal">
-  <div class="modal">
+  <div class="modal" style="max-width:480px;">
     <h2>Add Reservation</h2>
     <div class="modal-sub">Schedule a kit reservation</div>
-    <div class="form-row"><label>Product</label><select id="res-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>
-    <div class="form-row"><label>Location</label><select id="res-loc"><option value="elcajon">El Cajon</option><option value="downey">Downey</option><option value="puertorico">Puerto Rico</option></select></div>
-    <div class="form-row"><label>Quantity</label><input id="res-qty" type="number" min="1" value="1"></div>
     <div class="form-row"><label>Job Name</label><input id="res-job" placeholder="e.g. Riverside Q2 Study"></div>
-    <div class="form-row"><label>Start</label><input id="res-start" type="date"></div>
-    <div class="form-row"><label>End</label><input id="res-end" type="date"></div>
-    <div class="modal-actions"><button class="btn btn-s" onclick="closeAddRes()">Cancel</button><button class="btn btn-p" onclick="saveAddRes()">Save</button></div>
+    <div class="form-row"><label>Location / City</label><input id="res-location" placeholder="e.g. Richmond, CA"></div>
+    <div class="form-row"><label>Product</label><select id="res-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>
+    <div class="form-row"><label>Source Office</label><select id="res-loc"><option value="elcajon">El Cajon</option><option value="downey">Downey</option><option value="puertorico">Puerto Rico</option></select></div>
+    <div class="form-row"><label>Quantity</label><input id="res-qty" type="number" min="1" value="1"></div>
+    <div class="form-row"><label>Sites</label><input id="res-sites" type="number" min="1" value="1"></div>
+    <div class="form-row"><label>Start Date</label><input id="res-start" type="date"></div>
+    <div class="form-row"><label>End Date</label><input id="res-end" type="date"></div>
+    <div class="form-row"><label>Contact</label><input id="res-contact" placeholder="Contact name"></div>
+    <div class="form-row"><label>Notes</label><textarea id="res-notes" rows="2" placeholder="Additional details..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:'Rajdhani',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-s" onclick="closeAddRes()">Cancel</button><button class="btn btn-p" onclick="saveAddRes()">Submit</button></div>
   </div>
 </div>
 
@@ -2125,25 +2129,30 @@ function closeAddRes(){document.getElementById('addResModal').classList.remove('
 function saveAddRes(){
   var typ=document.getElementById('res-type').value;
   var qty=parseInt(document.getElementById('res-qty').value)||1;
+  var sites=parseInt(document.getElementById('res-sites').value)||qty;
   var jobName=document.getElementById('res-job').value.trim()||'Unnamed job';
+  var loc=document.getElementById('res-location').value.trim()||'TBD';
+  var contact=document.getElementById('res-contact').value.trim();
+  var notes=document.getElementById('res-notes').value.trim();
   var r={
     type:typ,
     loc: document.getElementById('res-loc').value,
     qty: qty,
     job: jobName,
-    jobNum:jobName.substring(0,4).toUpperCase().replace(/\s/g,'')+'-'+Date.now().toString(36).toUpperCase(),
-    location:'TBD',
+    jobNum:jobName.substring(0,4).toUpperCase().replace(/[^A-Z0-9]/g,'')+'-'+Date.now().toString(36).toUpperCase(),
+    location:loc,
     start:document.getElementById('res-start').value,
     end:  document.getElementById('res-end').value,
-    sites:qty,
+    sites:sites,
     devices:{},
-    contact:'',
-    notes:'',
+    contact:contact,
+    notes:notes,
     status:adminMode?'confirmed':'requested'
   };
   r.devices[typ]=qty;
   reservations.push(r);sv('us3_res',reservations);closeAddRes();
   updateTabBadges();renderSched();
+  if(!adminMode)showFleetToast('Reservation submitted for admin approval');
 }
 
 function openCheckAvail(){
@@ -2194,26 +2203,32 @@ function deleteReservation(idx){
 function editReservation(idx){
   var res=reservations[idx];if(!res)return;
   var popup=document.createElement('div');
+  popup.id='editResOverlay';
   popup.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:var(--overlay-bg);padding:20px;';
   popup.onclick=function(e){if(e.target===popup)popup.remove();};
   var prodOpts=PRODUCTS.map(function(p){return '<option value="'+p.id+'"'+(p.id===res.type?' selected':'')+'>'+p.label+'</option>';}).join('');
   var locOpts=OFFICES.map(function(o){return '<option value="'+o.id+'"'+(o.id===res.loc?' selected':'')+'>'+o.label+'</option>';}).join('');
+  var safeNotes=(res.notes||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  var safeJob=(res.job||'').replace(/"/g,'&quot;');
+  var safeJobNum=(res.jobNum||'').replace(/"/g,'&quot;');
+  var safeLoc=(res.location||'').replace(/"/g,'&quot;');
+  var safeContact=(res.contact||'').replace(/"/g,'&quot;');
   popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid var(--accent);border-radius:8px;padding:24px;width:100%;max-width:480px;box-shadow:0 0 50px var(--glow);max-height:90vh;overflow-y:auto;">'+
     '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:16px;">Edit Reservation</div>'+
-    '<div class="form-row"><label>Job Name</label><input id="ej-job" value="'+(res.job||'')+'"></div>'+
-    '<div class="form-row"><label>Job Number</label><input id="ej-jobnum" value="'+(res.jobNum||'')+'"></div>'+
-    '<div class="form-row"><label>Location</label><input id="ej-location" value="'+(res.location||'')+'"></div>'+
+    '<div class="form-row"><label>Job Name</label><input id="ej-job" value="'+safeJob+'"></div>'+
+    '<div class="form-row"><label>Job Number</label><input id="ej-jobnum" value="'+safeJobNum+'"></div>'+
+    '<div class="form-row"><label>Location</label><input id="ej-location" value="'+safeLoc+'"></div>'+
     '<div class="form-row"><label>Product</label><select id="ej-type">'+prodOpts+'</select></div>'+
     '<div class="form-row"><label>Source Office</label><select id="ej-loc">'+locOpts+'</select></div>'+
     '<div class="form-row"><label>Quantity</label><input id="ej-qty" type="number" min="1" value="'+(res.qty||1)+'"></div>'+
     '<div class="form-row"><label>Sites</label><input id="ej-sites" type="number" min="1" value="'+(res.sites||res.qty||1)+'"></div>'+
     '<div class="form-row"><label>Start Date</label><input id="ej-start" type="date" value="'+(res.start||'')+'"></div>'+
     '<div class="form-row"><label>End Date</label><input id="ej-end" type="date" value="'+(res.end||'')+'"></div>'+
-    '<div class="form-row"><label>Contact</label><input id="ej-contact" value="'+(res.contact||'')+'"></div>'+
-    '<div class="form-row"><label>Notes</label><textarea id="ej-notes" rows="2" style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);">'+(res.notes||'')+'</textarea></div>'+
+    '<div class="form-row"><label>Contact</label><input id="ej-contact" value="'+safeContact+'"></div>'+
+    '<div class="form-row"><label>Notes</label><textarea id="ej-notes" rows="2" style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);">'+safeNotes+'</textarea></div>'+
     '<div style="display:flex;gap:10px;margin-top:16px;">'+
       '<button onclick="saveEditReservation('+idx+')" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.12);color:var(--accent);">Save</button>'+
-      '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--text);">Cancel</button>'+
+      '<button onclick="document.getElementById(\'editResOverlay\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--text);">Cancel</button>'+
     '</div>'+
   '</div>';
   document.body.appendChild(popup);
@@ -2235,7 +2250,7 @@ function saveEditReservation(idx){
   r.notes=document.getElementById('ej-notes').value.trim();
   r.devices={};r.devices[typ]=qty;
   sv('us3_res',reservations);
-  var overlay=document.querySelector('div[style*="position:fixed"][style*="z-index:700"]');
+  var overlay=document.getElementById('editResOverlay');
   if(overlay)overlay.remove();
   renderSched();
 }
@@ -2292,7 +2307,7 @@ function saveReturn(){
 function renderPareto(returns){
   var div=document.getElementById('paretoChart');
   div.style.display='block';
-  if(returns.length===0){div.innerHTML='<div style="padding:20px;text-align:center;font-family:\'Rajdhani\',sans-serif;font-size:14px;color:var(--muted);">No returns logged yet. Use the form above (admin mode) to log device returns.</div>';return;}
+  if(returns.length===0){div.innerHTML='<div style="padding:20px;text-align:center;font-family:\'Rajdhani\',sans-serif;font-size:14px;color:var(--muted);">No returns logged yet. Use the form above to log device returns.</div>';return;}
   var counts={};FAIL_CATS.forEach(function(c){counts[c]=0;});
   returns.forEach(function(r){if(counts[r.failure]!==undefined)counts[r.failure]++;else counts[r.failure]=1;});
   var sorted=Object.keys(counts).filter(function(k){return counts[k]>0;}).sort(function(a,b){return counts[b]-counts[a];});
@@ -2541,7 +2556,7 @@ function renderPartsTable(returns){
 }
 
 function deleteReturn(idx){
-  var arr=getReturns();arr.splice(idx,1);saveReturns(arr);renderParts();
+  var arr=getReturns();arr.splice(idx,1);saveReturns(arr);updateTabBadges();renderParts();
 }
 
 // ═══ DECOMMISSION ═══
