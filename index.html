@@ -468,6 +468,15 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
 #sidebarCollapseTab:hover{color:var(--accent);background:rgba(26,127,232,.08);}
 /* Adjust pages when sidebar is visible */
 body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open #page-sched{right:280px;}
+/* ═══ WELCOME GUIDE ═══ */
+#welcomeGuide{position:fixed;inset:0;z-index:9500;background:rgba(4,9,26,.92);display:none;align-items:center;justify-content:center;transition:opacity .5s;}
+#welcomeGuide.fade-out{opacity:0;pointer-events:none;}
+.guide-card{max-width:480px;width:90%;background:#0f1528;border:1.5px solid rgba(0,113,188,.25);border-radius:12px;padding:32px;box-shadow:0 0 40px rgba(0,113,188,.12);max-height:85vh;overflow-y:auto;position:relative;}
+.guide-section{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.guide-section:last-of-type{border-bottom:none;}
+.guide-section h4{font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0071BC;margin-bottom:6px;}
+.guide-section p{font-family:'Rajdhani',sans-serif;font-size:13px;color:#c0d0e0;line-height:1.6;margin:0;}
+.guide-section .ga{color:#0071BC;}
 </style>
 </head>
 <body>
@@ -480,6 +489,20 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <input type="email" id="loginEmail" placeholder="your.name@uscubed.com">
     <button class="login-btn" id="loginBtn">Sign In</button>
     <div class="login-error" id="loginError">Please enter a valid @uscubed.com email address</div>
+  </div>
+</div>
+<!-- WELCOME GUIDE -->
+<div id="welcomeGuide">
+  <div class="guide-card">
+    <div style="position:absolute;top:12px;right:16px;cursor:pointer;font-size:18px;color:#8aa4c4;z-index:1;" onclick="dismissWelcomeGuide()">&times;</div>
+    <div style="text-align:center;margin-bottom:18px;"><img id="guideLogo" src="" alt="US3" style="height:36px;"></div>
+    <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#fff;text-align:center;margin-bottom:20px;">Welcome to US3 Ops</div>
+    <div class="guide-section"><h4>&#x1F4E6; Check What's Available</h4><p><span class="ga">&rarr;</span> <b>Availability</b> tab &mdash; see all kit counts by office<br><span class="ga">&rarr;</span> <b>Check Availability</b> &mdash; pick product, quantity &amp; dates</p></div>
+    <div class="guide-section"><h4>&#x1F4C5; Request Equipment</h4><p><span class="ga">&rarr;</span> <b>Schedule</b> tab &rarr; <b>Add Reservation</b><br><span class="ga">&rarr;</span> Fill in job details &rarr; Submit<br><span class="ga">&rarr;</span> Request goes to admin for approval (shows as &#x1F7E0; Pending)</p></div>
+    <div class="guide-section"><h4>&#x1F527; Log a Failed Device</h4><p><span class="ga">&rarr;</span> <b>Parts Inventory</b> tab &rarr; fill in Device ID, product &amp; failure type<br><span class="ga">&rarr;</span> Submits automatically &mdash; admin gets notified</p></div>
+    <div class="guide-section"><h4>&#x1F5FA;&#xFE0F; Quick Navigation</h4><p>&#x1F5FA; <b>Mission Control</b> &mdash; fleet overview<br>&#x1F4E6; <b>Availability</b> &mdash; warehouse counts<br>&#x1F6F0; <b>Fleet Map</b> &mdash; every unit &times; 52 weeks<br>&#x1F4C5; <b>Schedule</b> &mdash; active &amp; upcoming jobs<br>&#x1F4CA; <b>Decommission</b> &mdash; retired equipment</p></div>
+    <div class="guide-section"><h4>&#x2753; Need Help?</h4><p><span class="ga">&rarr;</span> Hit the <b>?</b> button in the top bar anytime<br><span class="ga">&rarr;</span> Send feedback or report issues from there</p></div>
+    <button onclick="dismissWelcomeGuide()" style="width:100%;padding:12px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#0071BC;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-top:16px;transition:background .2s;">Got It</button>
   </div>
 </div>
 <nav id="nav">
@@ -506,6 +529,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
   <div class="modal" style="max-width:440px;">
     <h2>Help & Feedback</h2>
     <div class="modal-sub">Report bugs, request features, or ask questions</div>
+    <div style="margin-bottom:12px;"><button onclick="closeHelpModal();showWelcomeGuide();" style="width:100%;padding:8px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:transparent;color:var(--accent);border:1.5px solid var(--borderb);border-radius:4px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(26,127,232,.08)'" onmouseout="this.style.background='transparent'">&#x1F4D6; Quick Guide</button></div>
     <div id="helpTabs" style="display:none;margin-bottom:12px;">
       <div style="display:flex;gap:0;border-bottom:1.5px solid var(--border);">
         <div class="help-tab active" id="helpTabSend" onclick="switchHelpTab('send')" style="padding:6px 16px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);">Send Message</div>
@@ -2133,25 +2157,27 @@ function showJobPopup(res,resIdx,isRequested){
   popup.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:var(--overlay-bg);padding:20px;';
   popup.onclick=function(e){if(e.target===popup)popup.remove();};
 
+  var shippingUrl='https://drive.google.com/drive/folders/1FzZNZ1NxDLzvYhkQKsP8v7AZ9zUfoZ4L?usp=drive_link';
+  var linkButtons=
+    '<div style="display:flex;gap:10px;margin-top:10px;">'+
+      '<a href="'+shippingUrl+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Shipping Docs</a>'+
+      '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
+    '</div>';
   var actionButtons='';
   if(isRequested&&adminMode){
     actionButtons=
       '<div style="display:flex;gap:10px;margin-top:16px;">'+
         '<button onclick="confirmReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #00c49a;background:rgba(0,196,154,.12);color:#00c49a;">Approve</button>'+
         '<button onclick="declineReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;">Decline</button>'+
-      '</div>';
+      '</div>'+linkButtons;
   } else if(!isRequested&&adminMode){
     actionButtons=
       '<div style="display:flex;gap:10px;margin-top:16px;">'+
         '<button onclick="editReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.12);color:var(--accent);">Edit Job</button>'+
         '<button onclick="deleteReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;">Delete Job</button>'+
-      '</div>';
+      '</div>'+linkButtons;
   } else {
-    actionButtons=
-      '<div style="display:flex;gap:10px;margin-top:16px;">'+
-        '<a href="https://drive.google.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Google Drive</a>'+
-        '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
-      '</div>';
+    actionButtons=linkButtons;
   }
 
   popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid '+(isRequested?'#e8a020':'var(--accent)')+';border-radius:8px;padding:24px;width:100%;max-width:420px;box-shadow:0 0 50px var(--glow);">'+
@@ -2668,14 +2694,13 @@ function renderFleetOverview(){
     {id:'rg',label:'Rain Gauge',color:'#44bb88'},
   ];
   var offices=['elcajon','downey','puertorico','houston'];
-  var ssUrl='https://app.smartsheet.com';
   var rows=products.map(function(p){
     var avail=0,reserved=0,maint=0,deployed=gc('company',p.id,'deployed')||0;
     offices.forEach(function(o){avail+=gc(o,p.id,'available');reserved+=gc(o,p.id,'reserved');maint+=gc(o,p.id,'maintenance');});
     var activeJobs=reservations.filter(function(r){var devs=r.devices||{};return devs[p.id]&&devs[p.id]>0;}).length;
     var logoHtml=prodLogoHtml(p.id,32);
     if(!logoHtml)logoHtml='<span style="font-size:14px;font-weight:700;color:'+p.color+'">'+p.label+'</span>';
-    return '<tr onclick="window.open(\''+ssUrl+'\',\'_blank\')" style="cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);">'+
+    return '<tr style="border-bottom:1px solid rgba(255,255,255,.06);">'+
       '<td style="padding:10px 14px;">'+logoHtml+'</td>'+
       '<td style="padding:10px 8px;text-align:center;color:#00c49a;font-weight:700;font-size:20px;">'+avail+'</td>'+
       '<td style="padding:10px 8px;text-align:center;color:#4a5568;font-weight:700;font-size:20px;">'+reserved+'</td>'+
@@ -2683,12 +2708,8 @@ function renderFleetOverview(){
       '<td style="padding:10px 8px;text-align:center;color:#e8a020;font-weight:700;font-size:20px;">'+maint+'</td>'+
       '<td style="padding:10px 8px;text-align:center;color:var(--text);font-weight:700;font-size:20px;">'+activeJobs+'</td></tr>';
   }).join('');
-  rows+='<tr onclick="window.open(\''+ssUrl+'\',\'_blank\')" style="cursor:pointer;">'+
-    '<td style="padding:10px 14px;"><span style="font-size:14px;font-weight:700;color:#88aacc;">Rentals</span></td>'+
-    '<td colspan="4" style="padding:10px 8px;text-align:center;color:var(--muted);font-size:12px;">See Smartsheet</td>'+
-    '<td style="padding:10px 8px;text-align:center;color:var(--text);font-weight:700;font-size:20px;">'+reservations.length+'</td></tr>';
   container.innerHTML=
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:10px;">\u25C8 Fleet Overview <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">Company-Wide \u00B7 Click logo \u2192 Smartsheet</span></div>'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:10px;">\u25C8 Fleet Overview <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">Company-Wide</span></div>'+
     '<table style="width:100%;border-collapse:collapse;font-family:\'Rajdhani\',sans-serif;">'+
     '<thead><tr style="border-bottom:2px solid var(--accent);">'+
       '<th style="padding:8px 14px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Product</th>'+
@@ -2826,8 +2847,17 @@ function renderFleet(){
     var cnt=gc(o.id,fleetProduct,'reserved');
     for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
   });
-  // Deployed units — blue all 52 weeks
-  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,base:'deployed',loc:'Field',officeId:'company'});}
+  // Deployed units — blue all 52 weeks, tagged with matching job info
+  var deployedJobInfo=null;
+  // Find which confirmed job corresponds to these deployed units
+  var deployJob=reservations.find(function(r){
+    if(r.status!=='confirmed')return false;
+    if(r.type!==fleetProduct&&!(r.devices&&r.devices[fleetProduct]>0))return false;
+    var rs=new Date(r.start+'T00:00:00'),re=new Date(r.end+'T00:00:00');
+    return rs<=now&&re>=now;
+  });
+  if(deployJob)deployedJobInfo={job:deployJob.job||deployJob.jobNum,jobNum:deployJob.jobNum,start:deployJob.start,end:deployJob.end};
+  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,base:'deployed',loc:'Field',officeId:'company',deployJobInfo:deployedJobInfo});}
   // Maintenance units — orange all 52 weeks
   OFFICES.forEach(function(o){
     var prods=o.products||[];
@@ -2867,7 +2897,8 @@ function renderFleet(){
     assetWeekJobInfo[r]=[];
     for(var c=0;c<numCols;c++){
       assetWeekStatus[r][c]=assets[r].base;
-      assetWeekJobInfo[r][c]=null;
+      // Pre-fill job info for deployed assets
+      assetWeekJobInfo[r][c]=(assets[r].base==='deployed'&&assets[r].deployJobInfo)?assets[r].deployJobInfo:null;
     }
   }
 
@@ -2998,7 +3029,7 @@ function renderFleet(){
       var isReserved=st.indexOf('reserved')===0;
       var statusLabel,statusColor,detail='';
       if(isReserved){statusLabel='Reserved';statusColor='#4a5568';if(ji)detail=ji.job+' \u2014 '+fmtShort(ji.start)+' to '+fmtShort(ji.end);}
-      else if(st==='deployed'){statusLabel='Deployed';statusColor='#0071BC';detail='In Field';}
+      else if(st==='deployed'){statusLabel='Deployed';statusColor='#0071BC';detail=ji?(ji.job+' \u2014 '+fmtShort(ji.start)+' to '+fmtShort(ji.end)):'In Field';}
       else if(st==='maintenance'){statusLabel='Maintenance';statusColor='#e8a020';detail='Under Assessment';}
       else{statusLabel='Available';statusColor='#00c49a';}
       var weekLabel=weeks[col].toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -3482,6 +3513,23 @@ function updateTabBadges(){
   }
 }
 
+// ═══ WELCOME GUIDE ═══
+function showWelcomeGuide(){
+  var el=document.getElementById('welcomeGuide');
+  if(!el)return;
+  el.style.display='flex';
+  var logo=document.getElementById('guideLogo');
+  var navImg=document.querySelector('.nb img');
+  if(logo&&navImg)logo.src=navImg.src;
+}
+function dismissWelcomeGuide(){
+  var el=document.getElementById('welcomeGuide');
+  if(!el)return;
+  localStorage.setItem('us3_seen_guide','true');
+  el.classList.add('fade-out');
+  setTimeout(function(){el.style.display='none';el.classList.remove('fade-out');},500);
+}
+
 // ═══ BOOT ═══
 loadStorage();applyTheme();renderStats();renderMC();updateHelpBadge();updateTabBadges();
 // Login gate
@@ -3490,6 +3538,12 @@ document.getElementById('loginBtn').addEventListener('click',us3Login);
 document.getElementById('loginEmail').addEventListener('keydown',function(e){if(e.key==='Enter')us3Login();});
 // Set login logo from nav
 (function(){var navImg=document.querySelector('.nb img');var loginLogo=document.getElementById('loginLogo');if(navImg&&loginLogo)loginLogo.src=navImg.src;})();
+// Welcome guide on first visit (after login check)
+setTimeout(function(){
+  if(!localStorage.getItem('us3_seen_guide')&&document.getElementById('loginOverlay').style.display==='none'){
+    showWelcomeGuide();
+  }
+},300);
 </script>
 </body>
 </html>
