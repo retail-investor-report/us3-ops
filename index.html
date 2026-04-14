@@ -1319,14 +1319,13 @@ var decommLog=[
   {id:'5127',type:'hawaii',date:'2024-11-27',notes:'Hawaii legacy'}
 ];
 var inProd=[
-  {qty:30,type:'ff',  eta:'2026-04-20',notes:'El Cajon production batch'},
-  {qty:150,type:'cric',eta:'2026-04-27',notes:'El Cajon production batch'},
+  {qty:30,type:'ff',  eta:'2026-04-20',notes:'From China'},
+  {qty:150,type:'cric',eta:'2026-04-27',notes:'From China'},
 ];
 var reservations=[
-  {type:'cric',loc:'elcajon',qty:17,job:'West County Wastewater',jobNum:'WCWD_020526',location:'Richmond, CA',start:'2026-04-13',end:'2027-04-13',sites:17,devices:{cric:17},contact:'Gordon Times',notes:'17 Level Cricket kits, 1 year study'},
-  {type:'ff',loc:'puertorico',qty:19,job:'Parsons',jobNum:'PRSN_102725',location:'Puerto Rico',start:'2026-04-27',end:'2026-05-27',sites:19,devices:{ff:19,rg:5},contact:'',notes:'19 FlexFlow + 5 Rain Gauge, 30 day study. Equipment from PR inventory'},
-  {type:'ff',loc:'puertorico',qty:33,job:'Ardurra',jobNum:'ARDU_051225',location:'Puerto Rico',start:'2026-05-04',end:'2026-08-02',sites:33,devices:{ff:33,rg:3},contact:'',notes:'33 FlexFlow + 3 Rain Gauge, 90 day study. 5 FF from PR, 28 FF from El Cajon production batch, 3 RG from El Cajon'},
-  {type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO_041625',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow currently deployed from El Cajon. Being removed 4/20, returning to maintenance at El Cajon'},
+  {type:'cric',loc:'elcajon',qty:17,job:'West County Wastewater District',jobNum:'WCWD-001',location:'Richmond, CA',start:'2026-04-13',end:'2027-04-13',sites:17,devices:{cric:17},contact:'Gordon Times',notes:'1 year Level study',status:'confirmed'},
+  {type:'ff',loc:'puertorico',qty:19,job:'Parsons',jobNum:'PARSONS-001',location:'TBD',start:'2026-04-27',end:'2026-05-27',sites:19,devices:{ff:19,rg:5},contact:'TBD',notes:'30 day study. 5 RG sourced: 4 from PR, 1 from El Cajon',status:'confirmed'},
+  {type:'ff',loc:'puertorico',qty:33,job:'Ardurra',jobNum:'ARDURRA-001',location:'TBD',start:'2026-05-04',end:'2026-08-02',sites:33,devices:{ff:33,rg:3},contact:'TBD',notes:'90 day study. 5 FF from PR, 28 from production, 3 RG from El Cajon',status:'confirmed'},
 ];
 
 // ═══ STORAGE ═══
@@ -1354,8 +1353,8 @@ function loadStorage(){
     puertorico_cric_available:4,puertorico_cric_reserved:0,puertorico_cric_maintenance:0,
     puertorico_rg_available:0,puertorico_rg_reserved:4,puertorico_rg_maintenance:0,
     houston_ff_available:0,   houston_hach_available:0,
-    // Company-wide deployed (not tracked yet - will add over time)
-    company_ff_deployed:49, company_cric_deployed:0, company_hach_deployed:0, company_rg_deployed:0,
+    // Company-wide deployed
+    company_ff_deployed:0, company_cric_deployed:17, company_hach_deployed:0, company_rg_deployed:0,
   };
   OFFICES.forEach(function(o){
     var prods=o.products||['ff','hach'];
@@ -1437,7 +1436,6 @@ setInterval(tick,1000);tick();
 function toggleAdmin(){
   if(!adminMode){var pw=prompt('Admin password:');if(pw!==ADMIN_PASSWORD){if(pw!==null)alert('Incorrect.');return;}}
   adminMode=!adminMode;
-  fleetAdminMode=adminMode;
   document.body.classList.toggle('admin',adminMode);
   // Update all admin buttons
   var mcBtn=document.getElementById('adminBtn');
@@ -1446,16 +1444,8 @@ function toggleAdmin(){
   if(editBtn)editBtn.style.display=adminMode?'block':'none';
   var avBtn=document.getElementById('availAdminBtn');
   if(avBtn){avBtn.classList.toggle('active',adminMode);avBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
-  var flBtn=document.getElementById('fleetAdminBtn');
-  if(flBtn){flBtn.classList.toggle('active',adminMode);flBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
-  // Fleet admin panel
-  var wrap=document.getElementById('fleetAdminWrap');
-  var slider=document.getElementById('fleetAdminSlider');
-  if(wrap&&slider){
-    if(adminMode){wrap.style.display='block';_fleetAdminSlideCollapsed=false;slider.style.width='320px';var tab=document.getElementById('fleetAdminTab');if(tab)tab.innerHTML='&#9654;';}
-    else{wrap.style.display='none';}
-  }
   updateHelpBadge();
+  updateTabBadges();
   // Re-render active tab
   renderMC();
   var pages=['avail','fleet','decomm','parts','sched','assetmap'];
@@ -2004,6 +1994,7 @@ function renderSched(){
   var seen={};
   var uniqueJobs=[];
   reservations.forEach(function(r){
+    if(r.status==='declined')return;
     if(!seen[r.jobNum]){seen[r.jobNum]=true;uniqueJobs.push(r);}
   });
   uniqueJobs.sort(function(a,b){return (a.location||'').localeCompare(b.location||'');});
@@ -2088,12 +2079,34 @@ function showJobPopup(res,resIdx,isRequested){
   popup.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:var(--overlay-bg);padding:20px;';
   popup.onclick=function(e){if(e.target===popup)popup.remove();};
 
-  popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid var(--accent);border-radius:8px;padding:24px;width:100%;max-width:420px;box-shadow:0 0 50px var(--glow);">'+
+  var actionButtons='';
+  if(isRequested&&adminMode){
+    actionButtons=
+      '<div style="display:flex;gap:10px;margin-top:16px;">'+
+        '<button onclick="confirmReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #00c49a;background:rgba(0,196,154,.12);color:#00c49a;">Approve</button>'+
+        '<button onclick="declineReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;">Decline</button>'+
+      '</div>';
+  } else if(!isRequested&&adminMode){
+    actionButtons=
+      '<div style="display:flex;gap:10px;margin-top:16px;">'+
+        '<button onclick="editReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.12);color:var(--accent);">Edit Job</button>'+
+        '<button onclick="deleteReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;">Delete Job</button>'+
+      '</div>';
+  } else {
+    actionButtons=
+      '<div style="display:flex;gap:10px;margin-top:16px;">'+
+        '<a href="https://drive.google.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Google Drive</a>'+
+        '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
+      '</div>';
+  }
+
+  popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid '+(isRequested?'#e8a020':'var(--accent)')+';border-radius:8px;padding:24px;width:100%;max-width:420px;box-shadow:0 0 50px var(--glow);">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'+
-      '<div style="font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">'+res.jobNum+'</div>'+
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:'+(isRequested?'#e8a020':'var(--accent)')+';">'+res.jobNum+(isRequested?' <span style="font-size:11px;background:rgba(232,160,32,.15);color:#e8a020;padding:2px 8px;border-radius:3px;vertical-align:middle;">PENDING</span>':'')+'</div>'+
       '<div style="cursor:pointer;font-size:18px;color:var(--muted);padding:4px;" onclick="this.closest(\'div[style*=fixed]\').remove()">\u2715</div>'+
     '</div>'+
     '<div style="font-family:\'Rajdhani\',sans-serif;font-size:14px;color:var(--text);line-height:1.8;">'+
+      '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Job Name</span><span style="font-weight:600;">'+(res.job||'')+'</span></div>'+
       '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Location</span><span style="font-weight:600;">'+(res.location||'')+'</span></div>'+
       '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Duration</span><span style="font-weight:600;">'+durationWeeks+' weeks</span></div>'+
       '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Total Devices</span><span style="font-weight:600;color:var(--accent)">'+totalDevices+'</span></div>'+
@@ -2102,16 +2115,7 @@ function showJobPopup(res,resIdx,isRequested){
       '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><span style="color:var(--muted)">Contact</span><span>'+(res.contact||'\u2014')+'</span></div>'+
       '<div style="border-bottom:1px solid var(--border);padding:6px 0;"><div style="color:var(--muted);margin-bottom:4px;">Devices</div>'+deviceList+'</div>'+
       (res.notes?'<div style="padding:6px 0;color:var(--muted);font-size:12px;">'+res.notes+'</div>':'')+
-    '</div>'+
-    (isRequested&&adminMode?
-      '<div style="display:flex;gap:10px;margin-top:16px;">'+
-        '<button onclick="confirmReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #00c49a;background:rgba(0,196,154,.12);color:#00c49a;">Confirm Reservation</button>'+
-        '<button onclick="declineReservation('+resIdx+');this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;">Decline</button>'+
-      '</div>':
-      '<div style="display:flex;gap:10px;margin-top:16px;">'+
-        '<a href="https://drive.google.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCC1 Google Drive</a>'+
-        '<a href="https://app.smartsheet.com" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text);font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\uD83D\uDCCA Smartsheet</a>'+
-      '</div>')+
+    '</div>'+actionButtons+
   '</div>';
   document.body.appendChild(popup);
 }
@@ -2119,15 +2123,27 @@ function showJobPopup(res,resIdx,isRequested){
 function openAddRes(){document.getElementById('addResModal').classList.add('open');}
 function closeAddRes(){document.getElementById('addResModal').classList.remove('open');}
 function saveAddRes(){
+  var typ=document.getElementById('res-type').value;
+  var qty=parseInt(document.getElementById('res-qty').value)||1;
+  var jobName=document.getElementById('res-job').value.trim()||'Unnamed job';
   var r={
-    type:document.getElementById('res-type').value,
+    type:typ,
     loc: document.getElementById('res-loc').value,
-    qty: parseInt(document.getElementById('res-qty').value)||1,
-    job: document.getElementById('res-job').value.trim()||'Unnamed job',
+    qty: qty,
+    job: jobName,
+    jobNum:jobName.substring(0,4).toUpperCase().replace(/\s/g,'')+'-'+Date.now().toString(36).toUpperCase(),
+    location:'TBD',
     start:document.getElementById('res-start').value,
     end:  document.getElementById('res-end').value,
+    sites:qty,
+    devices:{},
+    contact:'',
+    notes:'',
+    status:adminMode?'confirmed':'requested'
   };
-  reservations.push(r);sv('us3_res',reservations);closeAddRes();renderSched();
+  r.devices[typ]=qty;
+  reservations.push(r);sv('us3_res',reservations);closeAddRes();
+  updateTabBadges();renderSched();
 }
 
 function openCheckAvail(){
@@ -2164,11 +2180,64 @@ function submitCheckAvail(){
   showFleetToast('Availability request submitted');
 }
 function confirmReservation(idx){
-  if(reservations[idx]){reservations[idx].status='confirmed';sv('us3_res',reservations);renderSched();}
+  if(reservations[idx]){reservations[idx].status='confirmed';sv('us3_res',reservations);updateTabBadges();renderSched();}
 }
 function declineReservation(idx){
   if(!confirm('Decline this reservation request?'))return;
+  reservations.splice(idx,1);sv('us3_res',reservations);updateTabBadges();renderSched();
+}
+function deleteReservation(idx){
+  if(!reservations[idx])return;
+  if(!confirm('Delete "'+reservations[idx].job+'"? This cannot be undone.'))return;
   reservations.splice(idx,1);sv('us3_res',reservations);renderSched();
+}
+function editReservation(idx){
+  var res=reservations[idx];if(!res)return;
+  var popup=document.createElement('div');
+  popup.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:var(--overlay-bg);padding:20px;';
+  popup.onclick=function(e){if(e.target===popup)popup.remove();};
+  var prodOpts=PRODUCTS.map(function(p){return '<option value="'+p.id+'"'+(p.id===res.type?' selected':'')+'>'+p.label+'</option>';}).join('');
+  var locOpts=OFFICES.map(function(o){return '<option value="'+o.id+'"'+(o.id===res.loc?' selected':'')+'>'+o.label+'</option>';}).join('');
+  popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid var(--accent);border-radius:8px;padding:24px;width:100%;max-width:480px;box-shadow:0 0 50px var(--glow);max-height:90vh;overflow-y:auto;">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:16px;">Edit Reservation</div>'+
+    '<div class="form-row"><label>Job Name</label><input id="ej-job" value="'+(res.job||'')+'"></div>'+
+    '<div class="form-row"><label>Job Number</label><input id="ej-jobnum" value="'+(res.jobNum||'')+'"></div>'+
+    '<div class="form-row"><label>Location</label><input id="ej-location" value="'+(res.location||'')+'"></div>'+
+    '<div class="form-row"><label>Product</label><select id="ej-type">'+prodOpts+'</select></div>'+
+    '<div class="form-row"><label>Source Office</label><select id="ej-loc">'+locOpts+'</select></div>'+
+    '<div class="form-row"><label>Quantity</label><input id="ej-qty" type="number" min="1" value="'+(res.qty||1)+'"></div>'+
+    '<div class="form-row"><label>Sites</label><input id="ej-sites" type="number" min="1" value="'+(res.sites||res.qty||1)+'"></div>'+
+    '<div class="form-row"><label>Start Date</label><input id="ej-start" type="date" value="'+(res.start||'')+'"></div>'+
+    '<div class="form-row"><label>End Date</label><input id="ej-end" type="date" value="'+(res.end||'')+'"></div>'+
+    '<div class="form-row"><label>Contact</label><input id="ej-contact" value="'+(res.contact||'')+'"></div>'+
+    '<div class="form-row"><label>Notes</label><textarea id="ej-notes" rows="2" style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);">'+(res.notes||'')+'</textarea></div>'+
+    '<div style="display:flex;gap:10px;margin-top:16px;">'+
+      '<button onclick="saveEditReservation('+idx+')" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.12);color:var(--accent);">Save</button>'+
+      '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:10px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--text);">Cancel</button>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(popup);
+}
+function saveEditReservation(idx){
+  var r=reservations[idx];if(!r)return;
+  var typ=document.getElementById('ej-type').value;
+  var qty=parseInt(document.getElementById('ej-qty').value)||1;
+  r.job=document.getElementById('ej-job').value.trim()||r.job;
+  r.jobNum=document.getElementById('ej-jobnum').value.trim()||r.jobNum;
+  r.location=document.getElementById('ej-location').value.trim();
+  r.type=typ;
+  r.loc=document.getElementById('ej-loc').value;
+  r.qty=qty;
+  r.sites=parseInt(document.getElementById('ej-sites').value)||qty;
+  r.start=document.getElementById('ej-start').value;
+  r.end=document.getElementById('ej-end').value;
+  r.contact=document.getElementById('ej-contact').value.trim();
+  r.notes=document.getElementById('ej-notes').value.trim();
+  r.devices={};r.devices[typ]=qty;
+  sv('us3_res',reservations);
+  var overlay=document.querySelector('div[style*="position:fixed"][style*="z-index:700"]');
+  if(overlay)overlay.remove();
+  renderSched();
 }
 
 // ═══ PARTS / FAILURE ANALYSIS ═══
@@ -2181,29 +2250,24 @@ function saveReturns(arr){sv('us3_returns',arr);}
 
 function renderParts(){
   var returns=getReturns();
-  // Admin form
+  // Form visible to everyone
   var formDiv=document.getElementById('partsAdminForm');
-  if(adminMode){
-    formDiv.style.display='block';
-    formDiv.innerHTML=
-      '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Log Device Return</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'+
-        '<div class="form-row"><label>Device ID</label><input id="pr-id" placeholder="e.g. 4501"></div>'+
-        '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
-        '<div class="form-row"><label>Return Date</label><input id="pr-date" type="date"></div>'+
-        '<div class="form-row"><label>Failure Category</label><select id="pr-fail">'+FAIL_CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
-      '</div>'+
-      '<div class="form-row" style="margin-top:8px;"><label>Notes</label><textarea id="pr-notes" rows="2" placeholder="Details..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea></div>'+
-      '<div style="margin-top:10px;"><button class="btn btn-p" onclick="saveReturn()">Log Return</button></div>';
-    var dEl=document.getElementById('pr-date');
-    if(dEl&&!dEl.value)dEl.value=new Date().toISOString().split('T')[0];
-  } else {
-    formDiv.style.display='none';
-  }
+  formDiv.style.display='block';
+  formDiv.innerHTML=
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Log Device Return</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'+
+      '<div class="form-row"><label>Device ID</label><input id="pr-id" placeholder="e.g. 4501"></div>'+
+      '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
+      '<div class="form-row"><label>Return Date</label><input id="pr-date" type="date"></div>'+
+      '<div class="form-row"><label>Failure Category</label><select id="pr-fail">'+FAIL_CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
+    '</div>'+
+    '<div class="form-row" style="margin-top:8px;"><label>Notes</label><textarea id="pr-notes" rows="2" placeholder="Details..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea></div>'+
+    '<div style="margin-top:10px;"><button class="btn btn-p" onclick="saveReturn()">Log Return</button></div>';
+  var dEl=document.getElementById('pr-date');
+  if(dEl&&!dEl.value)dEl.value=new Date().toISOString().split('T')[0];
 
-  // Pareto chart
+  // Both charts always shown (no toggle)
   renderPareto(returns);
-  // Fishbone
   renderFishbone(returns);
   // Stats
   renderPartsStats(returns);
@@ -2217,16 +2281,16 @@ function saveReturn(){
     type:document.getElementById('pr-type').value,
     date:document.getElementById('pr-date').value,
     failure:document.getElementById('pr-fail').value,
-    notes:document.getElementById('pr-notes').value.trim()
+    notes:document.getElementById('pr-notes').value.trim(),
+    reviewed:false
   };
   var arr=getReturns();arr.unshift(r);saveReturns(arr);
   document.getElementById('pr-id').value='';document.getElementById('pr-notes').value='';
-  renderParts();
+  updateTabBadges();renderParts();
 }
 
 function renderPareto(returns){
   var div=document.getElementById('paretoChart');
-  if(_fishboneMode){div.style.display='none';return;}
   div.style.display='block';
   if(returns.length===0){div.innerHTML='<div style="padding:20px;text-align:center;font-family:\'Rajdhani\',sans-serif;font-size:14px;color:var(--muted);">No returns logged yet. Use the form above (admin mode) to log device returns.</div>';return;}
   var counts={};FAIL_CATS.forEach(function(c){counts[c]=0;});
@@ -2342,7 +2406,6 @@ function toggleFishbone(){
 
 function renderFishbone(returns){
   var div=document.getElementById('fishboneView');
-  if(!_fishboneMode){div.style.display='none';return;}
   div.style.display='block';
 
   // 5 branches: Electrical, Mechanical, Environmental, Process, Other
@@ -2584,74 +2647,17 @@ function renderProjects(){
 // ═══ FLEET MAP — EXPERIMENTAL ═══
 var fleetProduct='hach';
 var fleetCellSize=18; // user-controlled dot size
-var fleetAdminMode=false;
-var _fleetAssets=[];       // current asset list for admin table sync
-var _fleetWeekStatus=[];   // current week status grid
+var _fleetAssets=[];
+var _fleetWeekStatus=[];
 var _fleetNumRows=0;
 var _fleetNumCols=52;
-var _fleetSelectedDots=[];  // [{row,col},...] for drag-select
-var _fleetDragStart=null;   // {x,y} canvas coords for drag start
 
 function fleetZoom(delta){
   fleetCellSize=Math.max(4,Math.min(40,fleetCellSize+delta));
   renderFleet();
 }
 
-function toggleFleetAdmin(){
-  toggleAdmin();
-}
-var _fleetAdminSlideCollapsed=false;
-function toggleFleetAdminSlide(){
-  _fleetAdminSlideCollapsed=!_fleetAdminSlideCollapsed;
-  var slider=document.getElementById('fleetAdminSlider');
-  var tab=document.getElementById('fleetAdminTab');
-  if(_fleetAdminSlideCollapsed){
-    slider.style.width='0px';
-    tab.innerHTML='&#9664;';
-  } else {
-    slider.style.width='320px';
-    tab.innerHTML='&#9654;';
-  }
-}
-
-function getFleetOverrides(){
-  return lv('us3_fleet_overrides')||{};
-}
-function saveFleetOverrides(ov){
-  sv('us3_fleet_overrides',ov);
-}
-function fleetOverrideKey(product,assetId,col){
-  return product+'_'+assetId+'_'+col;
-}
-
-function setDotStatus(row,col,newStatus){
-  if(row<0||row>=_fleetNumRows||col<0||col>=_fleetNumCols)return;
-  var asset=_fleetAssets[row];
-  if(!asset)return;
-  var ov=getFleetOverrides();
-  var key=fleetOverrideKey(fleetProduct,asset.id,col);
-  ov[key]=newStatus;
-  saveFleetOverrides(ov);
-  _fleetWeekStatus[row][col]=newStatus;
-  redrawFleetCanvas();
-  renderFleetAdminTable();
-}
-
-function setBulkDotStatus(dots,newStatus){
-  if(!dots.length)return;
-  var ov=getFleetOverrides();
-  dots.forEach(function(d){
-    var asset=_fleetAssets[d.row];
-    if(!asset)return;
-    var key=fleetOverrideKey(fleetProduct,asset.id,d.col);
-    ov[key]=newStatus;
-    _fleetWeekStatus[d.row][d.col]=newStatus;
-  });
-  saveFleetOverrides(ov);
-  redrawFleetCanvas();
-  renderFleetAdminTable();
-  clearFleetSelection();
-}
+// Fleet Map is read-only — no admin editing, no overrides
 
 function redrawFleetCanvas(){
   var canvas=document.getElementById('fleetCanvas');
@@ -2679,229 +2685,8 @@ function redrawFleetCanvas(){
       ctx.fill();
     }
   }
-  // Draw selection highlights
-  if(_fleetSelectedDots.length>0){
-    ctx.strokeStyle='#ffffff';
-    ctx.lineWidth=1.5;
-    _fleetSelectedDots.forEach(function(d){
-      var x=d.col*cellSize+1;
-      var y=d.row*cellSize+1;
-      var radius=dotSize/2;
-      ctx.beginPath();
-      ctx.arc(x+radius,y+radius,radius+1,0,Math.PI*2);
-      ctx.stroke();
-    });
-  }
 }
 
-function clearFleetSelection(){
-  _fleetSelectedDots=[];
-  var selCanvas=document.getElementById('fleetSelCanvas');
-  if(selCanvas){
-    selCanvas.style.display='none';
-    var sctx=selCanvas.getContext('2d');
-    sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
-  }
-  var bp=document.getElementById('fleetBulkPopup');
-  if(bp)bp.remove();
-  redrawFleetCanvas();
-}
-
-function showDotPopup(row,col,pageX,pageY){
-  var old=document.getElementById('fleetDotPopup');
-  if(old)old.remove();
-  var popup=document.createElement('div');
-  popup.id='fleetDotPopup';
-  popup.style.cssText='position:fixed;z-index:9999;background:var(--card-bg);border:1.5px solid var(--accent);border-radius:6px;padding:10px;box-shadow:0 4px 20px rgba(0,0,0,.5);display:flex;gap:6px;align-items:center;';
-  var statuses=[
-    {key:'available',label:'Available',color:'#00c49a'},
-    {key:'reserved',label:'Reserved',color:'#4a5568'},
-    {key:'deployed',label:'Deployed',color:'#0071BC'},
-    {key:'maintenance',label:'Maint',color:'#e8a020'}
-  ];
-  statuses.forEach(function(s){
-    var btn=document.createElement('div');
-    btn.style.cssText='display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:4px;cursor:pointer;font-family:"Rajdhani",sans-serif;font-size:11px;font-weight:600;color:#fff;background:'+s.color+';transition:opacity .15s;';
-    btn.textContent=s.label;
-    btn.onmouseover=function(){btn.style.opacity='0.8';};
-    btn.onmouseout=function(){btn.style.opacity='1';};
-    btn.onclick=function(e){
-      e.stopPropagation();
-      setDotStatus(row,col,s.key);
-      popup.remove();
-    };
-    popup.appendChild(btn);
-  });
-  // Position near click but clamped to viewport
-  var vw=window.innerWidth,vh=window.innerHeight;
-  var left=Math.min(pageX+8,vw-280);
-  var top=Math.min(pageY-20,vh-50);
-  popup.style.left=left+'px';
-  popup.style.top=top+'px';
-  document.body.appendChild(popup);
-}
-
-function showBulkPopup(dots){
-  var old=document.getElementById('fleetBulkPopup');
-  if(old)old.remove();
-  if(!dots.length)return;
-  var popup=document.createElement('div');
-  popup.id='fleetBulkPopup';
-  popup.style.cssText='position:fixed;z-index:9999;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card-bg);border:1.5px solid var(--accent);border-radius:8px;padding:16px 20px;box-shadow:0 6px 30px rgba(0,0,0,.6);text-align:center;';
-  var title=document.createElement('div');
-  title.style.cssText='font-family:"Oswald",sans-serif;font-size:14px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;';
-  title.textContent=dots.length+' dots selected';
-  popup.appendChild(title);
-  var row=document.createElement('div');
-  row.style.cssText='display:flex;gap:8px;justify-content:center;';
-  var statuses=[
-    {key:'available',label:'Available',color:'#00c49a'},
-    {key:'reserved',label:'Reserved',color:'#4a5568'},
-    {key:'deployed',label:'Deployed',color:'#0071BC'},
-    {key:'maintenance',label:'Maint',color:'#e8a020'}
-  ];
-  statuses.forEach(function(s){
-    var btn=document.createElement('div');
-    btn.style.cssText='padding:7px 14px;border-radius:4px;cursor:pointer;font-family:"Rajdhani",sans-serif;font-size:12px;font-weight:600;color:#fff;background:'+s.color+';transition:opacity .15s;';
-    btn.textContent=s.label;
-    btn.onmouseover=function(){btn.style.opacity='0.8';};
-    btn.onmouseout=function(){btn.style.opacity='1';};
-    btn.onclick=function(e){
-      e.stopPropagation();
-      setBulkDotStatus(dots,s.key);
-      popup.remove();
-    };
-    row.appendChild(btn);
-  });
-  popup.appendChild(row);
-  document.body.appendChild(popup);
-}
-
-function renderFleetAdminTable(){
-  var panel=document.getElementById('fleetAdminPanel');
-  if(!panel||!fleetAdminMode)return;
-  var p=PRODUCTS.find(function(x){return x.id===fleetProduct;});
-  var colors={available:'#00c49a',reserved:'#4a5568',deployed:'#0071BC',maintenance:'#e8a020'};
-  // Build rows — show first-column status as the "current status"
-  var rowsHtml=_fleetAssets.map(function(a,idx){
-    var st=_fleetWeekStatus[idx]?_fleetWeekStatus[idx][0]:'available';
-    var baseStatus=(st.indexOf('reserved')===0)?'reserved':st;
-    var dotColor=colors[baseStatus]||colors.available;
-    return '<tr data-row="'+idx+'" style="border-bottom:1px solid rgba(255,255,255,.06);">'+
-      '<td style="padding:5px 6px;text-align:center;"><input type="checkbox" class="fleet-admin-chk" data-row="'+idx+'" style="accent-color:var(--accent);cursor:pointer;"></td>'+
-      '<td style="padding:5px 8px;font-family:\'Rajdhani\',sans-serif;font-size:12px;color:var(--text);white-space:nowrap;">'+p.icon+' #'+a.id+'</td>'+
-      '<td style="padding:5px 8px;text-align:center;"><div style="width:12px;height:12px;border-radius:50%;background:'+dotColor+';display:inline-block;" title="'+baseStatus+'"></div></td>'+
-      '<td style="padding:5px 6px;"><select class="fleet-admin-sel" data-row="'+idx+'" style="width:100%;font-family:\'Rajdhani\',sans-serif;font-size:11px;padding:3px;border:1px solid var(--border);border-radius:3px;background:var(--card-bg);color:var(--text);cursor:pointer;">'+
-        '<option value="">— no change —</option>'+
-        '<option value="available"'+(baseStatus==='available'?' selected':'')+'>Available</option>'+
-        '<option value="reserved"'+(baseStatus==='reserved'?' selected':'')+'>Reserved</option>'+
-        '<option value="deployed"'+(baseStatus==='deployed'?' selected':'')+'>Deployed</option>'+
-        '<option value="maintenance"'+(baseStatus==='maintenance'?' selected':'')+'>Maintenance</option>'+
-      '</select></td>'+
-    '</tr>';
-  }).join('');
-
-  panel.innerHTML=
-    '<div style="padding:14px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;">'+
-        '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Admin Table</div>'+
-        '<div onclick="toggleFleetAdminCollapse()" style="cursor:pointer;font-size:16px;color:var(--muted);padding:2px 6px;" id="fleetAdminCollapseBtn">\u25BC</div>'+
-      '</div>'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">'+
-        '<input type="checkbox" id="fleetAdminSelectAll" style="accent-color:var(--accent);cursor:pointer;">'+
-        '<label for="fleetAdminSelectAll" style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);cursor:pointer;">Select All</label>'+
-        '<select id="fleetAdminBulkSel" style="flex:1;font-family:\'Rajdhani\',sans-serif;font-size:11px;padding:3px;border:1px solid var(--border);border-radius:3px;background:var(--card-bg);color:var(--text);">'+
-          '<option value="">Bulk action…</option>'+
-          '<option value="available">Set Available</option>'+
-          '<option value="reserved">Set Reserved</option>'+
-          '<option value="deployed">Set Deployed</option>'+
-          '<option value="maintenance">Set Maintenance</option>'+
-        '</select>'+
-      '</div>'+
-    '</div>'+
-    '<div id="fleetAdminTableBody" style="flex:1;overflow-y:auto;padding:0;">'+
-      '<table style="width:100%;border-collapse:collapse;">'+
-        '<thead><tr style="border-bottom:1.5px solid var(--accent);position:sticky;top:0;background:var(--panel-bg);z-index:1;">'+
-          '<th style="padding:5px 6px;width:28px;"></th>'+
-          '<th style="padding:5px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Unit</th>'+
-          '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Status</th>'+
-          '<th style="padding:5px 6px;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Change</th>'+
-        '</tr></thead>'+
-        '<tbody>'+rowsHtml+'</tbody>'+
-      '</table>'+
-    '</div>'+
-    '<div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0;">'+
-      '<button onclick="applyFleetAdminChanges()" style="width:100%;padding:9px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.15);color:var(--accent);transition:all .15s;" onmouseover="this.style.background=\'rgba(26,127,232,.3)\'" onmouseout="this.style.background=\'rgba(26,127,232,.15)\'">Apply Changes</button>'+
-      '<div style="display:flex;gap:6px;margin-top:8px;">'+
-        '<button onclick="syncFleetFromSchedule()" style="flex:1;padding:9px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.12);color:var(--accent);transition:all .15s;" onmouseover="this.style.background=\'rgba(26,127,232,.25)\'" onmouseout="this.style.background=\'rgba(26,127,232,.12)\'">Sync from Schedule</button>'+
-        '<button onclick="resetFleetOverrides()" style="flex:1;padding:9px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;transition:all .15s;" onmouseover="this.style.background=\'rgba(224,82,82,.25)\'" onmouseout="this.style.background=\'rgba(224,82,82,.12)\'">Reset Overrides</button>'+
-      '</div>'+
-      '<div style="font-family:\'Rajdhani\',sans-serif;font-size:10px;color:var(--muted);text-align:center;margin-top:4px;">Sync: recalculate from reservations &middot; Reset: clear all manual overrides</div>'+
-    '</div>';
-
-  // Select All checkbox
-  document.getElementById('fleetAdminSelectAll').onchange=function(){
-    var checked=this.checked;
-    document.querySelectorAll('.fleet-admin-chk').forEach(function(cb){cb.checked=checked;});
-  };
-}
-
-var _fleetAdminCollapsed=false;
-function toggleFleetAdminCollapse(){
-  _fleetAdminCollapsed=!_fleetAdminCollapsed;
-  var body=document.getElementById('fleetAdminTableBody');
-  var btn=document.getElementById('fleetAdminCollapseBtn');
-  if(body)body.style.display=_fleetAdminCollapsed?'none':'block';
-  if(btn)btn.textContent=_fleetAdminCollapsed?'\u25B6':'\u25BC';
-}
-
-function applyFleetAdminChanges(){
-  var ov=getFleetOverrides();
-  // Check for bulk action on selected rows
-  var bulkSel=document.getElementById('fleetAdminBulkSel');
-  var bulkStatus=bulkSel?bulkSel.value:'';
-  var checkedRows=[];
-  document.querySelectorAll('.fleet-admin-chk:checked').forEach(function(cb){
-    checkedRows.push(parseInt(cb.dataset.row));
-  });
-
-  // Apply individual dropdown changes
-  document.querySelectorAll('.fleet-admin-sel').forEach(function(sel){
-    var rowIdx=parseInt(sel.dataset.row);
-    var newStatus=sel.value;
-    if(!newStatus)return;
-    // If this row is checked and there's a bulk action, bulk takes priority
-    if(bulkStatus&&checkedRows.indexOf(rowIdx)>=0) return;
-    var asset=_fleetAssets[rowIdx];
-    if(!asset)return;
-    for(var c=0;c<_fleetNumCols;c++){
-      var key=fleetOverrideKey(fleetProduct,asset.id,c);
-      ov[key]=newStatus;
-      _fleetWeekStatus[rowIdx][c]=newStatus;
-    }
-  });
-
-  // Apply bulk action to checked rows
-  if(bulkStatus&&checkedRows.length>0){
-    checkedRows.forEach(function(rowIdx){
-      var asset=_fleetAssets[rowIdx];
-      if(!asset)return;
-      for(var c=0;c<_fleetNumCols;c++){
-        var key=fleetOverrideKey(fleetProduct,asset.id,c);
-        ov[key]=bulkStatus;
-        _fleetWeekStatus[rowIdx][c]=bulkStatus;
-      }
-    });
-  }
-
-  saveFleetOverrides(ov);
-  redrawFleetCanvas();
-  renderFleetAdminTable();
-  // Uncheck all
-  var sa=document.getElementById('fleetAdminSelectAll');
-  if(sa)sa.checked=false;
-  if(bulkSel)bulkSel.value='';
-}
 
 function showFleetToast(msg){
   var existing=document.getElementById('fleetToast');
@@ -2912,19 +2697,6 @@ function showFleetToast(msg){
   toast.textContent=msg;
   document.body.appendChild(toast);
   setTimeout(function(){toast.style.opacity='0';setTimeout(function(){toast.remove();},400);},2800);
-}
-function resetFleetOverrides(){
-  if(!fleetAdminMode)return;
-  if(!confirm('Reset all Fleet Map overrides to calculated values?'))return;
-  localStorage.removeItem('us3_fleet_overrides');
-  renderFleet();
-  showFleetToast('Fleet Map reset to match inventory & schedule');
-}
-function syncFleetFromSchedule(){
-  if(!fleetAdminMode)return;
-  localStorage.removeItem('us3_fleet_overrides');
-  renderFleet();
-  showFleetToast('Fleet Map synced from reservations & inventory');
 }
 
 function renderFleet(){
@@ -3010,7 +2782,7 @@ function renderFleet(){
   }
 
   // Get reservations for this product
-  var prodRes=reservations.filter(function(r){return r.type===fleetProduct;});
+  var prodRes=reservations.filter(function(r){return r.type===fleetProduct&&r.status==='confirmed';});
 
   // Assign reservations to specific asset rows
   // For each reservation, stamp out N rows (qty) for the duration
@@ -3050,23 +2822,11 @@ function renderFleet(){
     }
   });
 
-  // Apply admin overrides from localStorage
-  var fleetOv=getFleetOverrides();
-  for(var r=0;r<numRows;r++){
-    for(var c=0;c<numCols;c++){
-      var ovKey=fleetOverrideKey(fleetProduct,assets[r].id,c);
-      if(fleetOv[ovKey]){
-        assetWeekStatus[r][c]=fleetOv[ovKey];
-      }
-    }
-  }
-
-  // Store in globals for admin table sync
+  // Store in globals for canvas rendering
   _fleetAssets=assets;
   _fleetWeekStatus=assetWeekStatus;
   _fleetNumRows=numRows;
   _fleetNumCols=numCols;
-  _fleetSelectedDots=[];
 
   // Sizing — user-controlled via +/- buttons
   var wrapEl=document.getElementById('fleetWrap');
@@ -3127,20 +2887,10 @@ function renderFleet(){
   var ctx=canvas.getContext('2d');
   ctx.clearRect(0,0,canvasW,canvasH);
 
-  // Setup selection overlay canvas
-  var selCanvas=document.getElementById('fleetSelCanvas');
-  if(selCanvas){
-    selCanvas.width=canvasW;selCanvas.height=canvasH;
-    selCanvas.style.width=canvasW+'px';selCanvas.style.height=canvasH+'px';
-    selCanvas.style.top=canvas.offsetTop+'px';
-    selCanvas.style.left=canvas.offsetLeft+'px';
-  }
-
   redrawFleetCanvas();
 
-  // Tooltip on canvas hover
+  // Tooltip on canvas hover (read-only)
   canvas.onmousemove=function(e){
-    if(_fleetDragStart)return; // suppress tooltip during drag
     var rect=canvas.getBoundingClientRect();
     var mx=e.clientX-rect.left, my=e.clientY-rect.top;
     var col=Math.floor(mx/cellSize);
@@ -3157,92 +2907,6 @@ function renderFleet(){
       canvas.title='';
     }
   };
-
-  // Admin click/drag handlers
-  canvas.onmousedown=function(e){
-    if(!fleetAdminMode)return;
-    // Remove any existing popups
-    var dp=document.getElementById('fleetDotPopup');if(dp)dp.remove();
-    var bp=document.getElementById('fleetBulkPopup');if(bp)bp.remove();
-    var rect=canvas.getBoundingClientRect();
-    _fleetDragStart={x:e.clientX-rect.left,y:e.clientY-rect.top,pageX:e.pageX,pageY:e.pageY};
-    _fleetSelectedDots=[];
-    e.preventDefault();
-  };
-
-  canvas.onmousemove=(function(origMove){
-    return function(e){
-      if(_fleetDragStart&&fleetAdminMode){
-        var rect=canvas.getBoundingClientRect();
-        var mx=e.clientX-rect.left,my=e.clientY-rect.top;
-        var dx=mx-_fleetDragStart.x,dy=my-_fleetDragStart.y;
-        // Only start drag if moved more than 4px
-        if(Math.abs(dx)>4||Math.abs(dy)>4){
-          // Draw selection rectangle on overlay
-          if(selCanvas){
-            selCanvas.style.display='block';
-            var sctx=selCanvas.getContext('2d');
-            sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
-            var sx=Math.min(_fleetDragStart.x,mx),sy=Math.min(_fleetDragStart.y,my);
-            var sw=Math.abs(dx),sh=Math.abs(dy);
-            sctx.fillStyle='rgba(26,127,232,0.12)';
-            sctx.fillRect(sx,sy,sw,sh);
-            sctx.strokeStyle='rgba(26,127,232,0.7)';
-            sctx.lineWidth=1.5;
-            sctx.strokeRect(sx,sy,sw,sh);
-          }
-        }
-      } else {
-        origMove.call(canvas,e);
-      }
-    };
-  })(canvas.onmousemove);
-
-  canvas.onmouseup=function(e){
-    if(!fleetAdminMode||!_fleetDragStart)return;
-    var rect=canvas.getBoundingClientRect();
-    var mx=e.clientX-rect.left,my=e.clientY-rect.top;
-    var dx=mx-_fleetDragStart.x,dy=my-_fleetDragStart.y;
-
-    if(Math.abs(dx)<=4&&Math.abs(dy)<=4){
-      // Single click — find dot
-      var col=Math.floor(_fleetDragStart.x/cellSize);
-      var row=Math.floor(_fleetDragStart.y/cellSize);
-      _fleetDragStart=null;
-      if(row>=0&&row<numRows&&col>=0&&col<numCols){
-        showDotPopup(row,col,e.pageX,e.pageY);
-      }
-    } else {
-      // Drag select — find all dots in rectangle
-      var sx=Math.min(_fleetDragStart.x,mx),sy=Math.min(_fleetDragStart.y,my);
-      var ex=Math.max(_fleetDragStart.x,mx),ey=Math.max(_fleetDragStart.y,my);
-      _fleetDragStart=null;
-      var selected=[];
-      for(var r=0;r<numRows;r++){
-        for(var c=0;c<numCols;c++){
-          var cx2=c*cellSize+cellSize/2;
-          var cy2=r*cellSize+cellSize/2;
-          if(cx2>=sx&&cx2<=ex&&cy2>=sy&&cy2<=ey){
-            selected.push({row:r,col:c});
-          }
-        }
-      }
-      // Clear selection overlay
-      if(selCanvas){
-        var sctx=selCanvas.getContext('2d');
-        sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
-        selCanvas.style.display='none';
-      }
-      if(selected.length>0){
-        _fleetSelectedDots=selected;
-        redrawFleetCanvas();
-        showBulkPopup(selected);
-      }
-    }
-  };
-
-  // Render admin table if in admin mode
-  if(fleetAdminMode) renderFleetAdminTable();
 }
 
 function hexToRgb(hex){
@@ -3356,22 +3020,8 @@ document.addEventListener('click',function(e){
   if((openPin||openJobPin!==null)&&!clickedPin){
     openPin=null;openJobPin=null;renderPins();renderJobPins();
   }
-  // Dismiss fleet dot popup on outside click
-  var dp=document.getElementById('fleetDotPopup');
-  if(dp&&!dp.contains(e.target)&&e.target.id!=='fleetCanvas'){dp.remove();}
-  // Dismiss fleet bulk popup and clear selection on outside click
-  var bp=document.getElementById('fleetBulkPopup');
-  if(bp&&!bp.contains(e.target)&&e.target.id!=='fleetCanvas'){clearFleetSelection();}
 });
 window.addEventListener('resize',function(){if(document.getElementById('page-mc').classList.contains('active'))renderMC();});
-// Cancel fleet drag if mouse released outside canvas
-window.addEventListener('mouseup',function(){
-  if(_fleetDragStart){
-    _fleetDragStart=null;
-    var selCanvas=document.getElementById('fleetSelCanvas');
-    if(selCanvas){var sctx=selCanvas.getContext('2d');sctx.clearRect(0,0,selCanvas.width,selCanvas.height);selCanvas.style.display='none';}
-  }
-});
 
 
 // ═══ MOBILE HAMBURGER MENU ═══
@@ -3578,8 +3228,35 @@ function us3SignOut(){
   location.reload();
 }
 
+// ═══ TAB BADGES ═══
+function updateTabBadges(){
+  // Schedule badge: count requested reservations
+  var pendingSched=reservations.filter(function(r){return r.status==='requested';}).length;
+  var schedBadge=document.getElementById('schedBadge');
+  if(schedBadge){
+    if(adminMode&&pendingSched>0){
+      schedBadge.style.display='inline-block';
+      schedBadge.textContent=pendingSched;
+    } else {
+      schedBadge.style.display='none';
+    }
+  }
+  // Parts badge: count unreviewed returns
+  var returns=getReturns();
+  var unreviewedParts=returns.filter(function(r){return r.reviewed===false;}).length;
+  var partsBadge=document.getElementById('partsBadge');
+  if(partsBadge){
+    if(adminMode&&unreviewedParts>0){
+      partsBadge.style.display='inline-block';
+      partsBadge.textContent=unreviewedParts;
+    } else {
+      partsBadge.style.display='none';
+    }
+  }
+}
+
 // ═══ BOOT ═══
-loadStorage();applyTheme();renderStats();renderMC();updateHelpBadge();
+loadStorage();applyTheme();renderStats();renderMC();updateHelpBadge();updateTabBadges();
 // Login gate
 us3CheckLogin();
 document.getElementById('loginBtn').addEventListener('click',us3Login);
