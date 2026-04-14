@@ -311,7 +311,9 @@ body.light .ntab.active{color:var(--accent);background:rgba(0,113,188,.05);}
 body.light .pin-circle{background:rgba(255,255,255,.95);border-color:rgba(0,113,188,.4);}
 body.light .pin-lbl{background:rgba(255,255,255,.95);border-color:rgba(0,113,188,.2);}
 body.light .exp-box{background:rgba(255,255,255,.97);}
-body.light #fleetStatusCard{background:rgba(245,248,252,.92);border-color:rgba(0,113,188,.2);}
+body.light #fleetStatusCard{background:rgba(255,255,255,.92);border-color:rgba(0,113,188,.15);color:var(--text);}
+body.light #fleetStatusCard th{color:var(--muted)!important;}
+body.light #fleetStatusCard tr{border-color:rgba(0,0,0,.08)!important;}
 body.light .edit-panel{background:var(--panel-bg);border-color:rgba(0,113,188,.3);}
 body.light .modal{background:var(--panel-bg);border-color:rgba(0,113,188,.3);}
 body.light .form-row select,body.light .form-row input,body.light .form-row textarea{background:var(--input-bg);border-color:rgba(0,113,188,.2);color:var(--text);}
@@ -387,6 +389,18 @@ body.light .hamburger span{background:var(--text);}
   .page{padding:8px;}
 }
 
+.job-dot{position:absolute;z-index:15;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;display:flex;flex-direction:column;align-items:center;}
+.job-dot-circle{width:13px;height:13px;border-radius:50%;background:#0071BC;border:1.5px solid rgba(0,113,188,.6);animation:jobPulse 2.5s ease-in-out infinite;position:relative;}
+.job-dot-label{margin-top:3px;font-family:'Rajdhani',sans-serif;font-size:10px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.5);white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.15;}
+.job-tooltip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(4,9,26,.92);border:1px solid var(--accent);border-radius:6px;padding:8px 12px;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--text);white-space:nowrap;z-index:25;pointer-events:none;backdrop-filter:blur(10px);line-height:1.5;display:none;}
+.job-dot:hover .job-tooltip{display:block;}
+.job-tooltip-name{font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+.job-tooltip-row{color:var(--muted);}
+.job-tooltip-row span{color:var(--text);font-weight:600;}
+@keyframes jobPulse{0%,100%{box-shadow:0 0 4px 1px rgba(0,113,188,.5)}50%{box-shadow:0 0 10px 4px rgba(0,113,188,.25)}}
+body.light .job-dot-label{color:#1a1a2e;text-shadow:0 1px 3px rgba(255,255,255,.8),0 0 2px rgba(255,255,255,.5);}
+body.light .job-tooltip{background:rgba(255,255,255,.95);border-color:rgba(0,113,188,.3);}
+
 </style>
 </head>
 <body>
@@ -420,7 +434,7 @@ body.light .hamburger span{background:var(--text);}
         <div class="admin-btn" id="adminBtn" onclick="toggleAdmin()">⬡ Admin Off</div>
         <div class="admin-btn" id="editBtn" onclick="openEditPanel()" style="display:none">✎ Edit</div>
       </div>
-      <div id="fleetStatusCard" style="position:absolute;top:14px;right:14px;z-index:60;width:360px;background:rgba(4,9,26,.82);border:1.5px solid var(--borderb);border-radius:10px;backdrop-filter:blur(16px);padding:14px 16px;"></div>
+      <div id="fleetStatusCard" style="position:absolute;z-index:60;width:360px;background:rgba(4,9,26,.82);border:1.5px solid var(--borderb);border-radius:10px;backdrop-filter:blur(16px);padding:14px 16px;cursor:grab;"></div>
       <div class="edit-overlay" id="editOverlay" onclick="closeEditPanel(event)">
         <div class="edit-panel">
           <div class="ep-title" id="epTitle">Edit Counts</div>
@@ -1355,11 +1369,67 @@ function toggleAdmin(){
 }
 
 // ═══ MISSION CONTROL ═══
-function renderMC(){renderPins();renderFleetStatus();}
+function renderMC(){renderJobDots();renderPins();renderFleetStatus();}
 
+var JOB_LOCATIONS={
+  'richmond':{x:10,y:32},'west county':{x:10,y:32},
+  'puerto rico':{x:88,y:70},
+  'corona':{x:11,y:42}
+};
+function jobGeoPos(location){
+  var loc=(location||'').toLowerCase();
+  for(var key in JOB_LOCATIONS){if(loc.indexOf(key)>=0)return JOB_LOCATIONS[key];}
+  return {x:50,y:50};
+}
+function renderJobDots(){
+  var mc=document.getElementById('mc-map');
+  mc.querySelectorAll('.job-dot').forEach(function(e){e.remove();});
+  var mr=mc.getBoundingClientRect();
+  var W=mr.width,H=mr.height;
+  var now=new Date();now.setHours(0,0,0,0);
+  reservations.forEach(function(res){
+    var endDate=new Date(res.end+'T00:00:00');
+    if(endDate<now)return;
+    var pos=jobGeoPos(res.location);
+    var px=pos.x/100*W,py=pos.y/100*H;
+    var devList=[];
+    if(res.devices){for(var dk in res.devices){var pr=PRODUCTS.find(function(x){return x.id===dk;});devList.push((pr?pr.label:dk)+': '+res.devices[dk]);}}
+    var dot=document.createElement('div');
+    dot.className='job-dot';
+    dot.style.left=px+'px';dot.style.top=py+'px';
+    dot.innerHTML='<div class="job-dot-circle"></div>'+
+      '<div class="job-dot-label">'+res.job+'</div>'+
+      '<div class="job-tooltip">'+
+        '<div class="job-tooltip-name">'+res.job+'</div>'+
+        '<div class="job-tooltip-row">Location: <span>'+res.location+'</span></div>'+
+        (devList.length?'<div class="job-tooltip-row">Devices: <span>'+devList.join(', ')+'</span></div>':'')+
+        '<div class="job-tooltip-row">Dates: <span>'+res.start+' → '+res.end+'</span></div>'+
+        (res.sites?'<div class="job-tooltip-row">Sites: <span>'+res.sites+'</span></div>':'')+
+      '</div>';
+    mc.appendChild(dot);
+  });
+}
+
+var _fleetCardPos=null,_fleetCardDragBound=false;
 function renderFleetStatus(){
   var card=document.getElementById('fleetStatusCard');
   if(!card)return;
+  var mc=document.getElementById('mc-map');
+  var mr=mc.getBoundingClientRect();
+  var W=mr.width,H=mr.height;
+  if(!_fleetCardPos)_fleetCardPos=lv('us3_fleet_card_pos')||{};
+  if(_fleetCardPos.fleetCard){
+    card.style.left=(_fleetCardPos.fleetCard.x/100*W)+'px';
+    card.style.top=(_fleetCardPos.fleetCard.y/100*H)+'px';
+    card.style.right='auto';
+  } else {
+    var defLeft=W-360-14;
+    card.style.left=(defLeft>10?defLeft:10)+'px';
+    card.style.top='14px';
+    card.style.right='auto';
+    _fleetCardPos.fleetCard={x:(defLeft>10?defLeft:10)/W*100,y:14/H*100};
+  }
+  if(!_fleetCardDragBound){makeDrag(card,'fleetCard',W,H,_fleetCardPos,function(){sv('us3_fleet_card_pos',_fleetCardPos);},false);_fleetCardDragBound=true;}
   var products=[
     {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
     {id:'cric',label:'Level',color:'#e8a020'},
@@ -2248,6 +2318,8 @@ function renderFleetAdminTable(){
     '</div>'+
     '<div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0;">'+
       '<button onclick="applyFleetAdminChanges()" style="width:100%;padding:9px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.15);color:var(--accent);transition:all .15s;" onmouseover="this.style.background=\'rgba(26,127,232,.3)\'" onmouseout="this.style.background=\'rgba(26,127,232,.15)\'">Apply Changes</button>'+
+      '<button onclick="resetFleetOverrides()" style="width:100%;margin-top:8px;padding:9px;border-radius:4px;font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid #e05252;background:rgba(224,82,82,.12);color:#e05252;transition:all .15s;" onmouseover="this.style.background=\'rgba(224,82,82,.25)\'" onmouseout="this.style.background=\'rgba(224,82,82,.12)\'">Reset All Overrides</button>'+
+      '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-align:center;margin-top:4px;">Reverts dots to match inventory counts</div>'+
     '</div>';
 
   // Select All checkbox
@@ -2312,6 +2384,13 @@ function applyFleetAdminChanges(){
   var sa=document.getElementById('fleetAdminSelectAll');
   if(sa)sa.checked=false;
   if(bulkSel)bulkSel.value='';
+}
+
+function resetFleetOverrides(){
+  if(!fleetAdminMode)return;
+  if(!confirm('Reset all Fleet Map overrides to calculated values?'))return;
+  localStorage.removeItem('us3_fleet_overrides');
+  renderFleet();
 }
 
 function renderFleet(){
