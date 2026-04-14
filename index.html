@@ -499,7 +499,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#fff;text-align:center;margin-bottom:20px;">Welcome to US3 Ops</div>
     <div class="guide-section"><h4>&#x1F4E6; Check What's Available</h4><p><span class="ga">&rarr;</span> <b>Availability</b> tab &mdash; see all kit counts by office<br><span class="ga">&rarr;</span> <b>Check Availability</b> &mdash; pick product, quantity &amp; dates</p></div>
     <div class="guide-section"><h4>&#x1F4C5; Request Equipment</h4><p><span class="ga">&rarr;</span> <b>Schedule</b> tab &rarr; <b>Add Reservation</b><br><span class="ga">&rarr;</span> Fill in job details &rarr; Submit<br><span class="ga">&rarr;</span> Request goes to admin for approval (shows as &#x1F7E0; Pending)</p></div>
-    <div class="guide-section"><h4>&#x1F527; Log a Failed Device</h4><p><span class="ga">&rarr;</span> <b>Parts Inventory</b> tab &rarr; fill in Device ID, product &amp; failure type<br><span class="ga">&rarr;</span> Submits automatically &mdash; admin gets notified</p></div>
+    <div class="guide-section"><h4>&#x1F527; Log a Failed Device</h4><p><span class="ga">&rarr;</span> <b>Device Returns</b> tab &rarr; fill in Device ID, product &amp; failure type<br><span class="ga">&rarr;</span> Submits automatically &mdash; admin gets notified</p></div>
     <div class="guide-section"><h4>&#x1F5FA;&#xFE0F; Quick Navigation</h4><p>&#x1F5FA; <b>Mission Control</b> &mdash; fleet overview<br>&#x1F4E6; <b>Availability</b> &mdash; warehouse counts<br>&#x1F6F0; <b>Fleet Map</b> &mdash; every unit &times; 52 weeks<br>&#x1F4C5; <b>Schedule</b> &mdash; active &amp; upcoming jobs<br>&#x1F4CA; <b>Decommission</b> &mdash; retired equipment</p></div>
     <div class="guide-section"><h4>&#x2753; Need Help?</h4><p><span class="ga">&rarr;</span> Hit the <b>?</b> button in the top bar anytime<br><span class="ga">&rarr;</span> Send feedback or report issues from there</p></div>
     <button onclick="dismissWelcomeGuide()" style="width:100%;padding:12px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#0071BC;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-top:16px;transition:background .2s;">Got It</button>
@@ -514,7 +514,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="ntab" data-page="assetmap" onclick="sw('assetmap',this)"><span class="ti">🔵</span>Asset Map</div>
     <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
-    <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Parts Inventory<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
+    <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -643,6 +643,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="sch-period" id="schPeriod"></div>
     <button class="sch-nav-btn" onclick="schNav(1)">Next &rarr;</button>
     <button class="add-res-btn" onclick="openAddRes()">+ Add Reservation</button>
+    <div class="admin-btn" id="schedAdminBtn" onclick="toggleAdmin()" style="font-size:12px;padding:6px 12px;cursor:pointer;">⬡ Admin Off</div>
   </div>
   <div class="sch-body"><table class="sch-table" id="schTable"></table></div>
 </div>
@@ -657,7 +658,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
   <div style="padding:20px 24px;max-width:1200px;margin:0 auto;overflow-y:auto;height:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
-        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Failure Point Analysis</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Device Returns</div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">Device return tracking and failure categorization</div>
       </div>
       <div style="display:flex;gap:8px;"></div>
@@ -1404,6 +1405,7 @@ var reservations=[
   {type:'cric',loc:'elcajon',qty:17,job:'West County Wastewater District',jobNum:'WCWD-001',location:'Richmond, CA',start:'2026-04-13',end:'2027-04-13',sites:17,devices:{cric:17},contact:'Gordon Times',notes:'1 year Level study',status:'confirmed'},
   {type:'ff',loc:'puertorico',qty:19,job:'Parsons',jobNum:'PARSONS-001',location:'TBD',start:'2026-04-27',end:'2026-05-27',sites:19,devices:{ff:19,rg:5},contact:'TBD',notes:'30 day study. 5 RG sourced: 4 from PR, 1 from El Cajon',status:'confirmed'},
   {type:'ff',loc:'puertorico',qty:33,job:'Ardurra',jobNum:'ARDURRA-001',location:'TBD',start:'2026-05-04',end:'2026-08-02',sites:33,devices:{ff:33,rg:3},contact:'TBD',notes:'90 day study. 5 FF from PR, 28 from production, 3 RG from El Cajon',status:'confirmed'},
+  {type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO-001',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow deployed. Returning to El Cajon maintenance on 4/20.',status:'confirmed'},
 ];
 
 // ═══ STORAGE ═══
@@ -1432,7 +1434,7 @@ function loadStorage(){
     puertorico_rg_available:0,puertorico_rg_reserved:4,puertorico_rg_maintenance:0,
     houston_ff_available:0,   houston_hach_available:0,
     // Company-wide deployed
-    company_ff_deployed:0, company_cric_deployed:17, company_hach_deployed:0, company_rg_deployed:0,
+    company_ff_deployed:49, company_cric_deployed:17, company_hach_deployed:0, company_rg_deployed:0,
   };
   OFFICES.forEach(function(o){
     var prods=o.products||['ff','hach'];
@@ -1522,6 +1524,8 @@ function toggleAdmin(){
   if(editBtn)editBtn.style.display=adminMode?'block':'none';
   var avBtn=document.getElementById('availAdminBtn');
   if(avBtn){avBtn.classList.toggle('active',adminMode);avBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
+  var schBtn=document.getElementById('schedAdminBtn');
+  if(schBtn){schBtn.classList.toggle('active',adminMode);schBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
   updateHelpBadge();
   updateTabBadges();
   // Re-render active tab
@@ -2697,11 +2701,13 @@ function renderFleetOverview(){
   var rows=products.map(function(p){
     var avail=0,reserved=0,maint=0,deployed=gc('company',p.id,'deployed')||0;
     offices.forEach(function(o){avail+=gc(o,p.id,'available');reserved+=gc(o,p.id,'reserved');maint+=gc(o,p.id,'maintenance');});
+    var total=avail+reserved+deployed+maint;
     var activeJobs=reservations.filter(function(r){var devs=r.devices||{};return devs[p.id]&&devs[p.id]>0;}).length;
     var logoHtml=prodLogoHtml(p.id,32);
     if(!logoHtml)logoHtml='<span style="font-size:14px;font-weight:700;color:'+p.color+'">'+p.label+'</span>';
     return '<tr style="border-bottom:1px solid rgba(255,255,255,.06);">'+
       '<td style="padding:10px 14px;">'+logoHtml+'</td>'+
+      '<td style="padding:10px 8px;text-align:center;color:var(--text);font-weight:700;font-size:20px;">'+total+'</td>'+
       '<td style="padding:10px 8px;text-align:center;color:#00c49a;font-weight:700;font-size:20px;">'+avail+'</td>'+
       '<td style="padding:10px 8px;text-align:center;color:#4a5568;font-weight:700;font-size:20px;">'+reserved+'</td>'+
       '<td style="padding:10px 8px;text-align:center;color:#0071BC;font-weight:700;font-size:20px;">'+deployed+'</td>'+
@@ -2713,6 +2719,7 @@ function renderFleetOverview(){
     '<table style="width:100%;border-collapse:collapse;font-family:\'Rajdhani\',sans-serif;">'+
     '<thead><tr style="border-bottom:2px solid var(--accent);">'+
       '<th style="padding:8px 14px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Product</th>'+
+      '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Total</th>'+
       '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#00c49a;">Avail</th>'+
       '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#4a5568;">Resv</th>'+
       '<th style="padding:8px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#0071BC;">Depl</th>'+
@@ -2829,35 +2836,53 @@ function renderFleet(){
   var totalUnits=totalAvail+totalRes+totalMaint+totalDeployed;
   if(totalUnits<1)totalUnits=1;
 
+  // Compute week starts for 52 weeks starting from current week (Sunday)
+  var now=new Date();
+  var weekStart=new Date(now);weekStart.setDate(weekStart.getDate()-weekStart.getDay());
+  weekStart.setHours(0,0,0,0);
+  var numCols=52;
+  var weeks=[];
+  for(var w=0;w<numCols;w++){
+    var ws=new Date(weekStart);ws.setDate(ws.getDate()+w*7);
+    weeks.push(ws);
+  }
+  var week0ms=weekStart.getTime();
+  var msPerWeek=7*24*60*60*1000;
+
   // Build asset list: each unit gets an ID, a base status, and a location
-  // "reserved" in inventory = units earmarked for jobs. Treat as available for timeline assignment.
+  // "reserved" in inventory = units earmarked for jobs. All start GREEN on timeline.
   var assets=[];
   var unitNum=1;
-  // Available units first
+  // Available units
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
     var cnt=gc(o.id,fleetProduct,'available');
     for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
   });
-  // Reserved units (inventory reserved = earmarked for jobs, base=available on timeline)
+  // Reserved units (earmarked = available on timeline until a job stamps them)
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
     var cnt=gc(o.id,fleetProduct,'reserved');
     for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
   });
-  // Deployed units — blue all 52 weeks, tagged with matching job info
-  var deployedJobInfo=null;
-  // Find which confirmed job corresponds to these deployed units
-  var deployJob=reservations.find(function(r){
-    if(r.status!=='confirmed')return false;
-    if(r.type!==fleetProduct&&!(r.devices&&r.devices[fleetProduct]>0))return false;
-    var rs=new Date(r.start+'T00:00:00'),re=new Date(r.end+'T00:00:00');
-    return rs<=now&&re>=now;
-  });
-  if(deployJob)deployedJobInfo={job:deployJob.job||deployJob.jobNum,jobNum:deployJob.jobNum,start:deployJob.start,end:deployJob.end};
-  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,base:'deployed',loc:'Field',officeId:'company',deployJobInfo:deployedJobInfo});}
+  // Deployed units — find matching job for tooltip and transition
+  var deployJob=null;
+  for(var di=0;di<reservations.length;di++){
+    var dr=reservations[di];
+    if(dr.status!=='confirmed')continue;
+    if(dr.type!==fleetProduct&&!(dr.devices&&dr.devices[fleetProduct]>0))continue;
+    var drs=new Date(dr.start+'T00:00:00'),dre=new Date(dr.end+'T00:00:00');
+    if(drs<=now&&dre>=now){deployJob=dr;break;}
+  }
+  var deployJobInfo=deployJob?{job:deployJob.job||deployJob.jobNum,jobNum:deployJob.jobNum,start:deployJob.start,end:deployJob.end}:null;
+  var deployEndCol=-1;
+  if(deployJob){
+    var deployEndMs=new Date(deployJob.end+'T00:00:00').getTime();
+    deployEndCol=Math.min(51,Math.floor((deployEndMs-week0ms)/msPerWeek));
+  }
+  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,base:'deployed',loc:deployJob?(deployJob.location||'Field'):'Field',officeId:'company',deployJobInfo:deployJobInfo,deployEndCol:deployEndCol,deployReturnLoc:deployJob?deployJob.loc:null});}
   // Maintenance units — orange all 52 weeks
   OFFICES.forEach(function(o){
     var prods=o.products||[];
@@ -2867,27 +2892,31 @@ function renderFleet(){
   });
 
   var numRows=assets.length;
-  var numCols=52;
 
-  // Compute week starts for 52 weeks starting from current week (Sunday)
-  var now=new Date();
-  var weekStart=new Date(now);weekStart.setDate(weekStart.getDate()-weekStart.getDay());
-  weekStart.setHours(0,0,0,0);
-  var weeks=[];
-  for(var w=0;w<numCols;w++){
-    var ws=new Date(weekStart);ws.setDate(ws.getDate()+w*7);
-    weeks.push(ws);
-  }
-
-  // Get confirmed reservations that use this product (check devices map too)
+  // Get confirmed reservations that use this product
   var prodRes=reservations.filter(function(r){
     if(r.status!=='confirmed')return false;
-    // Primary product type match
     if(r.type===fleetProduct)return true;
-    // Also check devices map for multi-product jobs (e.g. Parsons has {ff:19, rg:5})
     if(r.devices&&r.devices[fleetProduct]>0)return true;
     return false;
   });
+  // For the deploy job, reduce stamp qty by deployed count
+  // But if the job's source office has reserved inventory for this product, stamp those too
+  if(deployJob){
+    prodRes.forEach(function(r){
+      if(r.jobNum===deployJob.jobNum){
+        var fullQty=(r.devices&&r.devices[fleetProduct])?r.devices[fleetProduct]:(r.type===fleetProduct?r.qty:0);
+        var srcRes=gc(deployJob.loc||'',fleetProduct,'reserved');
+        if(srcRes>0){
+          // Source office has reserved inventory for this job — stamp those rows
+          r._fleetStampQty=srcRes;
+        } else {
+          // No reserved inventory — all units are deployed, skip stamping
+          r._fleetStampQty=Math.max(0,fullQty-totalDeployed);
+        }
+      }
+    });
+  }
 
   // Initialize grid: every dot starts at its base status
   var assetWeekStatus=[];
@@ -2896,31 +2925,41 @@ function renderFleet(){
     assetWeekStatus[r]=[];
     assetWeekJobInfo[r]=[];
     for(var c=0;c<numCols;c++){
-      assetWeekStatus[r][c]=assets[r].base;
-      // Pre-fill job info for deployed assets
-      assetWeekJobInfo[r][c]=(assets[r].base==='deployed'&&assets[r].deployJobInfo)?assets[r].deployJobInfo:null;
+      if(assets[r].base==='deployed'){
+        // Deployed→maintenance transition: blue until job ends, then orange
+        var eCol=assets[r].deployEndCol;
+        if(eCol>=0&&c>eCol){
+          assetWeekStatus[r][c]='maintenance';
+          assetWeekJobInfo[r][c]=null;
+        } else {
+          assetWeekStatus[r][c]='deployed';
+          assetWeekJobInfo[r][c]=assets[r].deployJobInfo||null;
+        }
+      } else {
+        assetWeekStatus[r][c]=assets[r].base;
+        assetWeekJobInfo[r][c]=null;
+      }
     }
   }
 
-  // Stamp reservations onto available-base assets, only for the exact weeks covered
+  // Stamp reservations onto available-base rows for exact date ranges
   prodRes.forEach(function(res){
-    var rs=new Date(res.start+'T00:00:00'),re=new Date(res.end+'T00:00:00');
+    var rsMs=new Date(res.start+'T00:00:00').getTime();
+    var reMs=new Date(res.end+'T00:00:00').getTime();
     // How many units of THIS product does this job need?
     var qtyNeeded=0;
-    if(res.devices&&res.devices[fleetProduct]>0){
+    if(res._fleetStampQty!==undefined){
+      qtyNeeded=res._fleetStampQty;
+    } else if(res.devices&&res.devices[fleetProduct]>0){
       qtyNeeded=res.devices[fleetProduct];
     } else if(res.type===fleetProduct){
       qtyNeeded=res.qty||0;
     }
     if(qtyNeeded<=0)return;
-
-    // Find which week columns this reservation covers
-    var coveredWeeks=[];
-    for(var c=0;c<numCols;c++){
-      var weekEnd=new Date(weeks[c]);weekEnd.setDate(weekEnd.getDate()+6);
-      if(rs<=weekEnd&&re>=weeks[c]) coveredWeeks.push(c);
-    }
-    if(coveredWeeks.length===0)return;
+    // Calculate column range
+    var startCol=Math.max(0,Math.floor((rsMs-week0ms)/msPerWeek));
+    var endCol=Math.min(51,Math.floor((reMs-week0ms)/msPerWeek));
+    if(startCol>51||endCol<0)return;
 
     var jobInfo={job:res.job||res.jobNum,jobNum:res.jobNum,start:res.start,end:res.end};
     // Assign to available-base assets
@@ -2929,13 +2968,13 @@ function renderFleet(){
       if(assets[r].base!=='available')continue;
       // Check if this asset is free for all covered weeks
       var free=true;
-      for(var ci=0;ci<coveredWeeks.length;ci++){
-        if(assetWeekStatus[r][coveredWeeks[ci]]!=='available'){free=false;break;}
+      for(var c=startCol;c<=endCol;c++){
+        if(assetWeekStatus[r][c]!=='available'){free=false;break;}
       }
       if(free){
-        for(var ci=0;ci<coveredWeeks.length;ci++){
-          assetWeekStatus[r][coveredWeeks[ci]]='reserved_'+res.job;
-          assetWeekJobInfo[r][coveredWeeks[ci]]=jobInfo;
+        for(var c=startCol;c<=endCol;c++){
+          assetWeekStatus[r][c]='reserved_'+res.job;
+          assetWeekJobInfo[r][c]=jobInfo;
         }
         assigned++;
       }
@@ -3263,7 +3302,7 @@ document.addEventListener('click',function(e){
 });
 
 // ═══ THEME TOGGLE ═══
-var currentTheme=lv('us3_theme')||'dark';
+var currentTheme=lv('us3_theme')||'light';
 function applyTheme(){
   if(currentTheme==='light'){
     document.body.classList.add('light');
@@ -3394,7 +3433,13 @@ function us3Login(){
     err.style.display='none';
     var overlay=document.getElementById('loginOverlay');
     overlay.classList.add('fade-out');
-    setTimeout(function(){overlay.style.display='none';},500);
+    setTimeout(function(){
+      overlay.style.display='none';
+      // Show welcome guide after login completes
+      setTimeout(function(){
+        if(!localStorage.getItem('us3_seen_guide'))showWelcomeGuide();
+      },500);
+    },500);
     us3ShowUser(email);
   }else{
     err.style.display='block';
