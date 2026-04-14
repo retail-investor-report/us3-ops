@@ -311,9 +311,9 @@ body.light .ntab.active{color:var(--accent);background:rgba(0,113,188,.05);}
 body.light .pin-circle{background:rgba(255,255,255,.95);border-color:rgba(0,113,188,.4);}
 body.light .pin-lbl{background:rgba(255,255,255,.95);border-color:rgba(0,113,188,.2);}
 body.light .exp-box{background:rgba(255,255,255,.97);}
-body.light #fleetStatusCard{background:rgba(255,255,255,.92);border-color:rgba(0,113,188,.15);color:var(--text);}
-body.light #fleetStatusCard th{color:var(--muted)!important;}
-body.light #fleetStatusCard tr{border-color:rgba(0,0,0,.08)!important;}
+#fleetStatusCard{background:rgba(255,255,255,.93)!important;border:1px solid rgba(0,113,188,.15)!important;border-radius:10px!important;box-shadow:0 2px 12px rgba(0,0,0,.08)!important;}
+#fleetStatusCard th{color:#666!important;}
+#fleetStatusCard tr{border-color:rgba(0,0,0,.08)!important;}
 body.light .edit-panel{background:var(--panel-bg);border-color:rgba(0,113,188,.3);}
 body.light .modal{background:var(--panel-bg);border-color:rgba(0,113,188,.3);}
 body.light .form-row select,body.light .form-row input,body.light .form-row textarea{background:var(--input-bg);border-color:rgba(0,113,188,.2);color:var(--text);}
@@ -427,12 +427,34 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Parts Inventory</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
-  <div class="nr"><div class="nstats" id="navStats"></div><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div></div>
+  <div class="nr"><div class="nstats" id="navStats"></div><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div></div>
   <div class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
     <span></span><span></span><span></span>
   </div>
   <div class="mobile-menu" id="mobileMenu"></div>
 </nav>
+
+<!-- HELP MODAL -->
+<div class="modal-ov" id="helpModal" onclick="if(event.target===this)closeHelpModal()">
+  <div class="modal" style="max-width:440px;">
+    <h2>Help & Feedback</h2>
+    <div class="modal-sub">Report bugs, request features, or ask questions</div>
+    <div id="helpTabs" style="display:none;margin-bottom:12px;">
+      <div style="display:flex;gap:0;border-bottom:1.5px solid var(--border);">
+        <div class="help-tab active" id="helpTabSend" onclick="switchHelpTab('send')" style="padding:6px 16px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);">Send Message</div>
+        <div class="help-tab" id="helpTabInbox" onclick="switchHelpTab('inbox')" style="padding:6px 16px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);">Inbox</div>
+      </div>
+    </div>
+    <div id="helpSendPane">
+      <textarea id="helpMsg" rows="4" placeholder="Report a bug, request a feature, or ask a question..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:'Rajdhani',sans-serif;font-size:14px;padding:10px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea>
+      <div class="modal-actions"><button class="btn btn-s" onclick="closeHelpModal()">Cancel</button><button class="btn btn-p" onclick="sendHelpMsg()">Send</button></div>
+    </div>
+    <div id="helpInboxPane" style="display:none;">
+      <div id="helpInboxList" style="max-height:300px;overflow-y:auto;"></div>
+      <div style="margin-top:10px;text-align:right;"><button class="btn btn-s" onclick="clearHelpMsgs()" style="font-size:10px;color:#e05252;border-color:#e05252;">Clear All</button></div>
+    </div>
+  </div>
+</div>
 
 <!-- MISSION CONTROL -->
 <div class="page active" id="page-mc">
@@ -445,7 +467,7 @@ body.light .job-exp-box{background:rgba(255,255,255,.97);}
         <div class="admin-btn" id="adminBtn" onclick="toggleAdmin()">⬡ Admin Off</div>
         <div class="admin-btn" id="editBtn" onclick="openEditPanel()" style="display:none">✎ Edit</div>
       </div>
-      <div id="fleetStatusCard" style="position:absolute;z-index:60;width:360px;background:rgba(4,9,26,.82);border:1.5px solid var(--borderb);border-radius:10px;backdrop-filter:blur(16px);padding:14px 16px;cursor:grab;"></div>
+      <div id="fleetStatusCard" style="position:absolute;top:14px;right:14px;z-index:60;width:360px;padding:14px 16px;"></div>
       <div class="edit-overlay" id="editOverlay" onclick="closeEditPanel(event)">
         <div class="edit-panel">
           <div class="ep-title" id="epTitle">Edit Counts</div>
@@ -645,9 +667,9 @@ var OFFICES = [
 var DEF_PIN = {elcajon:{x:12,y:55},downey:{x:11,y:38},houston:{x:40,y:62},puertorico:{x:88,y:72}};
 var PJ_LINKS = [
   {name:'Houston Project',    icon:'\uD83C\uDFD7', url:'https://houstontx.uscubed.com/login.aspx',  sub:'houstontx.uscubed.com',color:'#1a7fe8'},
-  {name:'Flex Flow Projects', icon:'\u301C', url:'https://admin.uscubed.com/main.aspx',         sub:'admin.uscubed.com',    color:'#3a8fe8'},
-  {name:'Level Projects',     icon:'\u25C8',  url:'https://admin.uscubed.com/main.aspx',         sub:'admin.uscubed.com',    color:'#e8a020'},
-  {name:'Rain Gauge Projects',icon:'\uD83C\uDF27', url:'https://admin.uscubed.com/main.aspx',         sub:'admin.uscubed.com',    color:'#44bb88'},
+  {name:'Flex Flow Projects', icon:'\u301C', url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#3a8fe8'},
+  {name:'Level Projects',     icon:'\u25C8',  url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#e8a020'},
+  {name:'Rain Gauge Projects',icon:'\uD83C\uDF27', url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#44bb88'},
   {name:'Hach Projects',      icon:'\u25C9',  url:'https://us3.uscubed.com/main.aspx?Session=Fa6GdGUMrKdAezOzwczlGHlldkMvpoD9T0sXazm5UQXUDy9YMrorPdFFNWnfsj46lHx/HEoMMddiqp7YujDcuZnIKduOOFathAVo1w1wc6DeEPPZgG8Pomvzjm/JGVcuuwUuNbK0ikyvj0bTqiaVLyVMvvwUwvtMksVr+Z6xFKyjCFvRdsenDajZL69RO8PMDRJhzNfMIxthv8R1LEf/M8n3fgkNWDoh',sub:'us3.uscubed.com',color:'#e8e8f0'},
   {name:'Rentals',            icon:'\uD83D\uDCCB', url:'https://app.smartsheet.com/sheets/WpFq6W4Vfv5Rp4X5C7qpg3fWWhfPP6x2Hq6fFW91?view=grid',sub:'smartsheet.com',color:'#88aacc'},
   {name:'US3 Admin',          icon:'\u2699\uFE0F', url:'https://us3.uscubed.com/main.aspx?Session=Fa6GdGUMrKdAezOzwczlGHlldkMvpoD9T0sXazm5UQXUDy9YMrorPdFFNWnfsj46lHx/HEoMMddiqp7YujDcuZnIKduOOFathAVo1w1wc6DeEPPZgG8Pomvzjm/JGVcuuwUuNbK0ikyvj0bTqiaVLyVMvvwUwvtMksVr+Z6xFKyjCFvRdsenDajZL69RO8PMDRJhzNfMIxthv8R1LEf/M8n3fgkNWDoh',sub:'us3.uscubed.com'},
@@ -1341,6 +1363,7 @@ function toggleAdmin(){
   document.getElementById('adminBtn').classList.toggle('active',adminMode);
   document.getElementById('adminBtn').textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';
   document.getElementById('editBtn').style.display=adminMode?'block':'none';
+  updateHelpBadge();
   renderMC();
 }
 
@@ -1463,26 +1486,9 @@ function renderJobPins(){
   });
 }
 
-var _fleetCardPos=null,_fleetCardDragBound=false;
 function renderFleetStatus(){
   var card=document.getElementById('fleetStatusCard');
   if(!card)return;
-  var mc=document.getElementById('mc-map');
-  var mr=mc.getBoundingClientRect();
-  var W=mr.width,H=mr.height;
-  if(!_fleetCardPos)_fleetCardPos=lv('us3_fleet_card_pos')||{};
-  if(_fleetCardPos.fleetCard){
-    card.style.left=(_fleetCardPos.fleetCard.x/100*W)+'px';
-    card.style.top=(_fleetCardPos.fleetCard.y/100*H)+'px';
-    card.style.right='auto';
-  } else {
-    var defLeft=W-360-14;
-    card.style.left=(defLeft>10?defLeft:10)+'px';
-    card.style.top='14px';
-    card.style.right='auto';
-    _fleetCardPos.fleetCard={x:(defLeft>10?defLeft:10)/W*100,y:14/H*100};
-  }
-  if(!_fleetCardDragBound){makeDrag(card,'fleetCard',W,H,_fleetCardPos,function(){sv('us3_fleet_card_pos',_fleetCardPos);},false);_fleetCardDragBound=true;}
   var products=[
     {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
     {id:'cric',label:'Level',color:'#e8a020'},
@@ -1497,20 +1503,20 @@ function renderFleetStatus(){
     offices.forEach(function(o){reserved+=gc(o,p.id,'reserved');});
     var logoHtml=prodLogoHtml(p.id,22);
     if(!logoHtml)logoHtml='<span style="font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;color:'+p.color+'">'+p.label+'</span>';
-    return '<tr style="border-bottom:1px solid rgba(255,255,255,.06);">'+
+    return '<tr style="border-bottom:1px solid rgba(0,0,0,.08);">'+
       '<td style="padding:6px 8px;">'+logoHtml+'</td>'+
       '<td style="padding:6px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;color:#0071BC;">'+deployed+'</td>'+
-      '<td style="padding:6px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;color:var(--text);">'+activeJobs+'</td>'+
+      '<td style="padding:6px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;color:#1a1a2e;">'+activeJobs+'</td>'+
       '<td style="padding:6px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;color:#4a5568;">'+reserved+'</td>'+
     '</tr>';
   }).join('');
   card.innerHTML=
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:8px;">Fleet Status</div>'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#0071BC;margin-bottom:8px;">Fleet Status</div>'+
     '<table style="width:100%;border-collapse:collapse;">'+
-      '<thead><tr style="border-bottom:1.5px solid var(--accent);">'+
-        '<th style="padding:4px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Product</th>'+
+      '<thead><tr style="border-bottom:1.5px solid #0071BC;">'+
+        '<th style="padding:4px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#666;">Product</th>'+
         '<th style="padding:4px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#0071BC;">Deployed</th>'+
-        '<th style="padding:4px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);">Jobs</th>'+
+        '<th style="padding:4px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#666;">Jobs</th>'+
         '<th style="padding:4px 6px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5568;">Reserved</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table>';
 }
@@ -2964,8 +2970,86 @@ function toggleTheme(){
   sv('us3_theme',currentTheme);
   applyTheme();
 }
+// ═══ HELP SYSTEM ═══
+function getHelpMsgs(){return lv('us3_help_messages')||[];}
+function saveHelpMsgs(msgs){sv('us3_help_messages',msgs);}
+function updateHelpBadge(){
+  var msgs=getHelpMsgs();
+  var unread=msgs.filter(function(m){return !m.read;}).length;
+  var badge=document.getElementById('helpBadge');
+  if(badge)badge.style.display=(adminMode&&unread>0)?'block':'none';
+}
+function openHelpModal(){
+  var modal=document.getElementById('helpModal');
+  var tabs=document.getElementById('helpTabs');
+  tabs.style.display=adminMode?'block':'none';
+  switchHelpTab('send');
+  modal.classList.add('open');
+  document.getElementById('helpMsg').value='';
+}
+function closeHelpModal(){document.getElementById('helpModal').classList.remove('open');}
+function switchHelpTab(tab){
+  var sendTab=document.getElementById('helpTabSend'),inboxTab=document.getElementById('helpTabInbox');
+  var sendPane=document.getElementById('helpSendPane'),inboxPane=document.getElementById('helpInboxPane');
+  if(tab==='send'){
+    sendTab.style.borderBottomColor='var(--accent)';sendTab.style.color='var(--accent)';
+    inboxTab.style.borderBottomColor='transparent';inboxTab.style.color='var(--muted)';
+    sendPane.style.display='block';inboxPane.style.display='none';
+  } else {
+    inboxTab.style.borderBottomColor='var(--accent)';inboxTab.style.color='var(--accent)';
+    sendTab.style.borderBottomColor='transparent';sendTab.style.color='var(--muted)';
+    sendPane.style.display='none';inboxPane.style.display='block';
+    renderHelpInbox();
+  }
+}
+function sendHelpMsg(){
+  var el=document.getElementById('helpMsg');
+  var msg=el.value.trim();
+  if(!msg)return;
+  var msgs=getHelpMsgs();
+  msgs.unshift({message:msg,date:new Date().toISOString(),read:false});
+  saveHelpMsgs(msgs);
+  el.value='';
+  var sendPane=document.getElementById('helpSendPane');
+  var conf=document.createElement('div');
+  conf.style.cssText='text-align:center;padding:18px;font-family:Oswald,sans-serif;font-size:14px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;';
+  conf.textContent='Message sent!';
+  sendPane.innerHTML='';sendPane.appendChild(conf);
+  updateHelpBadge();
+  setTimeout(closeHelpModal,1200);
+}
+function renderHelpInbox(){
+  var list=document.getElementById('helpInboxList');
+  var msgs=getHelpMsgs();
+  if(msgs.length===0){list.innerHTML='<div style="font-family:Rajdhani,sans-serif;font-size:13px;color:var(--muted);text-align:center;padding:20px;">No messages</div>';return;}
+  list.innerHTML=msgs.map(function(m,i){
+    var d=new Date(m.date);
+    var dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+        '<div style="font-family:Rajdhani,sans-serif;font-size:10px;color:var(--muted);">'+dateStr+'</div>'+
+        (m.read?'<span style="font-size:9px;color:var(--muted);">read</span>':'<button onclick="markHelpRead('+i+')" style="font-family:Oswald,sans-serif;font-size:9px;padding:2px 8px;border:1px solid var(--accent);border-radius:3px;background:transparent;color:var(--accent);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">Mark Read</button>')+
+      '</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);margin-top:4px;white-space:pre-wrap;">'+m.message.replace(/</g,'&lt;')+'</div>'+
+    '</div>';
+  }).join('');
+}
+function markHelpRead(idx){
+  var msgs=getHelpMsgs();
+  if(msgs[idx])msgs[idx].read=true;
+  saveHelpMsgs(msgs);
+  updateHelpBadge();
+  renderHelpInbox();
+}
+function clearHelpMsgs(){
+  if(!confirm('Clear all help messages?'))return;
+  saveHelpMsgs([]);
+  updateHelpBadge();
+  renderHelpInbox();
+}
+
 // ═══ BOOT ═══
-loadStorage();applyTheme();renderStats();renderMC();
+loadStorage();applyTheme();renderStats();renderMC();updateHelpBadge();
 </script>
 </body>
 </html>
