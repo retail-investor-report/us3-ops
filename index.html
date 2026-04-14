@@ -429,13 +429,13 @@ body.light .hamburger span{background:var(--text);}
         </div>
       </div>
     </div>
-    <div id="mc-panel"></div>
   </div>
 </div>
 
 <!-- AVAILABILITY -->
 <div class="page" id="page-avail">
   <div class="av-inner">
+    <div id="avail-stats-panel" style="margin-bottom:24px;background:var(--panel-bg);padding:10px 22px;display:flex;flex-direction:column;gap:8px;border-radius:10px;border:1px solid var(--borderb);"></div>
     <div class="av-title">Availability</div>
     <div class="av-sub">Kit counts by location and product type</div>
     <div class="av-grid" id="avGrid"></div>
@@ -1291,7 +1291,7 @@ function renderStats(){
 }
 
 function renderMCPanel(){
-  var panel=document.getElementById('mc-panel');
+  var panel=document.getElementById('avail-stats-panel');
   var statuses=[
     {key:'available',label:'Available',color:'#00c49a',dot:'a'},
     {key:'reserved', label:'Reserved', color:'#4a5568',dot:'r'},
@@ -1351,7 +1351,7 @@ function toggleAdmin(){
 }
 
 // ═══ MISSION CONTROL ═══
-function renderMC(){renderPins();renderFleetStatus();renderStats();}
+function renderMC(){renderPins();renderFleetStatus();}
 
 function renderFleetStatus(){
   var card=document.getElementById('fleetStatusCard');
@@ -1615,6 +1615,7 @@ function saveEditPanel(){
 
 // ═══ AVAILABILITY PAGE ═══
 function renderAvail(){
+  renderStats();
   var grid=document.getElementById('avGrid');grid.innerHTML='';
   // Location cards (available, reserved, maintenance only)
   OFFICES.forEach(function(off){
