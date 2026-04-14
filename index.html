@@ -569,7 +569,6 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="sch-period" id="schPeriod"></div>
     <button class="sch-nav-btn" onclick="schNav(1)">Next &rarr;</button>
     <button class="add-res-btn" onclick="openAddRes()">+ Add Reservation</button>
-    <button class="add-res-btn" onclick="openCheckAvail()" style="background:rgba(232,160,32,.12);border-color:#e8a020;color:#e8a020;">Check Availability</button>
   </div>
   <div class="sch-body"><table class="sch-table" id="schTable"></table></div>
 </div>
@@ -619,7 +618,6 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
       <div style="flex:1;"></div>
       <div class="admin-btn" id="fleetAdminBtn" onclick="toggleFleetAdmin()">⬡ Admin Off</div>
     </div>
-    <div id="fleetHoustonBanner" style="display:none;padding:6px 22px;background:rgba(0,113,188,.06);border-bottom:1px solid rgba(0,113,188,.15);font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);flex-shrink:0;">Note: Houston Level Project (~3,000 units) tracked separately at <a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="color:var(--accent);text-decoration:underline;">houstontx.uscubed.com</a></div>
     <div style="display:flex;flex:1;overflow:hidden;">
       <div id="fleetLabels" style="flex-shrink:0;overflow-y:hidden;border-right:1px solid var(--border);background:var(--nav-bg);"></div>
       <div id="fleetWrap" style="flex:1;overflow:auto;position:relative;">
@@ -1449,13 +1447,31 @@ setInterval(tick,1000);tick();
 function toggleAdmin(){
   if(!adminMode){var pw=prompt('Admin password:');if(pw!==ADMIN_PASSWORD){if(pw!==null)alert('Incorrect.');return;}}
   adminMode=!adminMode;
+  fleetAdminMode=adminMode;
   document.body.classList.toggle('admin',adminMode);
-  document.getElementById('adminBtn').classList.toggle('active',adminMode);
-  document.getElementById('adminBtn').textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';
-  document.getElementById('editBtn').style.display=adminMode?'block':'none';
+  // Update all admin buttons
+  var mcBtn=document.getElementById('adminBtn');
+  if(mcBtn){mcBtn.classList.toggle('active',adminMode);mcBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
+  var editBtn=document.getElementById('editBtn');
+  if(editBtn)editBtn.style.display=adminMode?'block':'none';
+  var avBtn=document.getElementById('availAdminBtn');
+  if(avBtn){avBtn.classList.toggle('active',adminMode);avBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
+  var flBtn=document.getElementById('fleetAdminBtn');
+  if(flBtn){flBtn.classList.toggle('active',adminMode);flBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
+  // Fleet admin panel
+  var wrap=document.getElementById('fleetAdminWrap');
+  var slider=document.getElementById('fleetAdminSlider');
+  if(wrap&&slider){
+    if(adminMode){wrap.style.display='block';_fleetAdminSlideCollapsed=false;slider.style.width='320px';var tab=document.getElementById('fleetAdminTab');if(tab)tab.innerHTML='&#9654;';}
+    else{wrap.style.display='none';}
+  }
   updateHelpBadge();
+  // Re-render active tab
   renderMC();
-  if(document.getElementById('page-avail').classList.contains('active'))renderAvail();
+  var pages=['avail','fleet','decomm','parts','sched','assetmap'];
+  pages.forEach(function(p){if(document.getElementById('page-'+p)&&document.getElementById('page-'+p).classList.contains('active')){
+    if(p==='avail')renderAvail();if(p==='fleet')renderFleet();if(p==='decomm')renderDecomm();if(p==='parts')renderParts();if(p==='sched')renderSched();if(p==='assetmap')renderAssetMap();
+  }});
 }
 
 // ═══ MISSION CONTROL ═══
@@ -2166,9 +2182,8 @@ function declineReservation(idx){
 }
 
 // ═══ PARTS / FAILURE ANALYSIS ═══
-var FAIL_CATS=['Sensor Failure','Battery/Power','Antenna/Comms','Water Damage','Cable/Connector','Enclosure Damage','Software/Firmware','Unknown','No Fault Found'];
-var FAIL_SEV=['Critical - Unit Dead','Major - Degraded Function','Minor - Cosmetic/Non-Critical'];
-var FISHBONE_MAP={'Sensor Failure':'Hardware','Battery/Power':'Hardware','Antenna/Comms':'Hardware','Water Damage':'Environment','Cable/Connector':'Materials','Enclosure Damage':'Environment','Software/Firmware':'Software','Unknown':'Process','No Fault Found':'Human'};
+var FAIL_CATS=['Sensor','Battery','Antenna','Water Damage','Cable','Connector','Enclosure','Software','Unknown','No Fault Found'];
+var FISHBONE_MAP={'Sensor':'Electrical','Battery':'Electrical','Antenna':'Electrical','Software':'Electrical','Cable':'Mechanical','Connector':'Mechanical','Enclosure':'Mechanical','Water Damage':'Environmental','No Fault Found':'Process','Unknown':'Process'};
 var _fishboneMode=false;
 
 function getReturns(){return lv('us3_returns')||[];}
@@ -2187,8 +2202,6 @@ function renderParts(){
         '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
         '<div class="form-row"><label>Return Date</label><input id="pr-date" type="date"></div>'+
         '<div class="form-row"><label>Failure Category</label><select id="pr-fail">'+FAIL_CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
-        '<div class="form-row"><label>Severity</label><select id="pr-sev">'+FAIL_SEV.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div>'+
-        '<div class="form-row"><label>Repairable</label><select id="pr-repair"><option value="yes">Yes</option><option value="no">No</option></select></div>'+
       '</div>'+
       '<div class="form-row" style="margin-top:8px;"><label>Notes</label><textarea id="pr-notes" rows="2" placeholder="Details..." style="width:100%;box-sizing:border-box;resize:vertical;font-family:\'Rajdhani\',sans-serif;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);"></textarea></div>'+
       '<div style="margin-top:10px;"><button class="btn btn-p" onclick="saveReturn()">Log Return</button></div>';
@@ -2214,8 +2227,6 @@ function saveReturn(){
     type:document.getElementById('pr-type').value,
     date:document.getElementById('pr-date').value,
     failure:document.getElementById('pr-fail').value,
-    severity:document.getElementById('pr-sev').value,
-    repairable:document.getElementById('pr-repair').value,
     notes:document.getElementById('pr-notes').value.trim()
   };
   var arr=getReturns();arr.unshift(r);saveReturns(arr);
@@ -2233,35 +2244,103 @@ function renderPareto(returns){
   var sorted=Object.keys(counts).filter(function(k){return counts[k]>0;}).sort(function(a,b){return counts[b]-counts[a];});
   var max=sorted.length?counts[sorted[0]]:1;
   var total=returns.length;
-  var cumul=0;
-  var sevColors={'Critical - Unit Dead':'#e05252','Major - Degraded Function':'#e8a020','Minor - Cosmetic/Non-Critical':'#00c49a'};
+
+  // Canvas-based Pareto chart
+  var cW=Math.max(600,sorted.length*80+120),cH=340;
+  var padL=60,padR=50,padT=40,padB=60;
+  var chartW=cW-padL-padR,chartH=cH-padT-padB;
+  var barW2=Math.min(60,Math.floor(chartW/sorted.length*0.7));
+  var gap=Math.floor(chartW/sorted.length);
 
   var html='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Failure Pareto Chart</div>';
-  sorted.forEach(function(cat){
-    var cnt=counts[cat];cumul+=cnt;
-    var pct=Math.round(cnt/total*100);
-    var cumPct=Math.round(cumul/total*100);
-    var barW=Math.max(2,Math.round(cnt/max*100));
-    // Severity breakdown for this category
-    var sevCounts={};FAIL_SEV.forEach(function(s){sevCounts[s]=0;});
-    returns.forEach(function(r){if(r.failure===cat)sevCounts[r.severity]++;});
-    var barHtml='';
-    FAIL_SEV.forEach(function(s){
-      if(sevCounts[s]>0){var sw2=Math.round(sevCounts[s]/cnt*100);barHtml+='<div style="width:'+sw2+'%;height:100%;background:'+(sevColors[s]||'var(--accent)')+';"></div>';}
-    });
-    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
-      '<div style="width:140px;font-family:\'Rajdhani\',sans-serif;font-size:12px;color:var(--text);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+cat+'">'+cat+'</div>'+
-      '<div style="flex:1;height:20px;background:var(--card-bg);border-radius:3px;overflow:hidden;display:flex;">'+barHtml+'</div>'+
-      '<div style="width:30px;font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;color:var(--text);text-align:right;">'+cnt+'</div>'+
-      '<div style="width:40px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-align:right;">'+pct+'%</div>'+
-      '<div style="width:45px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--accent);text-align:right;">'+cumPct+'% cum</div>'+
-    '</div>';
-  });
-  html+='<div style="display:flex;gap:16px;margin-top:10px;justify-content:center;">'+
-    FAIL_SEV.map(function(s){return '<div style="display:flex;align-items:center;gap:4px;font-family:\'Rajdhani\',sans-serif;font-size:10px;color:var(--muted);"><div style="width:10px;height:10px;border-radius:2px;background:'+sevColors[s]+'"></div>'+s.split(' - ')[0]+'</div>';}).join('')+
-  '</div></div>';
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'+
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Failure Pareto Chart</div>'+
+      '<div style="display:flex;gap:14px;align-items:center;">'+
+        '<div style="display:flex;align-items:center;gap:5px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);"><div style="width:14px;height:10px;border-radius:2px;background:#0071BC;"></div>Count</div>'+
+        '<div style="display:flex;align-items:center;gap:5px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);"><div style="width:14px;height:3px;background:#ED1C24;border-radius:2px;"></div>Cumulative %</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="overflow-x:auto;"><canvas id="paretoCanvas" width="'+cW+'" height="'+cH+'"></canvas></div>'+
+  '</div>';
   div.innerHTML=html;
+
+  var canvas=document.getElementById('paretoCanvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var isDark=!document.body.classList.contains('light');
+  var textCol=isDark?'#d0e0f0':'#1a1a2e';
+  var mutedCol=isDark?'#8aa4c4':'#4a5568';
+  var gridCol=isDark?'rgba(26,100,180,.15)':'rgba(0,0,0,.08)';
+
+  // Background
+  ctx.clearRect(0,0,cW,cH);
+
+  // Y-axis gridlines and labels (count)
+  ctx.strokeStyle=gridCol;ctx.lineWidth=1;
+  var ySteps=5;
+  for(var yi=0;yi<=ySteps;yi++){
+    var yVal=Math.round(max/ySteps*yi);
+    var yPos=padT+chartH-chartH*(yVal/max);
+    ctx.beginPath();ctx.moveTo(padL,yPos);ctx.lineTo(padL+chartW,yPos);ctx.stroke();
+    ctx.font='600 13px Rajdhani';ctx.fillStyle=mutedCol;ctx.textAlign='right';ctx.textBaseline='middle';
+    ctx.fillText(yVal,padL-8,yPos);
+  }
+
+  // Right Y-axis labels (cumulative %)
+  for(var pi=0;pi<=4;pi++){
+    var pctVal=pi*25;
+    var yPos2=padT+chartH-chartH*(pctVal/100);
+    ctx.font='500 11px Rajdhani';ctx.fillStyle='#ED1C24';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(pctVal+'%',padL+chartW+6,yPos2);
+  }
+
+  // Draw bars and cumulative line
+  var cumul=0;
+  var linePoints=[];
+  sorted.forEach(function(cat,i){
+    var cnt=counts[cat];cumul+=cnt;
+    var cumPct=cumul/total*100;
+    var barH=chartH*(cnt/max);
+    var x=padL+i*gap+(gap-barW2)/2;
+    var y=padT+chartH-barH;
+
+    // Bar
+    ctx.fillStyle='#0071BC';
+    ctx.fillRect(x,y,barW2,barH);
+    // Bar glow
+    ctx.shadowColor='rgba(0,113,188,.3)';ctx.shadowBlur=8;
+    ctx.fillRect(x,y,barW2,barH);
+    ctx.shadowBlur=0;
+
+    // Count label on bar
+    ctx.font='700 15px Oswald';ctx.fillStyle=textCol;ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText(cnt,x+barW2/2,y-4);
+
+    // Category label (rotated)
+    ctx.save();
+    ctx.translate(x+barW2/2,padT+chartH+6);
+    ctx.rotate(-Math.PI/6);
+    ctx.font='600 11px Oswald';ctx.fillStyle=mutedCol;ctx.textAlign='right';ctx.textBaseline='top';
+    ctx.fillText(cat,0,0);
+    ctx.restore();
+
+    linePoints.push({x:x+barW2/2,y:padT+chartH-chartH*(cumPct/100)});
+  });
+
+  // Cumulative line
+  if(linePoints.length>1){
+    ctx.beginPath();
+    ctx.moveTo(linePoints[0].x,linePoints[0].y);
+    for(var li=1;li<linePoints.length;li++){ctx.lineTo(linePoints[li].x,linePoints[li].y);}
+    ctx.strokeStyle='#ED1C24';ctx.lineWidth=3;ctx.lineJoin='round';ctx.stroke();
+    // Dots
+    linePoints.forEach(function(pt){
+      ctx.beginPath();ctx.arc(pt.x,pt.y,5,0,Math.PI*2);ctx.fillStyle='#ED1C24';ctx.fill();
+      ctx.beginPath();ctx.arc(pt.x,pt.y,2.5,0,Math.PI*2);ctx.fillStyle=isDark?'#0f1528':'#fff';ctx.fill();
+    });
+  } else if(linePoints.length===1){
+    ctx.beginPath();ctx.arc(linePoints[0].x,linePoints[0].y,5,0,Math.PI*2);ctx.fillStyle='#ED1C24';ctx.fill();
+  }
 }
 
 function toggleFishbone(){
@@ -2275,86 +2354,123 @@ function renderFishbone(returns){
   var div=document.getElementById('fishboneView');
   if(!_fishboneMode){div.style.display='none';return;}
   div.style.display='block';
-  var branches={'Environment':[],'Hardware':[],'Software':[],'Human':[],'Materials':[],'Process':[]};
-  returns.forEach(function(r){var b=FISHBONE_MAP[r.failure]||'Process';branches[b].push(r);});
-  var bKeys=Object.keys(branches);
-  var topBranches=bKeys.slice(0,3);
-  var botBranches=bKeys.slice(3);
 
-  var html='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:16px;">Fishbone / Ishikawa Diagram</div>'+
-    '<div style="position:relative;min-height:320px;padding:20px 0;">';
-  // Spine
-  html+='<div style="position:absolute;top:50%;left:40px;right:40px;height:3px;background:var(--accent);transform:translateY(-50%);"></div>';
-  html+='<div style="position:absolute;top:50%;right:20px;transform:translateY(-50%);font-family:\'Oswald\',sans-serif;font-size:12px;font-weight:700;color:#e05252;text-transform:uppercase;letter-spacing:.08em;background:var(--panel-bg);padding:4px 10px;border:2px solid #e05252;border-radius:4px;">DEVICE FAILURE</div>';
-  // Top branches
-  var spacing=100/(topBranches.length+1);
-  topBranches.forEach(function(bk,i){
-    var xPct=spacing*(i+1);
-    var items=branches[bk];
-    var itemsHtml=items.length?items.slice(0,5).map(function(r){return '<div style="font-size:10px;color:var(--muted);padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="'+r.failure+'">'+r.failure+(r.deviceId!=='N/A'?' #'+r.deviceId:'')+'</div>';}).join(''):'<div style="font-size:10px;color:var(--muted);font-style:italic;">none</div>';
-    html+='<div style="position:absolute;left:'+xPct+'%;top:8px;transform:translateX(-50%);text-align:center;">'+
-      '<div style="font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text);margin-bottom:4px;">'+bk+' <span style="color:var(--accent);">('+items.length+')</span></div>'+
-      '<div style="padding:4px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:4px;">'+itemsHtml+'</div>'+
-      '<div style="width:2px;height:30px;background:var(--accent);margin:4px auto 0;"></div>'+
-    '</div>';
+  // 5 branches: Electrical, Mechanical, Environmental, Process, Other
+  var branchDef=[
+    {name:'Electrical', causes:['Sensor','Battery','Antenna','Software'], color:'#0071BC'},
+    {name:'Mechanical', causes:['Cable','Connector','Enclosure'], color:'#e8a020'},
+    {name:'Environmental', causes:['Water Damage'], color:'#00c49a'},
+    {name:'Process', causes:['No Fault Found','Unknown'], color:'#8844cc'},
+    {name:'Other', causes:[], color:'#A7A9AC'}
+  ];
+  // Count by sub-cause
+  var causeCounts={};
+  FAIL_CATS.forEach(function(c){causeCounts[c]=0;});
+  returns.forEach(function(r){if(causeCounts[r.failure]!==undefined)causeCounts[r.failure]++;else causeCounts[r.failure]=1;});
+  // Assign uncategorized to Other
+  var mapped={};branchDef.forEach(function(b){b.causes.forEach(function(c){mapped[c]=true;});});
+  Object.keys(causeCounts).forEach(function(c){if(!mapped[c]&&causeCounts[c]>0)branchDef[4].causes.push(c);});
+
+  var svgW=900,svgH=420;
+  var spineY=svgH/2,spineL=60,spineR=svgW-80;
+  var isDark=!document.body.classList.contains('light');
+  var textCol=isDark?'#d0e0f0':'#1a1a2e';
+  var mutedCol=isDark?'#8aa4c4':'#4a5568';
+
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="display:block;max-width:100%;" viewBox="0 0 '+svgW+' '+svgH+'">';
+  // Main spine
+  svg+='<line x1="'+spineL+'" y1="'+spineY+'" x2="'+spineR+'" y2="'+spineY+'" stroke="#0071BC" stroke-width="4"/>';
+  // Arrow head
+  svg+='<polygon points="'+(spineR)+','+(spineY)+' '+(spineR-12)+','+(spineY-8)+' '+(spineR-12)+','+(spineY+8)+'" fill="#0071BC"/>';
+  // Effect label
+  svg+='<rect x="'+(spineR-6)+'" y="'+(spineY-18)+'" width="140" height="36" rx="5" fill="none" stroke="#ED1C24" stroke-width="2.5"/>';
+  svg+='<text x="'+(spineR+64)+'" y="'+(spineY+5)+'" text-anchor="middle" font-family="Oswald" font-size="13" font-weight="700" fill="#ED1C24" letter-spacing="1">EQUIPMENT</text>';
+  svg+='<text x="'+(spineR+64)+'" y="'+(spineY+18)+'" text-anchor="middle" font-family="Oswald" font-size="10" font-weight="700" fill="#ED1C24" letter-spacing="1">FAILURE</text>';
+
+  // Branch positions along spine (alternating top/bottom)
+  var branchSpacing=(spineR-spineL-160)/(branchDef.length);
+  branchDef.forEach(function(branch,bi){
+    var bx=spineL+80+bi*branchSpacing;
+    var isTop=(bi%2===0);
+    var branchLen=110;
+    var endY=isTop?spineY-branchLen:spineY+branchLen;
+    var branchTotal=0;
+    branch.causes.forEach(function(c){branchTotal+=causeCounts[c]||0;});
+
+    // Branch line (angled)
+    svg+='<line x1="'+bx+'" y1="'+spineY+'" x2="'+bx+'" y2="'+endY+'" stroke="'+branch.color+'" stroke-width="3" opacity="0.7"/>';
+    // Branch label
+    var labelY=isTop?endY-18:endY+16;
+    svg+='<text x="'+bx+'" y="'+labelY+'" text-anchor="middle" font-family="Oswald" font-size="14" font-weight="700" fill="'+branch.color+'" letter-spacing="1">'+branch.name.toUpperCase()+'</text>';
+    // Count badge
+    var badgeY=isTop?labelY-18:labelY+14;
+    svg+='<rect x="'+(bx-16)+'" y="'+(badgeY-11)+'" width="32" height="20" rx="10" fill="'+branch.color+'" opacity="0.2"/>';
+    svg+='<text x="'+bx+'" y="'+(badgeY+3)+'" text-anchor="middle" font-family="Rajdhani" font-size="13" font-weight="700" fill="'+branch.color+'">'+branchTotal+'</text>';
+
+    // Sub-causes as small branches
+    branch.causes.forEach(function(cause,ci){
+      var subOffset=(ci-(branch.causes.length-1)/2)*50;
+      var subX=bx+subOffset;
+      var subMidY=isTop?spineY-35-ci*18:spineY+35+ci*18;
+      var cnt=causeCounts[cause]||0;
+      // Small line from branch to sub-cause
+      svg+='<line x1="'+bx+'" y1="'+(isTop?spineY-30-ci*16:spineY+30+ci*16)+'" x2="'+(bx+(ci%2===0?-40:40))+'" y2="'+(isTop?spineY-38-ci*16:spineY+38+ci*16)+'" stroke="'+branch.color+'" stroke-width="1.5" opacity="0.4"/>';
+      // Sub-cause text
+      var stx=bx+(ci%2===0?-44:44);
+      var sty=isTop?spineY-38-ci*16:spineY+38+ci*16;
+      var anchor=ci%2===0?'end':'start';
+      svg+='<text x="'+stx+'" y="'+(sty+4)+'" text-anchor="'+anchor+'" font-family="Rajdhani" font-size="11" fill="'+mutedCol+'">'+cause+'</text>';
+      // Count badge
+      if(cnt>0){
+        var cbx=ci%2===0?stx-4:stx+4;
+        svg+='<text x="'+cbx+'" y="'+(sty-8)+'" text-anchor="'+anchor+'" font-family="Rajdhani" font-size="12" font-weight="700" fill="'+branch.color+'">'+cnt+'</text>';
+      }
+    });
   });
-  // Bottom branches
-  var bSpacing=100/(botBranches.length+1);
-  botBranches.forEach(function(bk,i){
-    var xPct=bSpacing*(i+1);
-    var items=branches[bk];
-    var itemsHtml=items.length?items.slice(0,5).map(function(r){return '<div style="font-size:10px;color:var(--muted);padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="'+r.failure+'">'+r.failure+(r.deviceId!=='N/A'?' #'+r.deviceId:'')+'</div>';}).join(''):'<div style="font-size:10px;color:var(--muted);font-style:italic;">none</div>';
-    html+='<div style="position:absolute;left:'+xPct+'%;bottom:8px;transform:translateX(-50%);text-align:center;">'+
-      '<div style="width:2px;height:30px;background:var(--accent);margin:0 auto 4px;"></div>'+
-      '<div style="padding:4px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:4px;">'+itemsHtml+'</div>'+
-      '<div style="font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text);margin-top:4px;">'+bk+' <span style="color:var(--accent);">('+items.length+')</span></div>'+
-    '</div>';
-  });
-  html+='</div></div>';
-  div.innerHTML=html;
+
+  svg+='</svg>';
+  div.innerHTML='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:16px;">Fishbone / Ishikawa Diagram</div>'+
+    '<div style="overflow-x:auto;">'+svg+'</div>'+
+  '</div>';
 }
 
 function renderPartsStats(returns){
   var div=document.getElementById('partsStats');
   if(returns.length===0){div.innerHTML='';return;}
   var total=returns.length;
-  var repairCount=returns.filter(function(r){return r.repairable==='yes';}).length;
-  var repairRate=Math.round(repairCount/total*100);
   var failCounts={};returns.forEach(function(r){failCounts[r.failure]=(failCounts[r.failure]||0)+1;});
   var topFail=Object.keys(failCounts).sort(function(a,b){return failCounts[b]-failCounts[a];})[0]||'N/A';
+  var topCount=failCounts[topFail]||0;
+  var topPct=Math.round(topCount/total*100);
+  // Count unique categories with entries
+  var catCount=Object.keys(failCounts).filter(function(k){return failCounts[k]>0;}).length;
   div.innerHTML=
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">'+
       '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
-        '<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:700;color:var(--text);">'+total+'</div>'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:28px;font-weight:700;color:var(--text);">'+total+'</div>'+
         '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Total Returns</div></div>'+
       '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
-        '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;color:#e8a020;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+topFail+'">'+topFail+'</div>'+
-        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Most Common</div></div>'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;color:#e8a020;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+topFail+'">'+topFail+'</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:13px;color:var(--accent);font-weight:700;">'+topCount+' ('+topPct+'%)</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Top Failure Mode</div></div>'+
       '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
-        '<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:700;color:#00c49a;">'+repairRate+'%</div>'+
-        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Repair Rate</div></div>'+
-      '<div style="padding:12px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;">'+
-        '<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:700;color:#e05252;">'+(total-repairCount)+'</div>'+
-        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Non-Repairable</div></div>'+
+        '<div style="font-family:\'Oswald\',sans-serif;font-size:28px;font-weight:700;color:#ED1C24;">'+catCount+'</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Active Categories</div></div>'+
     '</div>';
 }
 
 function renderPartsTable(returns){
   var div=document.getElementById('partsTable');
   if(returns.length===0){div.innerHTML='';return;}
-  var sevColors={'Critical - Unit Dead':'#e05252','Major - Degraded Function':'#e8a020','Minor - Cosmetic/Non-Critical':'#00c49a'};
   var rows=returns.map(function(r,i){
     var p=PRODUCTS.find(function(x){return x.id===r.type;});
-    var sc=sevColors[r.severity]||'var(--text)';
     return '<tr style="border-bottom:1px solid var(--border);">'+
       '<td style="padding:6px 8px;font-size:12px;">'+r.date+'</td>'+
       '<td style="padding:6px 8px;font-size:12px;font-weight:700;">'+r.deviceId+'</td>'+
       '<td style="padding:6px 8px;font-size:12px;">'+(p?p.label:r.type)+'</td>'+
       '<td style="padding:6px 8px;font-size:12px;">'+r.failure+'</td>'+
-      '<td style="padding:6px 8px;font-size:12px;color:'+sc+';font-weight:600;">'+r.severity.split(' - ')[0]+'</td>'+
-      '<td style="padding:6px 8px;font-size:12px;color:'+(r.repairable==='yes'?'#00c49a':'#e05252')+';">'+r.repairable+'</td>'+
-      '<td style="padding:6px 8px;font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+r.notes+'">'+r.notes+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.notes||'')+'">'+( r.notes||'')+'</td>'+
       (adminMode?'<td style="padding:6px 4px;"><button onclick="deleteReturn('+i+')" style="font-size:10px;padding:2px 6px;border:1px solid #e05252;border-radius:3px;background:transparent;color:#e05252;cursor:pointer;">Del</button></td>':'')+
     '</tr>';
   }).join('');
@@ -2366,8 +2482,6 @@ function renderPartsTable(returns){
         '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Device</th>'+
         '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Product</th>'+
         '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Failure</th>'+
-        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Severity</th>'+
-        '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Repair</th>'+
         '<th style="padding:6px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Notes</th>'+
         (adminMode?'<th></th>':'')+
       '</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
@@ -2494,26 +2608,7 @@ function fleetZoom(delta){
 }
 
 function toggleFleetAdmin(){
-  if(!fleetAdminMode){
-    var pw=prompt('Admin password:');
-    if(pw!==ADMIN_PASSWORD){if(pw!==null)alert('Incorrect.');return;}
-  }
-  fleetAdminMode=!fleetAdminMode;
-  var btn=document.getElementById('fleetAdminBtn');
-  btn.classList.toggle('active',fleetAdminMode);
-  btn.textContent=fleetAdminMode?'\u2B21 Admin On':'\u2B21 Admin Off';
-  var wrap=document.getElementById('fleetAdminWrap');
-  var slider=document.getElementById('fleetAdminSlider');
-  var tab=document.getElementById('fleetAdminTab');
-  if(fleetAdminMode){
-    wrap.style.display='block';
-    _fleetAdminSlideCollapsed=false;
-    slider.style.width='320px';
-    tab.innerHTML='&#9654;';
-  } else {
-    wrap.style.display='none';
-  }
-  renderFleet();
+  toggleAdmin();
 }
 var _fleetAdminSlideCollapsed=false;
 function toggleFleetAdminSlide(){
@@ -2867,8 +2962,7 @@ function renderFleet(){
     filDiv.appendChild(btn);
   });
 
-  var houstonBanner=document.getElementById('fleetHoustonBanner');
-  if(houstonBanner)houstonBanner.style.display=(fleetProduct==='cric')?'block':'none';
+  // Houston banner removed — shown on Availability tab info bar only
 
   var p=PRODUCTS.find(function(x){return x.id===fleetProduct;});
 
