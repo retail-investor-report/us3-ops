@@ -1321,42 +1321,7 @@ function renderStats(){
 
 function renderMCPanel(){
   var panel=document.getElementById('avail-stats-panel');
-  var statuses=[
-    {key:'available',label:'Available',color:'#00c49a',dot:'a'},
-    {key:'reserved', label:'Reserved', color:'#4a5568',dot:'r'},
-    {key:'deployed', label:'Deployed', color:'#3a8fe8',dot:'d'},
-    {key:'maintenance',label:'Maintenance',color:'#e8a020',dot:'m'},
-  ];
-
-  var html='<div class="mc-panel-title"><span>\u25C8 Company-Wide Status</span><div class="mc-panel-line"></div></div><div class="mc-panel-grid">';
-
-  statuses.forEach(function(st){
-    var total=0;
-    var prodRows='';
-    PRODUCTS.forEach(function(p){
-      var cnt=0;
-      if(st.key==='deployed'){
-        cnt=gc('company',p.id,'deployed');
-      } else {
-        OFFICES.forEach(function(o){
-          var prods=o.products||[];
-          if(prods.indexOf(p.id)>=0) cnt+=gc(o.id,p.id,st.key);
-        });
-      }
-      total+=cnt;
-      prodRows+='<div class="mc-stat-row"><span>'+p.icon+' '+p.label+'</span><span class="mc-stat-row-val" style="color:'+st.color+'">'+cnt+'</span></div>';
-    });
-
-    html+='<div class="mc-stat-card">'+
-      '<div class="mc-stat-head"><div class="mc-stat-dot" style="background:'+st.color+'"></div><div class="mc-stat-label">'+st.label+'</div></div>'+
-      '<div class="mc-stat-total" style="color:'+st.color+'">'+total+'</div>'+
-      '<div class="mc-stat-rows">'+prodRows+'</div>'+
-    '</div>';
-  });
-
-  html+='</div>';
-  html+='<div style="margin-top:16px;padding:0 12px 12px;"><div id="fleetOverviewPanel"></div></div>';
-  panel.innerHTML=html;
+  panel.innerHTML='<div id="fleetOverviewPanel"></div>';
   renderFleetOverview();
 }
 
@@ -1381,17 +1346,14 @@ function toggleAdmin(){
 
 // ═══ MISSION CONTROL ═══
 var openJobPin=null;
+var jobPinPos={};
 function renderMC(){renderPins();renderJobPins();renderFleetStatus();}
 
-var JOB_LOCATIONS={
-  'richmond':{x:10,y:32},'west county':{x:10,y:32},
-  'puerto rico':{x:88,y:70},
-  'corona':{x:11,y:42}
-};
-function jobGeoPos(location){
-  var loc=(location||'').toLowerCase();
-  for(var key in JOB_LOCATIONS){if(loc.indexOf(key)>=0)return JOB_LOCATIONS[key];}
-  return {x:50,y:50};
+function jobDefaultPos(index,total){
+  var yStart=20,yEnd=70;
+  var step=total>1?(yEnd-yStart)/(total-1):0;
+  var xAlt=[65,78,68,82,72];
+  return {x:xAlt[index%xAlt.length],y:yStart+step*index};
 }
 function jobDuration(start,end){
   var ms=new Date(end+'T00:00:00')-new Date(start+'T00:00:00');
@@ -1416,9 +1378,12 @@ function renderJobPins(){
     var endDate=new Date(res.end+'T00:00:00');
     if(endDate>=now)activeRes.push({res:res,idx:i});
   });
-  activeRes.forEach(function(item){
+  if(!jobPinPos._loaded){jobPinPos=lv('us3_job_pins')||{};jobPinPos._loaded=true;}
+  activeRes.forEach(function(item,ai){
     var res=item.res,idx=item.idx;
-    var pos=jobGeoPos(res.location);
+    var pinKey='job_'+idx;
+    if(!jobPinPos[pinKey]){var def=jobDefaultPos(ai,activeRes.length);jobPinPos[pinKey]={x:def.x,y:def.y};}
+    var pos=jobPinPos[pinKey];
     var px=pos.x/100*W,py=pos.y/100*H;
     var devKeys=res.devices?Object.keys(res.devices):[];
     var totalDevices=devKeys.reduce(function(s,k){return s+(res.devices[k]||0);},0);
@@ -1434,7 +1399,9 @@ function renderJobPins(){
         '<div class="job-pin-cnt">'+totalDevices+'</div>'+
       '</div>'+
       '<div class="job-pin-lbl" onclick="toggleJobPin('+idx+')" title="'+res.job+'">'+res.job+'</div>'+
+      '<div class="pin-drag">drag to move</div>'+
     '</div>';
+    makeDrag(pin,pinKey,W,H,jobPinPos,function(){sv('us3_job_pins',jobPinPos);},false);
     mc.appendChild(pin);
 
     if(!isOpen)return;
