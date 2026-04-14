@@ -393,8 +393,9 @@ body.light .hamburger span{background:var(--text);}
   .modal{max-width:95vw;padding:16px;}
   .exp-box{min-width:130px;}
   .avail-grid{flex-wrap:wrap;}
-  .page{padding:8px;}
-
+  .page{padding:8px;overflow-y:auto !important;-webkit-overflow-scrolling:touch;}
+  #mc{overflow-y:auto !important;overflow-x:hidden !important;}
+  #page-mc{overflow-y:auto !important;}
   /* TASK 1: MC mobile — hide map, pins, fleet card; show mobile content */
   .mc-bg-img{display:none !important;}
   #mc-overlay{display:none !important;}
@@ -419,6 +420,8 @@ body.light .hamburger span{background:var(--text);}
   body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open #page-sched{right:0 !important;}
   .mobile-avail-query{display:block !important;margin-bottom:16px;}
 
+  /* Fleet Map mobile check availability button */
+  .fleet-mobile-avail{display:block !important;}
   /* TASK 3: Fleet Overview table scroll on mobile */
   #avail-stats-panel{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   #avail-stats-panel table{min-width:500px;}
@@ -690,6 +693,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
       </div>
       <div style="flex:1;"></div>
     </div>
+    <div class="fleet-mobile-avail" style="display:none;padding:6px 22px;"><button onclick="sw('avail',document.querySelector('[data-page=avail]'))" style="width:100%;padding:8px;border-radius:4px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.08);color:var(--accent);">&#x1F4E6; Check Availability &rarr;</button></div>
     <div style="display:flex;flex:1;overflow:hidden;">
       <div id="fleetLabels" style="flex-shrink:0;overflow-y:hidden;border-right:1px solid var(--border);background:var(--nav-bg);"></div>
       <div id="fleetWrap" style="flex:1;overflow:auto;position:relative;">
@@ -1418,6 +1422,19 @@ function loadStorage(){
   var dl=lv('us3_decomm'); if(dl)decommLog=dl;
   var ip=lv('us3_inprod'); if(ip)inProd=ip;
   var rs=lv('us3_res');    if(rs)reservations=rs;
+  // Backfill status field on reservations loaded from older localStorage
+  reservations.forEach(function(r){if(!r.status)r.status='confirmed';});
+  // Ensure Corona job exists (may be missing from older localStorage)
+  if(!reservations.find(function(r){return r.jobNum==='CORO-001';})){
+    reservations.push({type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO-001',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow deployed. Returning to El Cajon maintenance on 4/20.',status:'confirmed'});
+  }
+  // Ensure company_ff_deployed is at least 49 if Corona is active
+  var coronaJob=reservations.find(function(r){return r.jobNum==='CORO-001'&&r.status==='confirmed';});
+  if(coronaJob){
+    var ek='company_ff_deployed';
+    var coronaEnd=new Date(coronaJob.end+'T00:00:00');
+    if(coronaEnd>=new Date()&&(kCounts[ek]===undefined||kCounts[ek]<49))kCounts[ek]=49;
+  }
   OFFICES.forEach(function(o){if(!pinPos[o.id])pinPos[o.id]={x:DEF_PIN[o.id].x,y:DEF_PIN[o.id].y};});
   // Defaults: per-location (available, reserved, maintenance only)
   var defs={
@@ -2836,152 +2853,143 @@ function renderFleet(){
   var totalUnits=totalAvail+totalRes+totalMaint+totalDeployed;
   if(totalUnits<1)totalUnits=1;
 
-  // Compute week starts for 52 weeks starting from current week (Sunday)
-  var now=new Date();
-  var weekStart=new Date(now);weekStart.setDate(weekStart.getDate()-weekStart.getDay());
-  weekStart.setHours(0,0,0,0);
-  var numCols=52;
-  var weeks=[];
-  for(var w=0;w<numCols;w++){
-    var ws=new Date(weekStart);ws.setDate(ws.getDate()+w*7);
-    weeks.push(ws);
-  }
-  var week0ms=weekStart.getTime();
-  var msPerWeek=7*24*60*60*1000;
-
-  // Build asset list: each unit gets an ID, a base status, and a location
-  // "reserved" in inventory = units earmarked for jobs. All start GREEN on timeline.
+  // STEP 1 — Build asset rows from inventory
   var assets=[];
   var unitNum=1;
-  // Available units
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
-    var cnt=gc(o.id,fleetProduct,'available');
-    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
+    var avail=gc(o.id,fleetProduct,'available');
+    var resv=gc(o.id,fleetProduct,'reserved');
+    var maint=gc(o.id,fleetProduct,'maintenance');
+    // Available + reserved inventory rows all start GREEN on timeline
+    for(var i=0;i<avail+resv;i++){assets.push({id:unitNum++,baseStatus:'available',office:o.label,officeId:o.id});}
+    // Maintenance rows start ORANGE
+    for(var i=0;i<maint;i++){assets.push({id:unitNum++,baseStatus:'maintenance',office:o.label,officeId:o.id});}
   });
-  // Reserved units (earmarked = available on timeline until a job stamps them)
-  OFFICES.forEach(function(o){
-    var prods=o.products||[];
-    if(prods.indexOf(fleetProduct)<0)return;
-    var cnt=gc(o.id,fleetProduct,'reserved');
-    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'available',loc:o.label,officeId:o.id});}
-  });
-  // Deployed units — find matching job for tooltip and transition
-  var deployJob=null;
-  for(var di=0;di<reservations.length;di++){
-    var dr=reservations[di];
-    if(dr.status!=='confirmed')continue;
-    if(dr.type!==fleetProduct&&!(dr.devices&&dr.devices[fleetProduct]>0))continue;
-    var drs=new Date(dr.start+'T00:00:00'),dre=new Date(dr.end+'T00:00:00');
-    if(drs<=now&&dre>=now){deployJob=dr;break;}
-  }
-  var deployJobInfo=deployJob?{job:deployJob.job||deployJob.jobNum,jobNum:deployJob.jobNum,start:deployJob.start,end:deployJob.end}:null;
-  var deployEndCol=-1;
-  if(deployJob){
-    var deployEndMs=new Date(deployJob.end+'T00:00:00').getTime();
-    deployEndCol=Math.min(51,Math.floor((deployEndMs-week0ms)/msPerWeek));
-  }
-  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,base:'deployed',loc:deployJob?(deployJob.location||'Field'):'Field',officeId:'company',deployJobInfo:deployJobInfo,deployEndCol:deployEndCol,deployReturnLoc:deployJob?deployJob.loc:null});}
-  // Maintenance units — orange all 52 weeks
-  OFFICES.forEach(function(o){
-    var prods=o.products||[];
-    if(prods.indexOf(fleetProduct)<0)return;
-    var cnt=gc(o.id,fleetProduct,'maintenance');
-    for(var i=0;i<cnt;i++){assets.push({id:unitNum++,base:'maintenance',loc:o.label,officeId:o.id});}
-  });
+  // Company deployed rows start BLUE
+  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,baseStatus:'deployed',office:'Deployed',officeId:'company'});}
 
+  // STEP 2 — Initialize the 2D status grid
   var numRows=assets.length;
-
-  // Get confirmed reservations that use this product
-  var prodRes=reservations.filter(function(r){
-    if(r.status!=='confirmed')return false;
-    if(r.type===fleetProduct)return true;
-    if(r.devices&&r.devices[fleetProduct]>0)return true;
-    return false;
-  });
-  // For the deploy job, reduce stamp qty by deployed count
-  // But if the job's source office has reserved inventory for this product, stamp those too
-  if(deployJob){
-    prodRes.forEach(function(r){
-      if(r.jobNum===deployJob.jobNum){
-        var fullQty=(r.devices&&r.devices[fleetProduct])?r.devices[fleetProduct]:(r.type===fleetProduct?r.qty:0);
-        var srcRes=gc(deployJob.loc||'',fleetProduct,'reserved');
-        if(srcRes>0){
-          // Source office has reserved inventory for this job — stamp those rows
-          r._fleetStampQty=srcRes;
-        } else {
-          // No reserved inventory — all units are deployed, skip stamping
-          r._fleetStampQty=Math.max(0,fullQty-totalDeployed);
-        }
-      }
-    });
-  }
-
-  // Initialize grid: every dot starts at its base status
+  var numCols=52;
   var assetWeekStatus=[];
   var assetWeekJobInfo=[];
   for(var r=0;r<numRows;r++){
     assetWeekStatus[r]=[];
     assetWeekJobInfo[r]=[];
     for(var c=0;c<numCols;c++){
-      if(assets[r].base==='deployed'){
-        // Deployed→maintenance transition: blue until job ends, then orange
-        var eCol=assets[r].deployEndCol;
-        if(eCol>=0&&c>eCol){
-          assetWeekStatus[r][c]='maintenance';
-          assetWeekJobInfo[r][c]=null;
-        } else {
-          assetWeekStatus[r][c]='deployed';
-          assetWeekJobInfo[r][c]=assets[r].deployJobInfo||null;
-        }
-      } else {
-        assetWeekStatus[r][c]=assets[r].base;
-        assetWeekJobInfo[r][c]=null;
-      }
+      assetWeekStatus[r][c]=assets[r].baseStatus;
+      assetWeekJobInfo[r][c]=null;
     }
   }
 
-  // Stamp reservations onto available-base rows for exact date ranges
-  prodRes.forEach(function(res){
-    var rsMs=new Date(res.start+'T00:00:00').getTime();
-    var reMs=new Date(res.end+'T00:00:00').getTime();
-    // How many units of THIS product does this job need?
-    var qtyNeeded=0;
-    if(res._fleetStampQty!==undefined){
-      qtyNeeded=res._fleetStampQty;
-    } else if(res.devices&&res.devices[fleetProduct]>0){
-      qtyNeeded=res.devices[fleetProduct];
+  // STEP 3 — Calculate week boundaries (Monday-based)
+  var week0=new Date();
+  week0.setHours(0,0,0,0);
+  var dayOfWeek=week0.getDay();
+  week0.setDate(week0.getDate()-(dayOfWeek===0?6:dayOfWeek-1));
+  var week0ms=week0.getTime();
+  var msPerWeek=7*24*60*60*1000;
+  var weeks=[];
+  for(var w=0;w<numCols;w++){
+    var ws=new Date(week0ms+w*msPerWeek);
+    weeks.push(ws);
+  }
+
+  // STEP 4 — Stamp confirmed reservations onto available-base rows
+  var confirmedRes=reservations.filter(function(r){return r.status==='confirmed';});
+
+  // First, identify which active job corresponds to deployed units, so we can
+  // subtract deployed count from its stamp qty (those units are blue rows, not green)
+  var nowMs=Date.now();
+
+  confirmedRes.forEach(function(res){
+    // Check if this reservation involves the current product
+    var qtyForProduct=0;
+    if(res.devices&&res.devices[fleetProduct]){
+      qtyForProduct=res.devices[fleetProduct];
     } else if(res.type===fleetProduct){
-      qtyNeeded=res.qty||0;
+      qtyForProduct=res.qty||0;
     }
-    if(qtyNeeded<=0)return;
-    // Calculate column range
-    var startCol=Math.max(0,Math.floor((rsMs-week0ms)/msPerWeek));
-    var endCol=Math.min(51,Math.floor((reMs-week0ms)/msPerWeek));
-    if(startCol>51||endCol<0)return;
+    if(qtyForProduct<=0)return;
+
+    // If this job is currently active AND there are deployed units,
+    // reduce stamp qty by deployed count — ONLY if the source office has no
+    // reserved inventory (which would represent additional earmarked units)
+    var startMs=new Date(res.start).getTime();
+    var endMs=new Date(res.end).getTime();
+    var isActive=(nowMs>=startMs&&nowMs<=endMs);
+    var stampQty=qtyForProduct;
+    if(isActive&&totalDeployed>0&&res.type===fleetProduct){
+      var srcReserved=gc(res.loc||'',fleetProduct,'reserved');
+      if(srcReserved<=0){
+        // No reserved inventory at source — all units are deployed, skip
+        stampQty=Math.max(0,qtyForProduct-totalDeployed);
+      }
+      // If source HAS reserved inventory, stamp those rows (don't subtract)
+    }
+    if(stampQty<=0)return;
+
+    var startCol=Math.max(0,Math.floor((startMs-week0ms)/msPerWeek));
+    var endCol=Math.min(numCols-1,Math.floor((endMs-week0ms)/msPerWeek));
+    if(startCol>numCols-1||endCol<0)return;
 
     var jobInfo={job:res.job||res.jobNum,jobNum:res.jobNum,start:res.start,end:res.end};
-    // Assign to available-base assets
-    var assigned=0;
-    for(var r=0;r<numRows&&assigned<qtyNeeded;r++){
-      if(assets[r].base!=='available')continue;
-      // Check if this asset is free for all covered weeks
-      var free=true;
+    // Stamp onto available-base rows
+    var stamped=0;
+    for(var r=0;r<numRows&&stamped<stampQty;r++){
+      if(assets[r].baseStatus!=='available')continue;
+      var rowFree=true;
       for(var c=startCol;c<=endCol;c++){
-        if(assetWeekStatus[r][c]!=='available'){free=false;break;}
+        if(assetWeekStatus[r][c]!=='available'){rowFree=false;break;}
       }
-      if(free){
-        for(var c=startCol;c<=endCol;c++){
-          assetWeekStatus[r][c]='reserved_'+res.job;
-          assetWeekJobInfo[r][c]=jobInfo;
+      if(!rowFree)continue;
+      for(var c=startCol;c<=endCol;c++){
+        assetWeekStatus[r][c]='reserved';
+        assetWeekJobInfo[r][c]=jobInfo;
+      }
+      stamped++;
+    }
+  });
+
+  // Tag deployed rows with matching active job info
+  confirmedRes.forEach(function(res){
+    var startMs=new Date(res.start).getTime();
+    var endMs=new Date(res.end).getTime();
+    if(nowMs<startMs||nowMs>endMs)return;
+    var qtyForProduct=0;
+    if(res.devices&&res.devices[fleetProduct]) qtyForProduct=res.devices[fleetProduct];
+    else if(res.type===fleetProduct) qtyForProduct=res.qty||0;
+    if(qtyForProduct<=0)return;
+    var jobInfo={job:res.job||res.jobNum,jobNum:res.jobNum,start:res.start,end:res.end};
+    var tagged=0;
+    for(var r=0;r<numRows&&tagged<qtyForProduct;r++){
+      if(assets[r].baseStatus!=='deployed')continue;
+      if(assetWeekJobInfo[r][0]!==null)continue;
+      for(var c=0;c<numCols;c++){
+        assetWeekJobInfo[r][c]=jobInfo;
+      }
+      tagged++;
+    }
+  });
+
+  // Deployed→maintenance transition for jobs ending within view
+  confirmedRes.forEach(function(res){
+    var endMs=new Date(res.end).getTime();
+    var endCol=Math.floor((endMs-week0ms)/msPerWeek);
+    if(endCol<0||endCol>=numCols-1)return;
+    for(var r=0;r<numRows;r++){
+      if(assets[r].baseStatus!=='deployed')continue;
+      if(assetWeekJobInfo[r][0]&&assetWeekJobInfo[r][0].jobNum===res.jobNum){
+        for(var c=endCol+1;c<numCols;c++){
+          assetWeekStatus[r][c]='maintenance';
         }
-        assigned++;
       }
     }
   });
 
-  // Store in globals for canvas rendering and tooltip
+  // STEP 5 — Store globals
   _fleetAssets=assets;
   _fleetWeekStatus=assetWeekStatus;
   _fleetWeekJobInfo=assetWeekJobInfo;
@@ -3032,7 +3040,7 @@ function renderFleet(){
     var lbl=document.createElement('div');
     lbl.style.cssText='height:'+cellSize+'px;line-height:'+cellSize+'px;font-family:"Rajdhani",sans-serif;font-size:'+lblFontSize+'px;color:var(--text);padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
     lbl.textContent=p.icon+' #'+assets[r].id;
-    lbl.title=p.label+' #'+assets[r].id+' ('+assets[r].loc+') — '+assets[r].base;
+    lbl.title=p.label+' #'+assets[r].id+' ('+assets[r].office+') — '+assets[r].baseStatus;
     labels.appendChild(lbl);
   }
 
@@ -3072,13 +3080,37 @@ function renderFleet(){
       else if(st==='maintenance'){statusLabel='Maintenance';statusColor='#e8a020';detail='Under Assessment';}
       else{statusLabel='Available';statusColor='#00c49a';}
       var weekLabel=weeks[col].toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      showFleetDotTooltip(e,'#'+asset.id,statusLabel,statusColor,detail,asset.loc,weekLabel);
+      showFleetDotTooltip(e,'#'+asset.id,statusLabel,statusColor,detail,asset.office,weekLabel);
     } else {
       _lastTipRow=-1;_lastTipCol=-1;
       hideFleetDotTooltip();
     }
   };
   canvas.onmouseleave=function(){_lastTipRow=-1;_lastTipCol=-1;hideFleetDotTooltip();};
+
+  // Touch support for mobile: drag to pan, pinch to zoom
+  var _touchStartDist=0;
+  canvas.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      var dx=e.touches[0].clientX-e.touches[1].clientX;
+      var dy=e.touches[0].clientY-e.touches[1].clientY;
+      _touchStartDist=Math.sqrt(dx*dx+dy*dy);
+    }
+  },{passive:false});
+  canvas.addEventListener('touchmove',function(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      var dx=e.touches[0].clientX-e.touches[1].clientX;
+      var dy=e.touches[0].clientY-e.touches[1].clientY;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      var delta=dist-_touchStartDist;
+      if(Math.abs(delta)>20){
+        fleetZoom(delta>0?2:-2);
+        _touchStartDist=dist;
+      }
+    }
+  },{passive:false});
 }
 
 function fmtShort(dateStr){
