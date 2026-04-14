@@ -293,7 +293,7 @@ body.light .dc-table td{border-bottom-color:rgba(0,0,0,.08);}
 .pj-card-arrow{font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-top:auto;letter-spacing:.1em;}
 
 /* MODAL */
-.modal-ov{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:600;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px);}
+.modal-ov{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:10000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px);}
 .modal-ov.open{display:flex;}
 .modal{background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:2px solid var(--accent);border-radius:6px;padding:22px;width:100%;max-width:380px;box-shadow:0 0 50px var(--glow);}
 .modal h2{font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px;}
@@ -355,7 +355,7 @@ body.light .fleet-btn-text{color:#1a1a2e!important;}
 .hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg);}
 .hamburger.open span:nth-child(2){opacity:0;}
 .hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg);}
-.mobile-menu{display:none;position:absolute;top:100%;left:0;right:0;background:var(--nav-bg);border-bottom:1.5px solid var(--accent);backdrop-filter:blur(16px);flex-direction:column;z-index:999;max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.mobile-menu{display:none;position:absolute;top:100%;left:0;right:0;background:var(--nav-bg);border-bottom:1.5px solid var(--accent);backdrop-filter:blur(16px);flex-direction:column;z-index:9000;max-height:0;overflow:hidden;transition:max-height .3s ease;}
 .mobile-menu.open{max-height:600px;}
 .mobile-menu .mm-item{display:flex;align-items:center;gap:10px;padding:12px 20px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);cursor:pointer;border-bottom:1px solid var(--border);transition:all .15s;user-select:none;}
 .mobile-menu .mm-item:hover,.mobile-menu .mm-item:active{color:var(--text);background:rgba(26,100,180,.1);}
@@ -367,15 +367,22 @@ body.light .fleet-btn-text{color:#1a1a2e!important;}
 body.light .mobile-menu{background:rgba(245,248,252,.98);border-bottom-color:var(--accent);}
 body.light .hamburger span{background:var(--text);}
 
+/* Mobile MC content — hidden on desktop */
+.mc-mobile{display:none;}
+
+/* Mobile Avail Query — hidden on desktop */
+.mobile-avail-query{display:none;}
+
 @media (max-width: 768px) {
-  #nav{height:50px;flex-wrap:nowrap;position:relative;}
+  #nav{height:50px;flex-wrap:nowrap;position:relative;z-index:8000;}
   .ntabs{display:none !important;}
   .nb{padding:4px 8px !important;border-right:none !important;min-width:auto !important;}
   .nb img{height:26px !important;}
   .nr{margin-left:auto;padding:0 6px !important;gap:8px !important;}
   .nr #themeBtn{display:none !important;}
-  .hamburger{display:flex !important;}
-  .mobile-menu{display:flex;}
+  .nr #userDisplay{display:none !important;}
+  .hamburger{display:flex !important;z-index:9001;}
+  .mobile-menu{display:flex;background:var(--nav-bg);-webkit-backdrop-filter:blur(16px);}
   .mc-bottom{flex-direction:column;gap:12px;}
   .dc-board{flex-wrap:wrap;justify-content:center;}
   .dc-card{min-width:120px;max-width:160px;}
@@ -387,6 +394,34 @@ body.light .hamburger span{background:var(--text);}
   .exp-box{min-width:130px;}
   .avail-grid{flex-wrap:wrap;}
   .page{padding:8px;}
+
+  /* TASK 1: MC mobile — hide map, pins, fleet card; show mobile content */
+  .mc-bg-img{display:none !important;}
+  #mc-overlay{display:none !important;}
+  #spoke-svg{display:none !important;}
+  .pin{display:none !important;}
+  .job-pin{display:none !important;}
+  .job-exp-card{display:none !important;}
+  .exp-card{display:none !important;}
+  #fleetStatusCard{display:none !important;}
+  .admin-bar{display:none !important;}
+  .edit-overlay{display:none !important;}
+  #mc-map{min-height:0 !important;flex:0 0 auto !important;overflow:visible !important;}
+  .mc-mobile{display:block !important;padding:16px;}
+  .mc-mobile-card{border:1px solid var(--borderb);border-radius:8px;background:var(--card-bg);padding:14px 16px;margin-bottom:12px;}
+  .mc-mobile-card h3{font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px;}
+  .mc-mobile-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--text);}
+  .mc-mobile-row:last-child{border-bottom:none;}
+  .mc-mobile-val{font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;}
+
+  /* TASK 2: Hide fixed sidebar on mobile, show inline query on Avail */
+  #sharedQuerySidebar{display:none !important;}
+  body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open #page-sched{right:0 !important;}
+  .mobile-avail-query{display:block !important;margin-bottom:16px;}
+
+  /* TASK 3: Fleet Overview table scroll on mobile */
+  #avail-stats-panel{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  #avail-stats-panel table{min-width:500px;}
 }
 
 .job-pin{position:absolute;z-index:18;transform:translate(-50%,-50%);cursor:pointer;}
@@ -508,6 +543,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
         </div>
       </div>
     </div>
+    <div class="mc-mobile" id="mcMobile"></div>
   </div>
 </div>
 
@@ -523,6 +559,20 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     </div>
     <div id="availAdminBanner" style="display:none;margin-bottom:16px;padding:10px 16px;border-left:3px solid var(--accent);background:rgba(26,127,232,.06);border-radius:0 6px 6px 0;">
       <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--accent);font-weight:600;">ADMIN: Edit inventory below. Changes update Fleet Map and Mission Control automatically.</div>
+    </div>
+    <div class="mobile-avail-query" id="mobileAvailQuery">
+      <div onclick="toggleMobileAvailQuery()" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid var(--borderb);border-radius:6px;background:var(--card-bg);cursor:pointer;user-select:none;">
+        <span style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">Check Availability</span>
+        <span id="mobileAvailArrow" style="font-size:14px;color:var(--accent);transition:transform .2s;">&#9660;</span>
+      </div>
+      <div id="mobileAvailForm" style="display:none;padding:14px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--panel-bg);">
+        <div class="form-row"><label>Product</label><select id="maq-type"><option value="hach">Hach</option><option value="ff">Flex Flow</option><option value="rg">Rain Gauge</option><option value="cric">Level</option></select></div>
+        <div class="form-row"><label>Quantity</label><input id="maq-qty" type="number" min="1" value="3" style="font-size:15px;font-weight:600;"></div>
+        <div class="form-row"><label>Start Date</label><input id="maq-start" type="date"></div>
+        <div class="form-row"><label>End Date</label><input id="maq-end" type="date"></div>
+        <button onclick="runMobileAvailQuery()" style="width:100%;padding:10px;border-radius:4px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.1);color:var(--accent);margin-top:8px;">Check Availability</button>
+        <div id="maq-result" style="min-height:40px;margin-top:8px;"></div>
+      </div>
     </div>
     <div id="avail-stats-panel" style="margin-bottom:24px;background:var(--panel-bg);padding:10px 22px;display:flex;flex-direction:column;gap:8px;border-radius:10px;border:1px solid var(--borderb);"></div>
     <div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:8px 16px;background:rgba(0,113,188,.06);border-left:3px solid #0071BC;border-radius:0 4px 4px 0;">
@@ -1461,7 +1511,7 @@ function toggleAdmin(){
 // ═══ MISSION CONTROL ═══
 var openJobPin=null;
 var jobPinPos={};
-function renderMC(){renderPins();renderJobPins();renderFleetStatus();}
+function renderMC(){renderPins();renderJobPins();renderFleetStatus();renderMCMobile();}
 
 function jobDefaultPos(index,total){
   var yStart=20,yEnd=70;
@@ -3062,8 +3112,13 @@ function buildMobileMenu(){
     var page=tab.getAttribute('data-page');
     var isActive=tab.classList.contains('active');
     var icon=tab.querySelector('.ti');
-    var iconHtml=icon?'<span class="ti">'+icon.innerHTML+'</span>':'';
-    var label=tab.textContent.trim();
+    var iconHtml=icon?'<span class="ti">'+icon.textContent+'</span>':'';
+    // Get label text without icon or badge spans
+    var label='';
+    tab.childNodes.forEach(function(n){
+      if(n.nodeType===3) label+=n.textContent;
+    });
+    label=label.trim();
     items+='<div class="mm-item'+(isActive?' active':'')+'" data-page="'+page+'" onclick="mobileMenuSelect(\''+page+'\',this)">'+iconHtml+label+'</div>';
   });
   items+='<div class="mm-divider"></div>';
@@ -3241,6 +3296,81 @@ function us3ShowUser(email){
 function us3SignOut(){
   localStorage.removeItem('us3_user_email');
   location.reload();
+}
+
+// ═══ MOBILE MC CONTENT ═══
+function renderMCMobile(){
+  var el=document.getElementById('mcMobile');
+  if(!el)return;
+  var products=[
+    {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
+    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'hach',label:'Hach',color:'#e8e8f0'},
+    {id:'rg',label:'Rain Gauge',color:'#44bb88'}
+  ];
+  var offices=['elcajon','downey','puertorico','houston'];
+  // Fleet Status table
+  var fleetRows=products.map(function(p){
+    var deployed=gc('company',p.id,'deployed')||0;
+    var activeJobs=reservations.filter(function(r){return r.type===p.id&&r.status==='confirmed';}).length;
+    var reserved=0;
+    offices.forEach(function(o){reserved+=gc(o,p.id,'reserved');});
+    return '<div class="mc-mobile-row"><span style="color:'+p.color+';font-weight:600;">'+p.label+'</span><span><span class="mc-mobile-val" style="color:#0071BC;">'+deployed+'</span> dep &middot; <span class="mc-mobile-val">'+activeJobs+'</span> jobs &middot; <span class="mc-mobile-val" style="color:#4a5568;">'+reserved+'</span> res</span></div>';
+  }).join('');
+  var html='<div class="mc-mobile-card"><h3>Fleet Status</h3>'+fleetRows+'</div>';
+  // Office summary cards
+  var officeList=[
+    {id:'elcajon',label:'El Cajon',icon:'\uD83C\uDFED',products:['ff','cric','hach','rg']},
+    {id:'downey',label:'Downey',icon:'\uD83D\uDCCD',products:['ff','cric','hach','rg']},
+    {id:'puertorico',label:'Puerto Rico',icon:'\uD83C\uDF34',products:['ff','cric','rg']}
+  ];
+  officeList.forEach(function(off){
+    var rows2=off.products.map(function(pid){
+      var p=products.find(function(x){return x.id===pid;});
+      var avail=gc(off.id,pid,'available');
+      var maint=gc(off.id,pid,'maintenance');
+      var res2=gc(off.id,pid,'reserved');
+      return '<div class="mc-mobile-row"><span>'+(p?p.label:pid)+'</span><span><span class="mc-mobile-val" style="color:var(--available);">'+avail+'</span> avail'+
+        (res2>0?' &middot; <span class="mc-mobile-val" style="color:var(--reserved);">'+res2+'</span> res':'')+
+        (maint>0?' &middot; <span class="mc-mobile-val" style="color:var(--maintenance);">'+maint+'</span> maint':'')+
+        '</span></div>';
+    }).join('');
+    html+='<div class="mc-mobile-card"><h3>'+off.icon+' '+off.label+'</h3>'+rows2+'</div>';
+  });
+  el.innerHTML=html;
+}
+
+// ═══ MOBILE AVAIL QUERY ═══
+function toggleMobileAvailQuery(){
+  var form=document.getElementById('mobileAvailForm');
+  var arrow=document.getElementById('mobileAvailArrow');
+  if(form.style.display==='none'||form.style.display===''){
+    form.style.display='block';
+    arrow.style.transform='rotate(180deg)';
+    // Set default dates
+    var s=document.getElementById('maq-start');
+    var e2=document.getElementById('maq-end');
+    if(s&&!s.value){var today=new Date();s.value=today.toISOString().split('T')[0];var fut=new Date(today);fut.setDate(fut.getDate()+60);e2.value=fut.toISOString().split('T')[0];}
+  } else {
+    form.style.display='none';
+    arrow.style.transform='rotate(0deg)';
+  }
+}
+function runMobileAvailQuery(){
+  var pid=document.getElementById('maq-type').value;
+  var qty=parseInt(document.getElementById('maq-qty').value)||1;
+  var start=document.getElementById('maq-start').value;
+  var end=document.getElementById('maq-end').value;
+  if(!start||!end){alert('Please enter start and end dates.');return;}
+  var p=PRODUCTS.find(function(x){return x.id===pid;});
+  var totalAvail=0;
+  OFFICES.forEach(function(o){if(o.products&&o.products.indexOf(pid)>=0)totalAvail+=gc(o.id,pid,'available');});
+  var resDiv=document.getElementById('maq-result');
+  if(totalAvail>=qty){
+    resDiv.innerHTML='<div style="padding:10px;border-radius:4px;border:1px solid var(--available);background:rgba(0,196,154,.08);font-family:\'Rajdhani\',sans-serif;font-size:13px;color:var(--available);font-weight:600;">\u2714 '+totalAvail+' '+(p?p.label:pid)+' available ('+qty+' requested)</div>';
+  } else {
+    resDiv.innerHTML='<div style="padding:10px;border-radius:4px;border:1px solid #e05252;background:rgba(224,82,82,.08);font-family:\'Rajdhani\',sans-serif;font-size:13px;color:#e05252;font-weight:600;">\u2718 Only '+totalAvail+' '+(p?p.label:pid)+' available ('+qty+' requested)</div>';
+  }
 }
 
 // ═══ TAB BADGES ═══
