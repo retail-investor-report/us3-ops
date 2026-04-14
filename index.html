@@ -454,9 +454,9 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="ntab" data-page="avail" onclick="sw('avail',this)"><span class="ti">📦</span>Availability</div>
     <div class="ntab" data-page="fleet" onclick="sw('fleet',this)"><span class="ti">🛰</span>Fleet Map</div>
     <div class="ntab" data-page="assetmap" onclick="sw('assetmap',this)"><span class="ti">🔵</span>Asset Map</div>
-    <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule</div>
+    <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
-    <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Parts Inventory</div>
+    <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Parts Inventory<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -586,13 +586,11 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
         <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Failure Point Analysis</div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">Device return tracking and failure categorization</div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="admin-btn" id="fishboneToggle" onclick="toggleFishbone()" style="font-size:11px;padding:5px 12px;cursor:pointer;">Fishbone View</button>
-      </div>
+      <div style="display:flex;gap:8px;"></div>
     </div>
     <div id="partsAdminForm" style="display:none;margin-bottom:20px;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);"></div>
     <div id="paretoChart" style="margin-bottom:20px;"></div>
-    <div id="fishboneView" style="display:none;margin-bottom:20px;"></div>
+    <div id="fishboneView" style="margin-bottom:20px;"></div>
     <div id="partsStats" style="margin-bottom:16px;"></div>
     <div id="partsTable"></div>
   </div>
@@ -616,20 +614,12 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--maintenance)"></div>Maintenance</div>
       </div>
       <div style="flex:1;"></div>
-      <div class="admin-btn" id="fleetAdminBtn" onclick="toggleFleetAdmin()">⬡ Admin Off</div>
     </div>
     <div style="display:flex;flex:1;overflow:hidden;">
       <div id="fleetLabels" style="flex-shrink:0;overflow-y:hidden;border-right:1px solid var(--border);background:var(--nav-bg);"></div>
       <div id="fleetWrap" style="flex:1;overflow:auto;position:relative;">
         <div id="fleetHeader" style="position:sticky;top:0;z-index:10;background:var(--nav-bg);border-bottom:1px solid var(--border);display:flex;"></div>
         <canvas id="fleetCanvas" style="display:block;"></canvas>
-        <canvas id="fleetSelCanvas" style="display:none;position:absolute;top:0;left:0;pointer-events:none;"></canvas>
-      </div>
-      <div id="fleetAdminWrap" style="display:none;flex-shrink:0;position:relative;">
-        <div id="fleetAdminTab" onclick="toggleFleetAdminSlide()" style="position:absolute;left:-22px;top:50%;transform:translateY(-50%);width:22px;height:52px;background:var(--panel-bg);border:1.5px solid var(--borderb);border-right:none;border-radius:6px 0 0 6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);transition:color .15s,background .15s;z-index:5;" onmouseover="this.style.color='var(--accent)';this.style.background='rgba(26,127,232,.08)'" onmouseout="this.style.color='var(--muted)';this.style.background='var(--panel-bg)'">&#9664;</div>
-        <div id="fleetAdminSlider" style="width:320px;overflow:hidden;transition:width .25s ease;">
-          <div id="fleetAdminPanel" style="width:320px;border-left:1.5px solid var(--borderb);background:var(--panel-bg);overflow-y:auto;padding:0;display:flex;flex-direction:column;height:100%;"></div>
-        </div>
       </div>
     </div>
   </div>
