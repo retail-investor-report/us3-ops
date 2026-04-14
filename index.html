@@ -439,7 +439,6 @@ body.light .hamburger span{background:var(--text);}
     <div class="av-title">Availability</div>
     <div class="av-sub">Kit counts by location and product type</div>
     <div class="av-grid" id="avGrid"></div>
-    <div id="avCompanyStrip"></div>
   </div>
 </div>
 
@@ -1646,8 +1645,6 @@ function renderAvail(){
   depCard.innerHTML='<div class="av-card-head"><div class="av-card-icon" style="color:var(--deployed)">\uD83C\uDF0D</div><div class="av-card-name" style="color:var(--deployed)">Company Deployed</div>'+editDepBtn+'</div><table class="av-table"><thead><tr>'+depHeads+'</tr></thead><tbody>'+depRows+'</tbody></table>';
   grid.appendChild(depCard);
 
-  // Company-wide asset dot strip
-  renderCompanyStrip();
 }
 
 function openEditDeployed(){
@@ -1681,37 +1678,6 @@ saveEditPanel=function(){
   _origSave();
 };
 
-function renderCompanyStrip(){
-  var strip=document.getElementById('avCompanyStrip');
-  var statuses=['available','reserved','deployed','maintenance'];
-  var html='<div class="av-company"><div class="av-company-head"><div style="font-size:18px">\uD83D\uDD35</div><div class="av-company-title">Company-Wide Asset Map</div><div class="av-company-legend">';
-  statuses.forEach(function(st){
-    var colors={available:'var(--available)',reserved:'var(--reserved)',deployed:'var(--deployed)',maintenance:'var(--maintenance)'};
-    html+='<div class="av-company-leg"><div class="av-company-leg-dot" style="background:'+colors[st]+'"></div>'+st+'</div>';
-  });
-  html+='</div></div><div class="av-company-body">';
-
-  PRODUCTS.forEach(function(p){
-    html+='<div class="av-prod-row"><div class="av-prod-label"><span class="prod-icon">'+p.icon+'</span> '+p.label+'</div><div class="av-prod-dots">';
-    statuses.forEach(function(st){
-      var total=0;
-      if(st==='deployed'){
-        total=gc('company',p.id,'deployed');
-      } else {
-        OFFICES.forEach(function(o){
-          var prods=o.products||[];
-          if(prods.indexOf(p.id)>=0) total+=gc(o.id,p.id,st);
-        });
-      }
-      for(var i=0;i<total;i++){
-        html+='<div class="av-prod-dot '+st+'" title="'+p.label+' \u2014 '+st+'">'+p.icon+'</div>';
-      }
-    });
-    html+='</div></div>';
-  });
-  html+='</div></div>';
-  strip.innerHTML=html;
-}
 
 // ═══ ASSET MAP PAGE ═══
 function amZoom(delta){
