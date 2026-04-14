@@ -389,17 +389,28 @@ body.light .hamburger span{background:var(--text);}
   .page{padding:8px;}
 }
 
-.job-dot{position:absolute;z-index:15;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;display:flex;flex-direction:column;align-items:center;}
-.job-dot-circle{width:13px;height:13px;border-radius:50%;background:#0071BC;border:1.5px solid rgba(0,113,188,.6);animation:jobPulse 2.5s ease-in-out infinite;position:relative;}
-.job-dot-label{margin-top:3px;font-family:'Rajdhani',sans-serif;font-size:10px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.5);white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.15;}
-.job-tooltip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(4,9,26,.92);border:1px solid var(--accent);border-radius:6px;padding:8px 12px;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--text);white-space:nowrap;z-index:25;pointer-events:none;backdrop-filter:blur(10px);line-height:1.5;display:none;}
-.job-dot:hover .job-tooltip{display:block;}
-.job-tooltip-name{font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
-.job-tooltip-row{color:var(--muted);}
-.job-tooltip-row span{color:var(--text);font-weight:600;}
-@keyframes jobPulse{0%,100%{box-shadow:0 0 4px 1px rgba(0,113,188,.5)}50%{box-shadow:0 0 10px 4px rgba(0,113,188,.25)}}
-body.light .job-dot-label{color:#1a1a2e;text-shadow:0 1px 3px rgba(255,255,255,.8),0 0 2px rgba(255,255,255,.5);}
-body.light .job-tooltip{background:rgba(255,255,255,.95);border-color:rgba(0,113,188,.3);}
+.job-pin{position:absolute;z-index:18;transform:translate(-50%,-50%);cursor:pointer;}
+.job-pin-body{display:flex;flex-direction:column;align-items:center;}
+.job-pin-circle{width:52px;height:52px;border-radius:50%;border:2px solid #ED1C24;background:var(--panel-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .2s;position:relative;backdrop-filter:blur(6px);cursor:pointer;}
+.job-pin.open .job-pin-circle,.job-pin-circle:hover{border-color:#ED1C24;box-shadow:0 0 20px rgba(237,28,36,.35);}
+.job-pin-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:50%;border:1.5px solid #ED1C24;opacity:0;animation:jobRing 2.5s ease-out infinite;pointer-events:none;}
+@keyframes jobRing{0%{transform:translate(-50%,-50%) scale(1);opacity:.5}100%{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+.job-pin-ico{font-size:18px;line-height:1;}
+.job-pin-cnt{font-family:'Rajdhani',sans-serif;font-size:10px;color:var(--muted);margin-top:1px;}
+.job-pin-lbl{margin-top:5px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:rgba(237,28,36,.12);padding:2px 8px;border-radius:3px;border:1px solid rgba(237,28,36,.3);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;color:var(--text);cursor:pointer;}
+.job-exp-card{position:absolute;transform:translate(-50%,-50%);z-index:25;pointer-events:all;opacity:0;transition:opacity .28s ease;}
+.job-exp-card.vis{opacity:1;}
+.job-exp-box{width:185px;border-radius:8px;border:1.5px solid rgba(237,28,36,.4);background:var(--panel-bg);backdrop-filter:blur(14px);overflow:hidden;}
+.job-exp-head{padding:10px 12px 7px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(237,28,36,.2);}
+.job-exp-bar{height:2px;width:100%;background:rgba(237,28,36,.25);}
+.job-exp-rows{padding:8px 12px 10px;}
+.job-exp-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(237,28,36,.06);}
+.job-exp-row:last-child{border-bottom:none;}
+.job-exp-row-lbl{font-family:'Rajdhani',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.job-exp-row-val{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:var(--text);text-align:right;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+body.light .job-pin-circle{background:rgba(255,255,255,.95);border-color:#ED1C24;}
+body.light .job-pin-lbl{background:rgba(237,28,36,.06);border-color:rgba(237,28,36,.2);}
+body.light .job-exp-box{background:rgba(255,255,255,.97);}
 
 </style>
 </head>
@@ -1369,7 +1380,8 @@ function toggleAdmin(){
 }
 
 // ═══ MISSION CONTROL ═══
-function renderMC(){renderJobDots();renderPins();renderFleetStatus();}
+var openJobPin=null;
+function renderMC(){renderPins();renderJobPins();renderFleetStatus();}
 
 var JOB_LOCATIONS={
   'richmond':{x:10,y:32},'west county':{x:10,y:32},
@@ -1381,32 +1393,106 @@ function jobGeoPos(location){
   for(var key in JOB_LOCATIONS){if(loc.indexOf(key)>=0)return JOB_LOCATIONS[key];}
   return {x:50,y:50};
 }
-function renderJobDots(){
+function jobDuration(start,end){
+  var ms=new Date(end+'T00:00:00')-new Date(start+'T00:00:00');
+  var days=Math.round(ms/86400000);
+  if(days>=60)return Math.round(days/30)+' months';
+  return days+' days';
+}
+function toggleJobPin(idx){
+  if(openJobPin===idx){openJobPin=null;} else {openJobPin=idx;openPin=null;}
+  renderPins();renderJobPins();
+}
+function renderJobPins(){
   var mc=document.getElementById('mc-map');
-  mc.querySelectorAll('.job-dot').forEach(function(e){e.remove();});
+  mc.querySelectorAll('.job-pin,.job-exp-card').forEach(function(e){e.remove();});
+  var svg=document.getElementById('spoke-svg');
+  svg.querySelectorAll('.job-spoke').forEach(function(e){e.remove();});
   var mr=mc.getBoundingClientRect();
   var W=mr.width,H=mr.height;
   var now=new Date();now.setHours(0,0,0,0);
-  reservations.forEach(function(res){
+  var activeRes=[];
+  reservations.forEach(function(res,i){
     var endDate=new Date(res.end+'T00:00:00');
-    if(endDate<now)return;
+    if(endDate>=now)activeRes.push({res:res,idx:i});
+  });
+  activeRes.forEach(function(item){
+    var res=item.res,idx=item.idx;
     var pos=jobGeoPos(res.location);
     var px=pos.x/100*W,py=pos.y/100*H;
-    var devList=[];
-    if(res.devices){for(var dk in res.devices){var pr=PRODUCTS.find(function(x){return x.id===dk;});devList.push((pr?pr.label:dk)+': '+res.devices[dk]);}}
-    var dot=document.createElement('div');
-    dot.className='job-dot';
-    dot.style.left=px+'px';dot.style.top=py+'px';
-    dot.innerHTML='<div class="job-dot-circle"></div>'+
-      '<div class="job-dot-label">'+res.job+'</div>'+
-      '<div class="job-tooltip">'+
-        '<div class="job-tooltip-name">'+res.job+'</div>'+
-        '<div class="job-tooltip-row">Location: <span>'+res.location+'</span></div>'+
-        (devList.length?'<div class="job-tooltip-row">Devices: <span>'+devList.join(', ')+'</span></div>':'')+
-        '<div class="job-tooltip-row">Dates: <span>'+res.start+' → '+res.end+'</span></div>'+
-        (res.sites?'<div class="job-tooltip-row">Sites: <span>'+res.sites+'</span></div>':'')+
+    var devKeys=res.devices?Object.keys(res.devices):[];
+    var totalDevices=devKeys.reduce(function(s,k){return s+(res.devices[k]||0);},0);
+    var isOpen=openJobPin===idx;
+
+    var pin=document.createElement('div');
+    pin.className='job-pin'+(isOpen?' open':'');
+    pin.style.left=px+'px';pin.style.top=py+'px';
+    pin.innerHTML='<div class="job-pin-body">'+
+      '<div class="job-pin-circle" onclick="toggleJobPin('+idx+')">'+
+        (isOpen?'<div class="job-pin-ring"></div>':'')+
+        '<div class="job-pin-ico">\uD83D\uDCCD</div>'+
+        '<div class="job-pin-cnt">'+totalDevices+'</div>'+
+      '</div>'+
+      '<div class="job-pin-lbl" onclick="toggleJobPin('+idx+')" title="'+res.job+'">'+res.job+'</div>'+
+    '</div>';
+    mc.appendChild(pin);
+
+    if(!isOpen)return;
+
+    var cards=devKeys.filter(function(k){return res.devices[k]>0;}).map(function(k){
+      var p=PRODUCTS.find(function(x){return x.id===k;});
+      return {id:k,label:p?p.label:k,color:p?p.color:'#ccc',qty:res.devices[k]};
+    });
+    if(cards.length===0)cards=[{id:'info',label:'Job Info',color:'#ED1C24',qty:totalDevices}];
+
+    var angles=cardAngles(cards);
+    var CARD_W=185,CARD_H=200;
+    var BASE_R=Math.min(W,H)*0.22;
+
+    cards.forEach(function(card,i){
+      var aDeg=angles[i];
+      var rad=aDeg*Math.PI/180;
+      var dx=Math.cos(rad),dy=Math.sin(rad);
+      var r=BASE_R;
+      if(dx>0.01) r=Math.min(r,(W-CARD_W/2-px)/dx);
+      if(dx<-0.01)r=Math.min(r,(px-CARD_W/2)/(-dx));
+      if(dy>0.01) r=Math.min(r,(H-CARD_H/2-py)/dy);
+      if(dy<-0.01)r=Math.min(r,(py-CARD_H/2)/(-dy));
+      r=Math.max(100,r-10);
+
+      var sx=px+dx*r,sy=py+dy*r;
+
+      var ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1',px);ln.setAttribute('y1',py);ln.setAttribute('x2',sx);ln.setAttribute('y2',sy);
+      ln.setAttribute('stroke','rgba(237,28,36,.4)');ln.setAttribute('stroke-width','1.5');ln.setAttribute('stroke-dasharray','5 3');
+      ln.classList.add('job-spoke');
+      svg.appendChild(ln);
+      var dot2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot2.setAttribute('cx',sx);dot2.setAttribute('cy',sy);dot2.setAttribute('r','4');
+      dot2.setAttribute('fill','#ED1C24');dot2.setAttribute('opacity','.7');
+      dot2.classList.add('job-spoke');
+      svg.appendChild(dot2);
+
+      var logoHtml=prodLogoHtml(card.id,28);
+      if(!logoHtml)logoHtml='<span style="font-size:16px;font-weight:700;color:'+card.color+'">'+card.label+'</span>';
+
+      var wrap=document.createElement('div');
+      wrap.className='job-exp-card vis';
+      wrap.style.left=sx+'px';wrap.style.top=sy+'px';
+      wrap.innerHTML='<div class="job-exp-box">'+
+        '<div class="job-exp-head">'+logoHtml+'<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:'+card.color+'">'+card.label+'</div></div>'+
+        '<div class="job-exp-bar"></div>'+
+        '<div class="job-exp-rows">'+
+          '<div class="job-exp-row"><span class="job-exp-row-lbl">Quantity</span><span class="job-exp-row-val" style="font-size:18px;font-family:\'Oswald\',sans-serif;color:#ED1C24;">'+card.qty+'</span></div>'+
+          '<div class="job-exp-row"><span class="job-exp-row-lbl">Customer</span><span class="job-exp-row-val">'+res.job+'</span></div>'+
+          '<div class="job-exp-row"><span class="job-exp-row-lbl">Location</span><span class="job-exp-row-val">'+res.location+'</span></div>'+
+          '<div class="job-exp-row"><span class="job-exp-row-lbl">Start</span><span class="job-exp-row-val">'+new Date(res.start+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</span></div>'+
+          '<div class="job-exp-row"><span class="job-exp-row-lbl">End</span><span class="job-exp-row-val">'+new Date(res.end+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</span></div>'+
+          '<div class="job-exp-row"><span class="job-exp-row-lbl">Duration</span><span class="job-exp-row-val">'+jobDuration(res.start,res.end)+'</span></div>'+
+        '</div>'+
       '</div>';
-    mc.appendChild(dot);
+      mc.appendChild(wrap);
+    });
   });
 }
 
@@ -1587,7 +1673,7 @@ function renderPins(){
   });
 }
 
-function togglePin(id){openPin=openPin===id?null:id;renderPins();}
+function togglePin(id){openPin=openPin===id?null:id;if(openPin)openJobPin=null;renderPins();renderJobPins();}
 
 // ═══ DRAG ═══
 function makeDrag(el,id,W,H,posObj,saveFn,isPin){
@@ -2816,8 +2902,9 @@ function sendResRequest(){
 
 // ═══ CLOSE ON OUTSIDE CLICK ═══
 document.addEventListener('click',function(e){
-  if(openPin&&!e.target.closest('.pin')&&!e.target.closest('.exp-card')){
-    openPin=null;renderPins();
+  var clickedPin=e.target.closest('.pin')||e.target.closest('.exp-card')||e.target.closest('.job-pin')||e.target.closest('.job-exp-card');
+  if((openPin||openJobPin!==null)&&!clickedPin){
+    openPin=null;openJobPin=null;renderPins();renderJobPins();
   }
   // Dismiss fleet dot popup on outside click
   var dp=document.getElementById('fleetDotPopup');
