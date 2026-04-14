@@ -517,7 +517,12 @@ body.light .hamburger span{background:var(--text);}
         <canvas id="fleetCanvas" style="display:block;"></canvas>
         <canvas id="fleetSelCanvas" style="display:none;position:absolute;top:0;left:0;pointer-events:none;"></canvas>
       </div>
-      <div id="fleetAdminPanel" style="display:none;flex:0 0 320px;border-left:1.5px solid var(--borderb);background:var(--panel-bg);overflow-y:auto;padding:0;flex-direction:column;"></div>
+      <div id="fleetAdminWrap" style="display:none;flex-shrink:0;position:relative;">
+        <div id="fleetAdminTab" onclick="toggleFleetAdminSlide()" style="position:absolute;left:-22px;top:50%;transform:translateY(-50%);width:22px;height:52px;background:var(--panel-bg);border:1.5px solid var(--borderb);border-right:none;border-radius:6px 0 0 6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);transition:color .15s,background .15s;z-index:5;" onmouseover="this.style.color='var(--accent)';this.style.background='rgba(26,127,232,.08)'" onmouseout="this.style.color='var(--muted)';this.style.background='var(--panel-bg)'">&#9664;</div>
+        <div id="fleetAdminSlider" style="width:320px;overflow:hidden;transition:width .25s ease;">
+          <div id="fleetAdminPanel" style="width:320px;border-left:1.5px solid var(--borderb);background:var(--panel-bg);overflow-y:auto;padding:0;display:flex;flex-direction:column;height:100%;"></div>
+        </div>
+      </div>
       <div id="fleetQuery" style="flex:0 0 280px;border-left:1.5px solid var(--borderb);background:var(--panel-bg);overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:14px;">
         <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Availability Query</div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--text);line-height:1.5;">Check if devices are available for a date range.</div>
@@ -2032,9 +2037,31 @@ function toggleFleetAdmin(){
   var btn=document.getElementById('fleetAdminBtn');
   btn.classList.toggle('active',fleetAdminMode);
   btn.textContent=fleetAdminMode?'\u2B21 Admin On':'\u2B21 Admin Off';
-  var panel=document.getElementById('fleetAdminPanel');
-  panel.style.display=fleetAdminMode?'flex':'none';
+  var wrap=document.getElementById('fleetAdminWrap');
+  var slider=document.getElementById('fleetAdminSlider');
+  var tab=document.getElementById('fleetAdminTab');
+  if(fleetAdminMode){
+    wrap.style.display='block';
+    _fleetAdminSlideCollapsed=false;
+    slider.style.width='320px';
+    tab.innerHTML='&#9654;';
+  } else {
+    wrap.style.display='none';
+  }
   renderFleet();
+}
+var _fleetAdminSlideCollapsed=false;
+function toggleFleetAdminSlide(){
+  _fleetAdminSlideCollapsed=!_fleetAdminSlideCollapsed;
+  var slider=document.getElementById('fleetAdminSlider');
+  var tab=document.getElementById('fleetAdminTab');
+  if(_fleetAdminSlideCollapsed){
+    slider.style.width='0px';
+    tab.innerHTML='&#9664;';
+  } else {
+    slider.style.width='320px';
+    tab.innerHTML='&#9654;';
+  }
 }
 
 function getFleetOverrides(){
