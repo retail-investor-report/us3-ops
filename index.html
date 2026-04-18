@@ -1424,10 +1424,6 @@ function loadStorage(){
   var rs=lv('us3_res');    if(rs)reservations=rs;
   // Backfill status field on reservations loaded from older localStorage
   reservations.forEach(function(r){if(!r.status)r.status='confirmed';});
-  // Ensure Corona job exists (may be missing from older localStorage)
-  if(!reservations.find(function(r){return r.jobNum==='CORO-001';})){
-    reservations.push({type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO-001',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow deployed. Returning to El Cajon maintenance on 4/20.',status:'confirmed'});
-  }
   // Ensure company_ff_deployed is at least 49 if Corona is active
   var coronaJob=reservations.find(function(r){return r.jobNum==='CORO-001'&&r.status==='confirmed';});
   if(coronaJob){
@@ -2295,7 +2291,7 @@ function declineReservation(idx){
 function deleteReservation(idx){
   if(!reservations[idx])return;
   if(!confirm('Delete "'+reservations[idx].job+'"? This cannot be undone.'))return;
-  reservations.splice(idx,1);sv('us3_res',reservations);renderSched();
+  reservations.splice(idx,1);sv('us3_res',reservations);updateTabBadges();renderSched();
 }
 function editReservation(idx){
   var res=reservations[idx];if(!res)return;
