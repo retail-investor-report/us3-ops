@@ -96,6 +96,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .pin-ico{font-size:22px;}.pin-cnt{font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-top:1px;}
 .pin-lbl{margin-top:8px;font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:rgba(4,7,13,.92);padding:3px 12px;border-radius:3px;border:1px solid var(--border);white-space:nowrap;cursor:pointer;}
 .pin-drag{font-family:'Rajdhani',sans-serif;font-size:7px;color:var(--muted);opacity:.45;margin-top:3px;}
+.pin-edit-btn{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;box-shadow:0 0 10px var(--glow);border:1.5px solid var(--panel-bg);z-index:2;transition:transform .15s;}
+.pin-edit-btn:hover{transform:scale(1.15);}
 
 /* EXPANDED CARD */
 .exp-card{position:absolute;transform:translate(-50%,-50%);z-index:25;pointer-events:all;opacity:0;transition:opacity .28s ease;}
@@ -122,9 +124,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .exp-link-text{font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;color:var(--accent);padding:6px 0 2px;text-align:center;}
 
 /* edit overlay */
-.edit-overlay{position:absolute;inset:0;z-index:200;display:none;pointer-events:all;background:var(--overlay-bg);}
-.edit-overlay.open{display:block;}
-.edit-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:2px solid var(--accent);border-radius:6px;padding:20px;width:340px;box-shadow:0 0 40px var(--glow);backdrop-filter:blur(16px);max-height:82vh;overflow-y:auto;}
+.edit-overlay{position:fixed;inset:0;z-index:600;display:none;pointer-events:all;background:var(--overlay-bg);}
+.edit-overlay.open{display:flex;align-items:center;justify-content:center;}
+.edit-panel{position:relative;background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:2px solid var(--accent);border-radius:6px;padding:20px;width:340px;box-shadow:0 0 40px var(--glow);backdrop-filter:blur(16px);max-height:82vh;overflow-y:auto;}
 .ep-title{font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;color:var(--accent);}
 .ep-section{font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin:12px 0 6px;padding-top:8px;border-top:1px solid var(--border);}
 .ep-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
@@ -146,7 +148,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .am-filter{font-family:'Oswald',sans-serif;font-size:14px;padding:8px 18px;border:1px solid var(--border);border-radius:18px;color:var(--muted);cursor:pointer;transition:all .15s;user-select:none;text-transform:uppercase;letter-spacing:.1em;}
 .am-filter:hover{border-color:var(--borderb);color:var(--text);}
 .am-filter.active{border-color:var(--accent);color:var(--accent);background:rgba(26,127,232,.08);}
-.am-legend{display:flex;gap:14px;margin-left:auto;align-items:center;flex-wrap:wrap;}
+.am-legend{display:flex;gap:14px;margin-left:16px;align-items:center;flex-wrap:wrap;}
 .am-leg{display:flex;align-items:center;gap:5px;font-family:'Rajdhani',sans-serif;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
 .am-leg-dot{width:10px;height:10px;border-radius:50%;}
 .am-canvas{flex:1;overflow:auto;padding:20px 24px;}
@@ -559,7 +561,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
       <svg id="spoke-svg"></svg>
       <div class="admin-bar">
         <div class="admin-btn" id="adminBtn" onclick="toggleAdmin()">⬡ Admin Off</div>
-        <div class="admin-btn" id="editBtn" onclick="openEditPanel()" style="display:none">✎ Edit</div>
+        <!-- editBtn removed — edit is now initiated from the pin when selected in admin mode -->
       </div>
       <div id="fleetStatusCard" style="position:absolute;top:14px;right:14px;z-index:60;width:360px;padding:14px 16px;"></div>
       <div class="edit-overlay" id="editOverlay" onclick="closeEditPanel(event)">
@@ -602,12 +604,12 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
       </div>
     </div>
     <div id="avail-stats-panel" style="margin-bottom:24px;background:var(--panel-bg);padding:10px 22px;display:flex;flex-direction:column;gap:8px;border-radius:10px;border:1px solid var(--borderb);"></div>
-    <div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:8px 16px;background:rgba(0,113,188,.06);border-left:3px solid #0071BC;border-radius:0 4px 4px 0;">
+    <div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:10px 22px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:10px;">
       <div style="display:flex;align-items:center;gap:16px;">
-        <span style="font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Houston Level Project</span>
-        <span style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span>
+        <span style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);">&#9672; Houston Level Project</span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">~3,000 Cricket Deployed</span>
       </div>
-      <a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--accent);text-decoration:none;letter-spacing:.04em;">View Portal →</a>
+      <a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:6px 14px;border:1px solid var(--accent);border-radius:6px;">View Portal &rarr;</a>
     </div>
     <div class="av-grid" id="avGrid"></div>
   </div>
@@ -741,9 +743,15 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="modal-sub">Schedule a kit reservation</div>
     <div class="form-row"><label>Job Name</label><input id="res-job" placeholder="e.g. Riverside Q2 Study"></div>
     <div class="form-row"><label>Location / City</label><input id="res-location" placeholder="e.g. Richmond, CA"></div>
-    <div class="form-row"><label>Product</label><select id="res-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>
     <div class="form-row"><label>Source Office</label><select id="res-loc"><option value="elcajon">El Cajon</option><option value="downey">Downey</option><option value="puertorico">Puerto Rico</option></select></div>
-    <div class="form-row"><label>Quantity</label><input id="res-qty" type="number" min="1" value="1"></div>
+    <div class="form-row" style="display:block;"><label style="margin-bottom:6px;">Devices</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#3a8fe8;letter-spacing:.06em;min-width:78px;">Flex Flow</span><input id="res-dev-ff" type="number" min="0" value="0" style="flex:1;"></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#e8a020;letter-spacing:.06em;min-width:78px;">Level</span><input id="res-dev-cric" type="number" min="0" value="0" style="flex:1;"></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#A7A9AC;letter-spacing:.06em;min-width:78px;">Hach</span><input id="res-dev-hach" type="number" min="0" value="0" style="flex:1;"></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#44bb88;letter-spacing:.06em;min-width:78px;">Rain Gauge</span><input id="res-dev-rg" type="number" min="0" value="0" style="flex:1;"></div>
+      </div>
+    </div>
     <div class="form-row"><label>Sites</label><input id="res-sites" type="number" min="1" value="1"></div>
     <div class="form-row"><label>Start Date</label><input id="res-start" type="date"></div>
     <div class="form-row"><label>End Date</label><input id="res-end" type="date"></div>
@@ -1412,6 +1420,69 @@ var reservations=[
   {type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO-001',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow deployed. Returning to El Cajon maintenance on 4/20.',status:'confirmed'},
 ];
 
+// Deployed count is CALCULATED from active confirmed reservations — no manual storage.
+function getActiveJobsForProduct(productId){
+  var today=new Date();today.setHours(0,0,0,0);
+  var t=today.getTime();
+  return reservations.filter(function(r){
+    if(r.status!=='confirmed')return false;
+    var startMs=Date.parse(r.start),endMs=Date.parse(r.end);
+    if(t<startMs||t>endMs)return false;
+    var qty=0;
+    if(r.devices&&typeof r.devices==='object')qty=r.devices[productId]||0;
+    else if(r.type===productId)qty=r.qty||0;
+    return qty>0;
+  });
+}
+function getDeployedCount(productId){
+  var today=new Date();today.setHours(0,0,0,0);
+  var t=today.getTime();
+  var count=0;
+  reservations.forEach(function(r){
+    if(r.status!=='confirmed')return;
+    var startMs=Date.parse(r.start),endMs=Date.parse(r.end);
+    if(t<startMs||t>endMs)return;
+    if(r.devices&&typeof r.devices==='object'){
+      count+=(r.devices[productId]||0);
+    } else if(r.type===productId){
+      count+=(r.qty||0);
+    }
+  });
+  return count;
+}
+// When a confirmed job's end date passes, auto-add its device qtys to the
+// source office's maintenance count. Each job only processed once.
+function processExpiredJobs(){
+  var today=new Date();today.setHours(0,0,0,0);
+  var t=today.getTime();
+  var processed=lv('us3_processed_expired')||[];
+  var changed=false;
+  reservations.forEach(function(r){
+    if(r.status!=='confirmed')return;
+    if(processed.indexOf(r.jobNum)!==-1)return;
+    var endMs=Date.parse(r.end);
+    if(t<=endMs)return;
+    var devs={};
+    if(r.devices&&typeof r.devices==='object'){
+      Object.keys(r.devices).forEach(function(k){devs[k]=r.devices[k];});
+    } else if(r.type){
+      devs[r.type]=r.qty||0;
+    }
+    Object.keys(devs).forEach(function(pid){
+      var qty=devs[pid]||0;
+      if(qty<=0)return;
+      var key=r.loc+'_'+pid+'_maintenance';
+      kCounts[key]=(kCounts[key]||0)+qty;
+    });
+    processed.push(r.jobNum);
+    changed=true;
+  });
+  if(changed){
+    sv('us3_counts',kCounts);
+    sv('us3_processed_expired',processed);
+  }
+}
+
 // ═══ STORAGE ═══
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function lv(k){try{var s=localStorage.getItem(k);return s?JSON.parse(s):null;}catch(e){return null;}}
@@ -1424,13 +1495,8 @@ function loadStorage(){
   var rs=lv('us3_res');    if(rs)reservations=rs;
   // Backfill status field on reservations loaded from older localStorage
   reservations.forEach(function(r){if(!r.status)r.status='confirmed';});
-  // Ensure company_ff_deployed is at least 49 if Corona is active
-  var coronaJob=reservations.find(function(r){return r.jobNum==='CORO-001'&&r.status==='confirmed';});
-  if(coronaJob){
-    var ek='company_ff_deployed';
-    var coronaEnd=new Date(coronaJob.end+'T00:00:00');
-    if(coronaEnd>=new Date()&&(kCounts[ek]===undefined||kCounts[ek]<49))kCounts[ek]=49;
-  }
+  // Deployed is now calculated from active reservations (getDeployedCount) —
+  // no manual Corona backfill needed, no company_*_deployed stored values.
   OFFICES.forEach(function(o){if(!pinPos[o.id])pinPos[o.id]={x:DEF_PIN[o.id].x,y:DEF_PIN[o.id].y};});
   // Defaults: per-location (available, reserved, maintenance only)
   var defs={
@@ -1446,8 +1512,6 @@ function loadStorage(){
     puertorico_cric_available:4,puertorico_cric_reserved:0,puertorico_cric_maintenance:0,
     puertorico_rg_available:0,puertorico_rg_reserved:4,puertorico_rg_maintenance:0,
     houston_ff_available:0,   houston_hach_available:0,
-    // Company-wide deployed
-    company_ff_deployed:49, company_cric_deployed:17, company_hach_deployed:0, company_rg_deployed:0,
   };
   OFFICES.forEach(function(o){
     var prods=o.products||['ff','hach'];
@@ -1456,10 +1520,9 @@ function loadStorage(){
       if(kCounts[k]===undefined)kCounts[k]=defs[k]||0;
     });});
   });
-  // Company deployed
-  PRODUCTS.forEach(function(p){
-    var k='company_'+p.id+'_deployed';
-    if(kCounts[k]===undefined)kCounts[k]=defs[k]||0;
+  // Wipe any stale manual company_*_deployed values — deployed is now calculated.
+  Object.keys(kCounts).forEach(function(k){
+    if(k.indexOf('company_')===0&&k.indexOf('_deployed')>0)delete kCounts[k];
   });
 }
 
@@ -1498,7 +1561,7 @@ function renderStats(){
       a+=gc(o.id,pid,'available');r+=gc(o.id,pid,'reserved');m+=gc(o.id,pid,'maintenance');
     });
   });
-  PRODUCTS.forEach(function(p){d+=gc('company',p.id,'deployed');});
+  PRODUCTS.forEach(function(p){d+=getDeployedCount(p.id);});
 
   var totalAssets=a+r+d;
   var totalInProd=inProd.reduce(function(s,x){return s+x.qty;},0);
@@ -1533,8 +1596,7 @@ function toggleAdmin(){
   // Update all admin buttons
   var mcBtn=document.getElementById('adminBtn');
   if(mcBtn){mcBtn.classList.toggle('active',adminMode);mcBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
-  var editBtn=document.getElementById('editBtn');
-  if(editBtn)editBtn.style.display=adminMode?'block':'none';
+  // (editBtn removed — per-pin pencil handles edit trigger)
   var avBtn=document.getElementById('availAdminBtn');
   if(avBtn){avBtn.classList.toggle('active',adminMode);avBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
   var schBtn=document.getElementById('schedAdminBtn');
@@ -1682,8 +1744,8 @@ function renderFleetStatus(){
   ];
   var offices=['elcajon','downey','puertorico','houston'];
   var rows=products.map(function(p){
-    var deployed=gc('company',p.id,'deployed')||0;
-    var activeJobs=reservations.filter(function(r){return r.type===p.id;}).length;
+    var deployed=getDeployedCount(p.id);
+    var activeJobs=getActiveJobsForProduct(p.id).length;
     var reserved=0;
     offices.forEach(function(o){reserved+=gc(o,p.id,'reserved');});
     var logoHtml=prodLogoHtml(p.id,22);
@@ -1745,11 +1807,14 @@ function renderPins(){
     pin.className='pin'+(isOpen?' open':'');
     pin.id='pin-'+off.id;
     pin.style.left=px+'px'; pin.style.top=py+'px';
+    var editPencil=(adminMode&&isOpen&&off.products)?
+      '<div class="pin-edit-btn" title="Edit inventory" onclick="event.stopPropagation();openEditOffice(\''+off.id+'\')">✎</div>':'';
     pin.innerHTML='<div class="pin-body">'+
       '<div class="pin-circle" onclick="togglePin(\''+off.id+'\')">'+
         (isOpen?'<div class="pin-ring"></div>':'')+
         '<div class="pin-ico">'+off.icon+'</div>'+
         '<div class="pin-cnt">'+tot+'</div>'+
+        editPencil+
       '</div>'+
       '<div class="pin-lbl" onclick="togglePin(\''+off.id+'\')">'+off.label+'</div>'+
       '<div class="pin-drag">drag to move</div>'+
@@ -1845,11 +1910,21 @@ function makeDrag(el,id,W,H,posObj,saveFn,isPin){
 }
 
 // ═══ EDIT PANEL ═══
+function openEditOffice(offId){
+  if(!adminMode){toggleAdmin();if(!adminMode)return;}
+  var off=OFFICES.find(function(o){return o.id===offId;});
+  if(!off||!off.products){alert('This office has no editable inventory.');return;}
+  openPin=offId; // used by other code paths that sync MC state
+  _renderOfficeEditPanel(off);
+}
 function openEditPanel(){
   if(!adminMode||!openPin)return;
   var off=OFFICES.find(function(o){return o.id===openPin;});
   if(!off||!off.products){alert('Select a standard office pin first.');return;}
-  editingOff=openPin;
+  _renderOfficeEditPanel(off);
+}
+function _renderOfficeEditPanel(off){
+  editingOff=off.id;
   document.getElementById('epTitle').textContent='Edit \u2014 '+off.label;
   var rows=document.getElementById('epRows');rows.innerHTML='';
   (off.products||[]).forEach(function(pid){
@@ -1948,7 +2023,7 @@ function renderAvail(){
       var cells=LOC_STATUS.map(function(st){return '<td class="'+st+'">'+gc(off.id,pid,st)+'</td>';}).join('');
       return '<tr><td>'+p.label+'</td>'+cells+'</tr>';
     }).join('');
-    card.innerHTML='<div class="av-card-head"><div class="av-card-icon">'+off.icon+'</div><div class="av-card-name">'+off.label+'</div><button class="av-edit-btn" onclick="editingOff=\''+off.id+'\';openEditPanel()">✎ Edit</button></div><table class="av-table"><thead><tr>'+heads+'</tr></thead><tbody>'+rows+'</tbody></table>';
+    card.innerHTML='<div class="av-card-head"><div class="av-card-icon">'+off.icon+'</div><div class="av-card-name">'+off.label+'</div><button class="av-edit-btn" onclick="openEditOffice(\''+off.id+'\')">✎ Edit</button></div><table class="av-table"><thead><tr>'+heads+'</tr></thead><tbody>'+rows+'</tbody></table>';
     grid.appendChild(card);
   });
 
@@ -1956,44 +2031,12 @@ function renderAvail(){
   var depCard=document.createElement('div');depCard.className='av-card';
   var depHeads='<th>Product</th><th>Deployed</th>';
   var depRows=PRODUCTS.map(function(p){
-    return '<tr><td>'+p.label+'</td><td class="deployed">'+gc('company',p.id,'deployed')+'</td></tr>';
+    return '<tr><td>'+p.label+'</td><td class="deployed">'+getDeployedCount(p.id)+'</td></tr>';
   }).join('');
-  var editDepBtn=adminMode?'<button class="av-edit-btn" style="display:block" onclick="openEditDeployed()">✎ Edit</button>':'<button class="av-edit-btn" onclick="openEditDeployed()">✎ Edit</button>';
-  depCard.innerHTML='<div class="av-card-head"><div class="av-card-icon" style="color:var(--deployed)">\uD83C\uDF0D</div><div class="av-card-name" style="color:var(--deployed)">Company Deployed</div>'+editDepBtn+'</div><table class="av-table"><thead><tr>'+depHeads+'</tr></thead><tbody>'+depRows+'</tbody></table>';
+  depCard.innerHTML='<div class="av-card-head"><div class="av-card-icon" style="color:var(--deployed)">\uD83C\uDF0D</div><div class="av-card-name" style="color:var(--deployed)">Company Deployed</div><span class="av-edit-btn" style="cursor:default;color:var(--muted);border-color:transparent;background:transparent;">auto</span></div><table class="av-table"><thead><tr>'+depHeads+'</tr></thead><tbody>'+depRows+'</tbody></table>';
   grid.appendChild(depCard);
 
 }
-
-function openEditDeployed(){
-  if(!adminMode){toggleAdmin();if(!adminMode)return;}
-  document.getElementById('epTitle').textContent='Edit \u2014 Company Deployed';
-  var rows=document.getElementById('epRows');rows.innerHTML='';
-  PRODUCTS.forEach(function(p){
-    var sec=document.createElement('div');sec.className='ep-section';sec.style.color=p.color;sec.textContent=p.label;rows.appendChild(sec);
-    var key='company_'+p.id+'_deployed';
-    var row=document.createElement('div');row.className='ep-row';
-    row.innerHTML='<div class="ep-label">Deployed</div><input class="ep-input" id="ep-'+key+'" type="number" min="0" value="'+(kCounts[key]||0)+'">';
-    rows.appendChild(row);
-  });
-  editingOff='_deployed_';
-  document.getElementById('editOverlay').classList.add('open');
-}
-
-// Override save to handle deployed edit
-var _origSave=saveEditPanel;
-saveEditPanel=function(){
-  if(editingOff==='_deployed_'){
-    PRODUCTS.forEach(function(p){
-      var key='company_'+p.id+'_deployed';
-      var el=document.getElementById('ep-'+key);if(el)kCounts[key]=Math.max(0,parseInt(el.value)||0);
-    });
-    sv('us3_counts',kCounts);
-    document.getElementById('editOverlay').classList.remove('open');
-    renderStats();renderAvail();
-    return;
-  }
-  _origSave();
-};
 
 
 // ═══ ASSET MAP PAGE ═══
@@ -2015,50 +2058,114 @@ function renderAssetMap(){
   canvas.style.setProperty('--am-dot-size',amDotSize+'px');
   var label=document.getElementById('amSizeLabel');if(label)label.textContent=amDotSize+'px';
   var tip=document.getElementById('dotTip');
-  var statuses=['available','reserved','deployed','maintenance'];
 
-  OFFICES.forEach(function(off){
-    if(!off.products)return;
-    var sec=document.createElement('div');sec.className='am-section';
-    sec.innerHTML='<div class="am-section-title"><span>'+off.icon+' '+off.label+'</span><div class="am-section-line"></div></div>';
+  var showOffices=(amFilterState==='all'||amFilterState==='available'||amFilterState==='reserved'||amFilterState==='maintenance');
+  var showJobs=(amFilterState==='all'||amFilterState==='deployed');
 
-    (off.products||[]).forEach(function(pid){
-      var p=PRODUCTS.find(function(x){return x.id===pid;});
-      var dotsWrap=document.createElement('div');dotsWrap.style.marginBottom='10px';
-      var prodLabel=document.createElement('div');
-      prodLabel.style.cssText="font-family:'Rajdhani',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:6px;font-weight:600;";
-      prodLabel.textContent=p.label;
-      dotsWrap.appendChild(prodLabel);
-      var dots=document.createElement('div');dots.className='am-dots';
+  if(showOffices){
+    OFFICES.forEach(function(off){
+      if(!off.products)return;
+      var sec=document.createElement('div');sec.className='am-section';
+      sec.innerHTML='<div class="am-section-title"><span>'+off.icon+' '+off.label+'</span><div class="am-section-line"></div></div>';
 
-      LOC_STATUS.forEach(function(st){
-        var cnt=gc(off.id,pid,st);
-        for(var i=0;i<cnt;i++){
-          if(amFilterState!=='all'&&amFilterState!==st)continue;
+      (off.products||[]).forEach(function(pid){
+        var p=PRODUCTS.find(function(x){return x.id===pid;});
+        var dotsWrap=document.createElement('div');dotsWrap.style.marginBottom='10px';
+        var prodLabel=document.createElement('div');
+        prodLabel.style.cssText="font-family:'Rajdhani',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:6px;font-weight:600;";
+        prodLabel.textContent=p.label;
+        dotsWrap.appendChild(prodLabel);
+        var dots=document.createElement('div');dots.className='am-dots';
+
+        LOC_STATUS.forEach(function(st){
+          var cnt=gc(off.id,pid,st);
+          for(var i=0;i<cnt;i++){
+            if(amFilterState!=='all'&&amFilterState!==st)continue;
+            var dot=document.createElement('div');
+            dot.className='am-dot '+st;
+            dot.title=p.label+' \u2014 '+st;
+            dot.innerHTML='<span>'+p.icon+'</span>';
+            (function(p2,off2,st2,i2){
+              dot.addEventListener('mouseenter',function(e){
+                tip.classList.add('show');
+                document.getElementById('dtName').textContent=p2.label+' #'+(i2+1);
+                document.getElementById('dtName').style.color=p2.color;
+                document.getElementById('dtRows').innerHTML=
+                  '<div class="dot-tip-row"><span>Location</span><span>'+off2.label+'</span></div>'+
+                  '<div class="dot-tip-row"><span>Status</span><span style="color:var(--'+st2+')">'+st2+'</span></div>';
+                tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-40)+'px';
+              });
+              dot.addEventListener('mousemove',function(e){tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-40)+'px';});
+              dot.addEventListener('mouseleave',function(){tip.classList.remove('show');});
+            })(p,off,st,i);
+            dots.appendChild(dot);
+          }
+        });
+        if(dots.children.length){dotsWrap.appendChild(dots);sec.appendChild(dotsWrap);}
+      });
+      canvas.appendChild(sec);
+    });
+  }
+
+  if(showJobs){
+    // Collect active jobs (by jobNum, union across products)
+    var today=new Date();today.setHours(0,0,0,0);
+    var t=today.getTime();
+    var activeMap={};
+    reservations.forEach(function(r){
+      if(r.status!=='confirmed')return;
+      var startMs=Date.parse(r.start),endMs=Date.parse(r.end);
+      if(t<startMs||t>endMs)return;
+      if(!activeMap[r.jobNum])activeMap[r.jobNum]=r;
+    });
+    var activeJobs=Object.keys(activeMap).map(function(k){return activeMap[k];});
+    if(activeJobs.length){
+      var divider=document.createElement('div');
+      divider.className='am-section';
+      divider.innerHTML='<div class="am-section-title" style="margin-top:18px;"><span style="color:var(--deployed);">\u25C6 Active Jobs</span><div class="am-section-line" style="background:var(--deployed);"></div></div>';
+      canvas.appendChild(divider);
+    }
+    activeJobs.forEach(function(res){
+      var sec=document.createElement('div');sec.className='am-section';
+      var header=(res.job||res.jobNum)+(res.location?' \u2014 '+res.location:'');
+      sec.innerHTML='<div class="am-section-title"><span style="color:var(--deployed);">'+header+'</span><div class="am-section-line"></div></div>';
+      var devs=res.devices||{};
+      if(!res.devices&&res.type){devs={};devs[res.type]=res.qty||0;}
+      Object.keys(devs).forEach(function(pid){
+        var qty=devs[pid]||0;if(qty<=0)return;
+        var p=PRODUCTS.find(function(x){return x.id===pid;});if(!p)return;
+        var dotsWrap=document.createElement('div');dotsWrap.style.marginBottom='10px';
+        var prodLabel=document.createElement('div');
+        prodLabel.style.cssText="font-family:'Rajdhani',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:6px;font-weight:600;";
+        prodLabel.textContent=p.label+' \u00B7 '+qty;
+        dotsWrap.appendChild(prodLabel);
+        var dots=document.createElement('div');dots.className='am-dots';
+        for(var i=0;i<qty;i++){
           var dot=document.createElement('div');
-          dot.className='am-dot '+st;
-          dot.title=p.label+' \u2014 '+st;
+          dot.className='am-dot deployed';
+          dot.title=p.label+' \u2014 deployed \u2014 '+(res.job||res.jobNum);
           dot.innerHTML='<span>'+p.icon+'</span>';
-          (function(p2,off2,st2,i2){
+          (function(p2,res2,i2){
             dot.addEventListener('mouseenter',function(e){
               tip.classList.add('show');
               document.getElementById('dtName').textContent=p2.label+' #'+(i2+1);
               document.getElementById('dtName').style.color=p2.color;
               document.getElementById('dtRows').innerHTML=
-                '<div class="dot-tip-row"><span>Location</span><span>'+off2.label+'</span></div>'+
-                '<div class="dot-tip-row"><span>Status</span><span style="color:var(--'+st2+')">'+st2+'</span></div>';
+                '<div class="dot-tip-row"><span>Job</span><span>'+(res2.job||res2.jobNum)+'</span></div>'+
+                '<div class="dot-tip-row"><span>Location</span><span>'+(res2.location||'')+'</span></div>'+
+                '<div class="dot-tip-row"><span>Status</span><span style="color:var(--deployed)">deployed</span></div>';
               tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-40)+'px';
             });
             dot.addEventListener('mousemove',function(e){tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-40)+'px';});
             dot.addEventListener('mouseleave',function(){tip.classList.remove('show');});
-          })(p,off,st,i);
+          })(p,res,i);
           dots.appendChild(dot);
         }
+        dotsWrap.appendChild(dots);sec.appendChild(dotsWrap);
       });
-      if(dots.children.length){dotsWrap.appendChild(dots);sec.appendChild(dotsWrap);}
+      canvas.appendChild(sec);
     });
-    canvas.appendChild(sec);
-  });
+  }
 }
 
 // ═══ SCHEDULE PAGE — ONE ROW PER JOB, CLICK FOR DETAILS ═══
@@ -2220,29 +2327,35 @@ function showJobPopup(res,resIdx,isRequested){
 function openAddRes(){document.getElementById('addResModal').classList.add('open');}
 function closeAddRes(){document.getElementById('addResModal').classList.remove('open');}
 function saveAddRes(){
-  var typ=document.getElementById('res-type').value;
-  var qty=parseInt(document.getElementById('res-qty').value)||1;
-  var sites=parseInt(document.getElementById('res-sites').value)||qty;
+  var devices={};
+  var pids=['ff','cric','hach','rg'];
+  var totalQty=0,primaryPid=null,primaryQty=0;
+  pids.forEach(function(pid){
+    var el=document.getElementById('res-dev-'+pid);
+    var v=el?Math.max(0,parseInt(el.value)||0):0;
+    if(v>0){devices[pid]=v;totalQty+=v;if(v>primaryQty){primaryQty=v;primaryPid=pid;}}
+  });
+  if(totalQty<=0){alert('Enter at least one device quantity.');return;}
+  var sites=parseInt(document.getElementById('res-sites').value)||totalQty;
   var jobName=document.getElementById('res-job').value.trim()||'Unnamed job';
   var loc=document.getElementById('res-location').value.trim()||'TBD';
   var contact=document.getElementById('res-contact').value.trim();
   var notes=document.getElementById('res-notes').value.trim();
   var r={
-    type:typ,
+    type:primaryPid,
     loc: document.getElementById('res-loc').value,
-    qty: qty,
+    qty: primaryQty,
     job: jobName,
     jobNum:jobName.substring(0,4).toUpperCase().replace(/[^A-Z0-9]/g,'')+'-'+Date.now().toString(36).toUpperCase(),
     location:loc,
     start:document.getElementById('res-start').value,
     end:  document.getElementById('res-end').value,
     sites:sites,
-    devices:{},
+    devices:devices,
     contact:contact,
     notes:notes,
     status:adminMode?'confirmed':'requested'
   };
-  r.devices[typ]=qty;
   reservations.push(r);sv('us3_res',reservations);closeAddRes();
   updateTabBadges();renderSched();
   if(!adminMode)showFleetToast('Reservation submitted for admin approval');
@@ -2299,21 +2412,30 @@ function editReservation(idx){
   popup.id='editResOverlay';
   popup.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:var(--overlay-bg);padding:20px;';
   popup.onclick=function(e){if(e.target===popup)popup.remove();};
-  var prodOpts=PRODUCTS.map(function(p){return '<option value="'+p.id+'"'+(p.id===res.type?' selected':'')+'>'+p.label+'</option>';}).join('');
   var locOpts=OFFICES.map(function(o){return '<option value="'+o.id+'"'+(o.id===res.loc?' selected':'')+'>'+o.label+'</option>';}).join('');
   var safeNotes=(res.notes||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   var safeJob=(res.job||'').replace(/"/g,'&quot;');
   var safeJobNum=(res.jobNum||'').replace(/"/g,'&quot;');
   var safeLoc=(res.location||'').replace(/"/g,'&quot;');
   var safeContact=(res.contact||'').replace(/"/g,'&quot;');
+  var devs=res.devices||{};
+  // Backward-compat: if no devices map, seed from type+qty
+  if(!res.devices&&res.type){devs={};devs[res.type]=res.qty||0;}
+  var pidRows=[
+    {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
+    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'hach',label:'Hach',color:'#A7A9AC'},
+    {id:'rg',label:'Rain Gauge',color:'#44bb88'}
+  ].map(function(p){
+    return '<div style="display:flex;align-items:center;gap:8px;"><span style="font-family:\'Oswald\',sans-serif;font-size:11px;text-transform:uppercase;color:'+p.color+';letter-spacing:.06em;min-width:78px;">'+p.label+'</span><input id="ej-dev-'+p.id+'" type="number" min="0" value="'+(devs[p.id]||0)+'" style="flex:1;"></div>';
+  }).join('');
   popup.innerHTML='<div style="background:var(--panel-bg);border:1.5px solid var(--borderb);border-top:3px solid var(--accent);border-radius:8px;padding:24px;width:100%;max-width:480px;box-shadow:0 0 50px var(--glow);max-height:90vh;overflow-y:auto;">'+
     '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:16px;">Edit Reservation</div>'+
     '<div class="form-row"><label>Job Name</label><input id="ej-job" value="'+safeJob+'"></div>'+
     '<div class="form-row"><label>Job Number</label><input id="ej-jobnum" value="'+safeJobNum+'"></div>'+
     '<div class="form-row"><label>Location</label><input id="ej-location" value="'+safeLoc+'"></div>'+
-    '<div class="form-row"><label>Product</label><select id="ej-type">'+prodOpts+'</select></div>'+
     '<div class="form-row"><label>Source Office</label><select id="ej-loc">'+locOpts+'</select></div>'+
-    '<div class="form-row"><label>Quantity</label><input id="ej-qty" type="number" min="1" value="'+(res.qty||1)+'"></div>'+
+    '<div class="form-row" style="display:block;"><label style="margin-bottom:6px;">Devices</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+pidRows+'</div></div>'+
     '<div class="form-row"><label>Sites</label><input id="ej-sites" type="number" min="1" value="'+(res.sites||res.qty||1)+'"></div>'+
     '<div class="form-row"><label>Start Date</label><input id="ej-start" type="date" value="'+(res.start||'')+'"></div>'+
     '<div class="form-row"><label>End Date</label><input id="ej-end" type="date" value="'+(res.end||'')+'"></div>'+
@@ -2328,20 +2450,27 @@ function editReservation(idx){
 }
 function saveEditReservation(idx){
   var r=reservations[idx];if(!r)return;
-  var typ=document.getElementById('ej-type').value;
-  var qty=parseInt(document.getElementById('ej-qty').value)||1;
+  var devices={};
+  var pids=['ff','cric','hach','rg'];
+  var totalQty=0,primaryPid=null,primaryQty=0;
+  pids.forEach(function(pid){
+    var el=document.getElementById('ej-dev-'+pid);
+    var v=el?Math.max(0,parseInt(el.value)||0):0;
+    if(v>0){devices[pid]=v;totalQty+=v;if(v>primaryQty){primaryQty=v;primaryPid=pid;}}
+  });
+  if(totalQty<=0){alert('Enter at least one device quantity.');return;}
   r.job=document.getElementById('ej-job').value.trim()||r.job;
   r.jobNum=document.getElementById('ej-jobnum').value.trim()||r.jobNum;
   r.location=document.getElementById('ej-location').value.trim();
-  r.type=typ;
+  r.type=primaryPid;
   r.loc=document.getElementById('ej-loc').value;
-  r.qty=qty;
-  r.sites=parseInt(document.getElementById('ej-sites').value)||qty;
+  r.qty=primaryQty;
+  r.sites=parseInt(document.getElementById('ej-sites').value)||totalQty;
   r.start=document.getElementById('ej-start').value;
   r.end=document.getElementById('ej-end').value;
   r.contact=document.getElementById('ej-contact').value.trim();
   r.notes=document.getElementById('ej-notes').value.trim();
-  r.devices={};r.devices[typ]=qty;
+  r.devices=devices;
   sv('us3_res',reservations);
   var overlay=document.getElementById('editResOverlay');
   if(overlay)overlay.remove();
@@ -2712,10 +2841,10 @@ function renderFleetOverview(){
   ];
   var offices=['elcajon','downey','puertorico','houston'];
   var rows=products.map(function(p){
-    var avail=0,reserved=0,maint=0,deployed=gc('company',p.id,'deployed')||0;
+    var avail=0,reserved=0,maint=0,deployed=getDeployedCount(p.id);
     offices.forEach(function(o){avail+=gc(o,p.id,'available');reserved+=gc(o,p.id,'reserved');maint+=gc(o,p.id,'maintenance');});
     var total=avail+reserved+deployed+maint;
-    var activeJobs=reservations.filter(function(r){var devs=r.devices||{};return devs[p.id]&&devs[p.id]>0;}).length;
+    var activeJobs=getActiveJobsForProduct(p.id).length;
     var logoHtml=prodLogoHtml(p.id,32);
     if(!logoHtml)logoHtml='<span style="font-size:14px;font-weight:700;color:'+p.color+'">'+p.label+'</span>';
     return '<tr style="border-bottom:1px solid rgba(255,255,255,.06);">'+
@@ -2845,7 +2974,7 @@ function renderFleet(){
     totalRes+=gc(o.id,fleetProduct,'reserved');
     totalMaint+=gc(o.id,fleetProduct,'maintenance');
   });
-  var totalDeployed=gc('company',fleetProduct,'deployed');
+  var totalDeployed=getDeployedCount(fleetProduct);
   var totalUnits=totalAvail+totalRes+totalMaint+totalDeployed;
   if(totalUnits<1)totalUnits=1;
 
@@ -2910,22 +3039,17 @@ function renderFleet(){
     }
     if(qtyForProduct<=0)return;
 
-    // If this job is currently active AND there are deployed units,
-    // reduce stamp qty by deployed count — ONLY if the source office has no
-    // reserved inventory (which would represent additional earmarked units)
     var startMs=new Date(res.start).getTime();
     var endMs=new Date(res.end).getTime();
     var isActive=(nowMs>=startMs&&nowMs<=endMs);
+
+    // If this reservation is active TODAY, its units are expressed as deployed
+    // (blue) rows tagged with the jobNum in the next pass. Don't also stamp
+    // green/reserved rows for the same job — that double-counts and produces
+    // phantom gray bands alongside the blue deployed rows.
+    if(isActive)return;
+
     var stampQty=qtyForProduct;
-    if(isActive&&totalDeployed>0&&res.type===fleetProduct){
-      var srcReserved=gc(res.loc||'',fleetProduct,'reserved');
-      if(srcReserved<=0){
-        // No reserved inventory at source — all units are deployed, skip
-        stampQty=Math.max(0,qtyForProduct-totalDeployed);
-      }
-      // If source HAS reserved inventory, stamp those rows (don't subtract)
-    }
-    if(stampQty<=0)return;
 
     var startCol=Math.max(0,Math.floor((startMs-week0ms)/msPerWeek));
     var endCol=Math.min(numCols-1,Math.floor((endMs-week0ms)/msPerWeek));
@@ -3604,7 +3728,7 @@ function dismissWelcomeGuide(){
 }
 
 // ═══ BOOT ═══
-loadStorage();applyTheme();renderStats();renderMC();updateHelpBadge();updateTabBadges();
+loadStorage();processExpiredJobs();applyTheme();renderStats();renderMC();updateHelpBadge();updateTabBadges();
 // Login gate
 us3CheckLogin();
 document.getElementById('loginBtn').addEventListener('click',us3Login);
