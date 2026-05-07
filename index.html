@@ -3473,14 +3473,25 @@ function renderHouston(){
   }
   var s=latest.summary;
   var totalUnder=(s.healthBuckets.mostlyWorking||0)+(s.healthBuckets.sick||0);
+  var silent365=(s.recencyBuckets&&s.recencyBuckets.silent365plus)||0;
+  var totalDev=s.totalDevices||1;
+  var fleetPct=function(n){return Math.round((n/totalDev)*100);};
   var headerCards=[
-    {name:'Total Fleet',color:'var(--text)',cnt:s.totalDevices,sub:'devices'},
-    {name:'Healthy',color:'#00c49a',cnt:s.healthBuckets.healthy,sub:'≥100%'},
-    {name:'Underperforming',color:'#e8a020',cnt:totalUnder,sub:'<100%'},
-    {name:'Silent',color:'#A7A9AC',cnt:s.healthBuckets.silent,sub:'0%'},
-    {name:'Silent 365+',color:'#ED1C24',cnt:(s.recencyBuckets&&s.recencyBuckets.silent365plus)||0,sub:'>1yr no msg'}
+    {name:'Total Fleet',color:'var(--text)',cnt:s.totalDevices,criteria:'devices'},
+    {name:'Healthy',color:'#00c49a',cnt:s.healthBuckets.healthy,pct:fleetPct(s.healthBuckets.healthy),criteria:'≥100% reporting'},
+    {name:'Underperforming',color:'#e8a020',cnt:totalUnder,pct:fleetPct(totalUnder),criteria:'1–99% reporting'},
+    {name:'Silent',color:'#A7A9AC',cnt:s.healthBuckets.silent,pct:fleetPct(s.healthBuckets.silent),criteria:'0% reporting'},
+    {name:'Silent 365+',color:'#ED1C24',cnt:silent365,pct:fleetPct(silent365),criteria:'>1yr no message'}
   ];
-  var headerHtml='<div class="dc-board">'+headerCards.map(function(c){return '<div class="dc-card"><div class="dc-card-top" style="padding-top:18px;"><div class="dc-name" style="color:'+c.color+'">'+c.name+'</div><div class="dc-num" style="color:'+c.color+';font-family:\'Oswald\',sans-serif;font-weight:700;font-size:42px;">'+c.cnt+'</div><div class="dc-lbl">'+c.sub+'</div></div><div class="dc-bar" style="background:'+c.color+'55"></div></div>';}).join('')+'</div>';
+  var headerHtml='<div class="dc-board">'+headerCards.map(function(c){
+    var pctLine=(c.pct===undefined)?'':'<div style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:600;color:var(--accent);margin-top:2px;">'+c.pct+'% of fleet</div>';
+    var critLine='<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);margin-top:2px;">'+c.criteria+'</div>';
+    return '<div class="dc-card"><div class="dc-card-top" style="padding-top:18px;">'+
+      '<div class="dc-name" style="color:'+c.color+'">'+c.name+'</div>'+
+      '<div class="dc-num" style="color:'+c.color+';font-family:\'Oswald\',sans-serif;font-weight:700;font-size:42px;">'+c.cnt+'</div>'+
+      pctLine+critLine+
+    '</div><div class="dc-bar" style="background:'+c.color+'55"></div></div>';
+  }).join('')+'</div>';
   var byType=s.byType||{};
   var typeColor=function(t){return t==='Sensus Cricket'?'#e8a020':t==='HJ Level'?'#0071BC':t==='Cricket'?'#44bb88':'#888';};
   var typeOrder=['Sensus Cricket','HJ Level','Cricket'];
@@ -3527,8 +3538,15 @@ function renderHouston(){
     headerHtml+
     (adminMode?renderHoustonImportPanel():'')+
     typeHtml+
-    houstonLightsGrid(latest.devices,latest.reportDate)+
-    houstonHealthPareto(s)+
+    '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-bottom:0;">'+
+      '<div style="flex:1 1 480px;min-width:0;">'+houstonLightsGrid(latest.devices,latest.reportDate)+'</div>'+
+      '<div style="flex:1 1 480px;min-width:0;">'+houstonHealthPareto(s)+'</div>'+
+    '</div>'+
+    '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
+      '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Geographic Map — Coming Soon</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text);line-height:1.5;">Once Osama\'s CSV export includes latitude/longitude (or street addresses for geocoding), this section will display every Houston device as a colored dot on an actual map of Houston, color-coded by health status. The same color scheme as the Fleet Status Grid above. Hover any dot to see site details and last sample date.</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);font-style:italic;margin-top:8px;">Requested: latitude/longitude columns added to monthly export. ETA depends on developer response.</div>'+
+    '</div>'+
     houstonTrendChart(reports)+
     crossHtml+
     '<div id="houstonTableWrap" style="margin-top:18px;"></div>'+
