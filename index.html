@@ -260,6 +260,7 @@ body.light .dc-table td{border-bottom-color:rgba(0,0,0,.08);}
 .dc-table tbody tr:hover{background:rgba(0,113,188,.12);}
 /* ═══ DECOMMISSION ═══ */
 #page-decomm{background:var(--bg);overflow-y:auto;}
+#page-houston{background:var(--bg);overflow-y:auto;}
 .dc-inner{padding:24px 28px;}
 .dc-title{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;}
 .dc-sub{font-size:12px;color:var(--muted);margin-bottom:20px;font-family:'Rajdhani',sans-serif;}
@@ -3205,6 +3206,47 @@ function renderHoustonImportPanel(){
   '</div>';
 }
 
+function houstonDotColor(d,reportDate){
+  var p=d.pctTotal;
+  if(p>=100)return '#00c49a';
+  if(p>=76)return '#e8a020';
+  if(p>=1)return '#c8a030';
+  var ds=houstonDaysSince(d.lastSample,reportDate);
+  if(ds>365)return '#ED1C24';
+  return '#A7A9AC';
+}
+
+function houstonLightsGrid(devices,reportDate){
+  if(!devices||!devices.length)return '';
+  var cols=60;
+  var rows=Math.ceil(devices.length/cols);
+  var dot=6,gap=2,cell=dot+gap;
+  var W=cols*cell,H=rows*cell;
+  var svg='';
+  devices.forEach(function(d,i){
+    var col=i%cols,row=Math.floor(i/cols);
+    var cx=col*cell+dot/2;
+    var cy=row*cell+dot/2;
+    var color=houstonDotColor(d,reportDate);
+    var ls=d.lastSample||'no sample';
+    var title=houstonEsc((d.siteName||'')+' · '+d.deviceId+' · '+ls+' · '+d.pctTotal+'%');
+    svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(dot/2)+'" fill="'+color+'"><title>'+title+'</title></circle>';
+  });
+  var legendDot=function(c){return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+c+';margin-right:5px;vertical-align:middle;"></span>';};
+  var legend='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:Rajdhani,sans-serif;font-size:12px;color:var(--text);">'+
+    '<span>'+legendDot('#00c49a')+'Healthy</span>'+
+    '<span>'+legendDot('#e8a020')+'76-99%</span>'+
+    '<span>'+legendDot('#c8a030')+'1-75%</span>'+
+    '<span>'+legendDot('#A7A9AC')+'Silent</span>'+
+    '<span>'+legendDot('#ED1C24')+'Silent 365+</span>'+
+  '</div>';
+  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Fleet Status Grid — '+devices.length+' devices at a glance</div>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;height:auto;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
+    legend+
+  '</div>';
+}
+
 function houstonHealthPareto(summary){
   var counts={
     'Silent':summary.healthBuckets.silent,
@@ -3379,9 +3421,21 @@ function renderHoustonTable(){
     {k:'silent365plus',l:'Silent 365+'}
   ];
   var filterBtns=filters.map(function(f){return '<button class="qchip '+(houstonState.filter===f.k?'active':'')+'" style="cursor:pointer;" onclick="houstonSetFilter(\''+f.k+'\')">'+f.l+'</button>';}).join('');
-  var typeFilterBadge=houstonState.typeFilter?'<span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);margin-left:8px;">Type: <strong style="color:'+typeColor(houstonState.typeFilter)+';">'+houstonEsc(houstonState.typeFilter)+'</strong> <a href="#" onclick="event.preventDefault();houstonSetTypeFilter(\''+houstonState.typeFilter.replace(/'/g,"\\'")+'\')" style="color:var(--muted);text-decoration:none;">✕</a></span>':'';
+  var typeFilterPill='';
+  if(houstonState.typeFilter){
+    var tf=houstonState.typeFilter;
+    var tfEsc=tf.replace(/'/g,"\\'");
+    var tfCnt=(latest.devices||[]).filter(function(d){return d.description===tf;}).length;
+    typeFilterPill='<div style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 14px;margin-bottom:10px;background:rgba(26,127,232,.20);border:1px solid var(--accent);border-radius:18px;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);">'+
+      '<span style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Filtered:</span>'+
+      '<strong style="color:'+typeColor(tf)+';">'+houstonEsc(tf)+'</strong>'+
+      '<span style="color:var(--muted);">('+tfCnt+' device'+(tfCnt!==1?'s':'')+')</span>'+
+      '<a href="#" onclick="event.preventDefault();houstonSetTypeFilter(\''+tfEsc+'\')" title="Clear type filter" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.15);color:var(--text);text-decoration:none;font-size:12px;line-height:1;">✕</a>'+
+    '</div>';
+  }
   wrap.innerHTML=
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'+filterBtns+typeFilterBadge+
+    typeFilterPill+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'+filterBtns+
       '<input type="search" id="houstonSearch" placeholder="Search Device ID or Site Name…" value="'+houstonEsc(houstonState.search)+'" oninput="houstonSetSearch(this.value)" style="margin-left:auto;padding:7px 12px;border:1px solid var(--border);border-radius:18px;background:var(--card-bg);color:var(--text);font-family:Rajdhani,sans-serif;font-size:13px;min-width:240px;">'+
     '</div>'+
     '<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--borderb);">'+
@@ -3436,10 +3490,10 @@ function renderHouston(){
     allTypes.map(function(t){
       var cnt=byType[t]||0;
       var active=houstonState.typeFilter===t;
-      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex:1;min-width:160px;padding:14px;border:'+(active?'2px solid '+typeColor(t):'1px solid var(--borderb)')+';border-radius:8px;background:'+(active?'rgba(0,113,188,.06)':'var(--panel-bg)')+';transition:all .15s;">'+
-        '<div style="font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:'+typeColor(t)+';font-weight:700;">'+houstonEsc(t)+(active?' ✕':'')+'</div>'+
+      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" title="Click to filter device table by '+houstonEsc(t)+'" style="cursor:pointer;flex:1;min-width:160px;padding:14px;border:'+(active?'2px solid '+typeColor(t):'1px solid var(--borderb)')+';border-radius:8px;background:'+(active?'rgba(0,113,188,.06)':'var(--panel-bg)')+';transition:all .15s;">'+
+        '<div style="font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:'+typeColor(t)+';font-weight:700;">'+houstonEsc(t)+'</div>'+
         '<div style="font-family:Oswald,sans-serif;font-size:32px;font-weight:700;color:var(--text);margin-top:4px;">'+cnt+'</div>'+
-        '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);">devices'+(active?' · filter on':'')+'</div>'+
+        '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);">devices'+(active?' · filtering' : '')+'</div>'+
       '</div>';
     }).join('')+
   '</div>';
@@ -3473,6 +3527,7 @@ function renderHouston(){
     headerHtml+
     (adminMode?renderHoustonImportPanel():'')+
     typeHtml+
+    houstonLightsGrid(latest.devices,latest.reportDate)+
     houstonHealthPareto(s)+
     houstonTrendChart(reports)+
     crossHtml+
