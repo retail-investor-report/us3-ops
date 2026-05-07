@@ -3581,11 +3581,11 @@ function renderHoustonTable(){
     var tf=houstonState.typeFilter;
     var tfEsc=tf.replace(/'/g,"\\'");
     var tfCnt=(latest.devices||[]).filter(function(d){return d.description===tf;}).length;
-    typeFilterPill='<div style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 14px;margin-bottom:10px;background:rgba(26,127,232,.20);border:1px solid var(--accent);border-radius:18px;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);">'+
-      '<span style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Filtered:</span>'+
+    typeFilterPill='<div style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:8px 16px;margin-bottom:12px;background:rgba(0,113,188,.20);border-radius:18px;font-family:Rajdhani,sans-serif;font-weight:600;font-size:14px;color:var(--text);">'+
+      '<span style="color:var(--muted);">Filter:</span>'+
       '<strong style="color:'+typeColor(tf)+';">'+houstonEsc(tf)+'</strong>'+
-      '<span style="color:var(--muted);">('+tfCnt+' device'+(tfCnt!==1?'s':'')+')</span>'+
-      '<a href="#" onclick="event.preventDefault();houstonSetTypeFilter(\''+tfEsc+'\')" title="Clear type filter" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.15);color:var(--text);text-decoration:none;font-size:12px;line-height:1;">✕</a>'+
+      '<span style="color:var(--muted);font-weight:500;">('+tfCnt+' device'+(tfCnt!==1?'s':'')+')</span>'+
+      '<a href="#" onclick="event.preventDefault();houstonSetTypeFilter(\''+tfEsc+'\')" title="Clear filter" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.25);color:var(--text);text-decoration:none;font-size:11px;line-height:1;margin-left:4px;">✕</a>'+
     '</div>';
   }
   wrap.innerHTML=
@@ -3656,10 +3656,10 @@ function renderHouston(){
     allTypes.map(function(t){
       var cnt=byType[t]||0;
       var active=houstonState.typeFilter===t;
-      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" title="Click to filter device table by '+houstonEsc(t)+'" style="cursor:pointer;flex:1;min-width:160px;padding:14px;border:'+(active?'2px solid '+typeColor(t):'1px solid var(--borderb)')+';border-radius:8px;background:'+(active?'rgba(0,113,188,.06)':'var(--panel-bg)')+';transition:all .15s;">'+
+      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" title="Click to filter device table by '+houstonEsc(t)+'" style="cursor:pointer;flex:1;min-width:160px;padding:14px;border:'+(active?'2px solid var(--accent)':'1px solid var(--borderb)')+';border-radius:8px;background:'+(active?'rgba(0,113,188,.06)':'var(--panel-bg)')+';transition:all .15s;">'+
         '<div style="font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:'+typeColor(t)+';font-weight:700;">'+houstonEsc(t)+'</div>'+
         '<div style="font-family:Oswald,sans-serif;font-size:32px;font-weight:700;color:var(--text);margin-top:4px;">'+cnt+'</div>'+
-        '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);">devices'+(active?' · filtering' : '')+'</div>'+
+        '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);">devices</div>'+
       '</div>';
     }).join('')+
   '</div>';
