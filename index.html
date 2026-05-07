@@ -2839,12 +2839,12 @@ function renderDecommPareto(){
   svg+='<path d="'+d+'" stroke="#0071BC" stroke-width="2" fill="none"/>';
   pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
 
-  var demoNote=usingDemo?'<div style="font-family:\'Rajdhani\',sans-serif;font-style:italic;color:#A7A9AC;font-size:13px;margin-bottom:10px;">Example data shown — chart will update as decommission entries are logged with failure modes</div>':'';
+  var demoNote='';
 
-  return '<div style="min-height:400px;width:100%;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);margin-bottom:16px;box-sizing:border-box;">'+
+  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
     '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Failure Mode Analysis</div>'+
     demoNote+
-    '<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">'+svg+'</svg>'+
+    '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
   '</div>';
 }
 
