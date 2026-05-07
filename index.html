@@ -3225,7 +3225,7 @@ function houstonComputeSummary(devices,reportDate){
     recencyBuckets:{within24h:0,within7d:0,within30d:0,within90d:0,silent90plus:0,silent365plus:0}
   };
   devices.forEach(function(d){
-    var t=d.description||'';
+    var t=(d.description||'').trim();
     if(summary.byType.hasOwnProperty(t))summary.byType[t]++;
     else summary.byType[t]=(summary.byType[t]||0)+1;
     var p=d.pctTotal;
@@ -3650,7 +3650,7 @@ function renderHouston(){
   var byType=s.byType||{};
   var typeColor=function(t){return t==='Sensus Cricket'?'#e8a020':t==='HJ Level'?'#0071BC':t==='Cricket'?'#44bb88':'#888';};
   var typeOrder=['Sensus Cricket','HJ Level','Cricket'];
-  var extraTypes=Object.keys(byType).filter(function(t){return typeOrder.indexOf(t)<0;});
+  var extraTypes=Object.keys(byType).filter(function(t){return typeOrder.indexOf(t)<0 && t && t.trim().length>0;});
   var allTypes=typeOrder.concat(extraTypes);
   var typeHtml='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 20px 0;">'+
     allTypes.map(function(t){
@@ -3663,6 +3663,10 @@ function renderHouston(){
       '</div>';
     }).join('')+
   '</div>';
+  var emptyTypeCount=(latest.devices||[]).filter(function(d){return !d.description||!d.description.trim();}).length;
+  if(emptyTypeCount>0){
+    typeHtml='<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:#e8a020;margin-bottom:8px;padding:6px 10px;background:rgba(232,160,32,.1);border-radius:4px;display:inline-block;">⚠ '+emptyTypeCount+' device'+(emptyTypeCount!==1?'s':'')+' missing type/description in source data — flag for Osama on next export</div>'+typeHtml;
+  }
   var crossCount=0;
   var decommSet={};
   (lv('us3_decomm')||[]).forEach(function(d){if(d.id)decommSet[String(d.id).trim()]=true;});
