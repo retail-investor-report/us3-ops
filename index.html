@@ -730,6 +730,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="form-row"><label>Kit ID</label><input id="ad-id" placeholder="e.g. FF-007"></div>
     <div class="form-row"><label>Type</label><select id="ad-type"><option value="cellular">Cellular Device</option><option value="sensus">Sensus Device</option><option value="sensor">Sensor / Peripheral</option><option value="hawaii">Hawaii (Legacy)</option></select></div>
     <div class="form-row"><label>Date</label><input id="ad-date" type="date"></div>
+    <div class="form-row"><label>Failure Mode</label><select id="ad-failmode"><option value="">&mdash; select &mdash;</option><option value="Dead Battery">Dead Battery</option><option value="Water Damage">Water Damage</option><option value="Firmware (End of Life)">Firmware (End of Life)</option><option value="Physical Damage">Physical Damage</option><option value="Unknown">Unknown</option></select></div>
     <div class="form-row"><label>Notes</label><textarea id="ad-notes" rows="2"></textarea></div>
     <div class="modal-actions"><button class="btn btn-s" onclick="closeAddDc()">Cancel</button><button class="btn btn-p" onclick="saveAddDc()">Save</button></div>
   </div>
@@ -2477,6 +2478,7 @@ function saveEditReservation(idx){
 // ═══ PARTS / FAILURE ANALYSIS ═══
 var FAIL_CATS=['Sensor','Battery','Antenna','Water Damage','Cable','Connector','Enclosure','Software','Unknown','No Fault Found'];
 var FISHBONE_MAP={'Sensor':'Electrical','Battery':'Electrical','Antenna':'Electrical','Software':'Electrical','Cable':'Mechanical','Connector':'Mechanical','Enclosure':'Mechanical','Water Damage':'Environmental','No Fault Found':'Process','Unknown':'Process'};
+var DECOMM_FAILURE_MODES=['Dead Battery','Water Damage','Firmware (End of Life)','Physical Damage','Unknown'];
 var _fishboneMode=false;
 
 function getReturns(){return lv('us3_returns')||[];}
@@ -2779,6 +2781,73 @@ function deleteReturn(idx){
 }
 
 // ═══ DECOMMISSION ═══
+function renderDecommPareto(){
+  var decommArr=lv('us3_decomm')||[];
+  var entriesWithMode=decommArr.filter(function(d){return d.failureMode;});
+  var counts={};
+  var usingDemo=false;
+  if(entriesWithMode.length===0){
+    counts={'Dead Battery':35,'Water Damage':20,'Firmware (End of Life)':20,'Physical Damage':15,'Unknown':10};
+    usingDemo=true;
+  } else {
+    DECOMM_FAILURE_MODES.forEach(function(m){counts[m]=0;});
+    entriesWithMode.forEach(function(d){if(counts.hasOwnProperty(d.failureMode))counts[d.failureMode]++;});
+    Object.keys(counts).forEach(function(k){if(counts[k]===0)delete counts[k];});
+  }
+  var total=Object.values(counts).reduce(function(a,b){return a+b;},0);
+  if(total===0)return '';
+  var sorted=Object.keys(counts).map(function(k){return {cat:k,count:counts[k],pct:(counts[k]/total)*100};}).sort(function(a,b){return b.count-a.count;});
+  var cum=0;
+  sorted.forEach(function(it){cum+=it.pct;it.cumPct=cum;});
+
+  var W=800,H=440,pL=60,pR=60,pT=30,pB=70;
+  var cW=W-pL-pR,cH=H-pT-pB;
+  var n=sorted.length;
+  var slot=cW/n;
+  var barW=Math.min(80,slot*0.6);
+
+  var svg='';
+  // Y-axis ticks + labels (left and right, both 0–100% in 20% steps)
+  [0,20,40,60,80,100].forEach(function(t){
+    var y=pT+cH-(t/100)*cH;
+    svg+='<text x="'+(pL-10)+'" y="'+(y+4)+'" text-anchor="end" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--muted)">'+t+'%</text>';
+    svg+='<text x="'+(pL+cW+10)+'" y="'+(y+4)+'" text-anchor="start" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--muted)">'+t+'%</text>';
+  });
+  // Axis lines
+  svg+='<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(pT+cH)+'" stroke="var(--border)" stroke-width="1"/>';
+  svg+='<line x1="'+(pL+cW)+'" y1="'+pT+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="var(--border)" stroke-width="1"/>';
+  svg+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="var(--border)" stroke-width="1"/>';
+  // 80% reference line (dashed) + label
+  var y80=pT+cH-0.8*cH;
+  svg+='<line x1="'+pL+'" y1="'+y80+'" x2="'+(pL+cW)+'" y2="'+y80+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5,4"/>';
+  svg+='<text x="'+(pL+cW-6)+'" y="'+(y80-5)+'" text-anchor="end" font-family="Rajdhani,sans-serif" font-size="11" fill="var(--muted)">80%</text>';
+  // Bars + above-label + category-label
+  var pts=[];
+  sorted.forEach(function(it,i){
+    var bx=pL+i*slot+(slot-barW)/2;
+    var bh=(it.pct/100)*cH;
+    var by=pT+cH-bh;
+    var color=it.cumPct<=80?'#ED1C24':'#A7A9AC';
+    svg+='<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+bh+'" fill="'+color+'"/>';
+    svg+='<text x="'+(bx+barW/2)+'" y="'+(by-7)+'" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="12" font-weight="600" fill="var(--text)">'+it.count+' ('+Math.round(it.pct)+'%)</text>';
+    svg+='<text x="'+(bx+barW/2)+'" y="'+(pT+cH+22)+'" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--text)">'+it.cat+'</text>';
+    pts.push({x:bx+barW,y:pT+cH-(it.cumPct/100)*cH});
+  });
+  // Cumulative line + markers
+  var d='';
+  pts.forEach(function(p,i){d+=(i===0?'M':'L')+p.x+','+p.y;});
+  svg+='<path d="'+d+'" stroke="#0071BC" stroke-width="2" fill="none"/>';
+  pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
+
+  var demoNote=usingDemo?'<div style="font-family:\'Rajdhani\',sans-serif;font-style:italic;color:#A7A9AC;font-size:13px;margin-bottom:10px;">Example data shown — chart will update as decommission entries are logged with failure modes</div>':'';
+
+  return '<div style="min-height:400px;width:100%;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);margin-bottom:16px;box-sizing:border-box;">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Failure Mode Analysis</div>'+
+    demoNote+
+    '<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">'+svg+'</svg>'+
+  '</div>';
+}
+
 function dcCount(arr,t){if(t==='sensor')return arr.filter(function(d){return d.type==='sensor';}).reduce(function(s,d){return s+(d.qty||1);},0);return arr.filter(function(d){return d.type===t;}).length;}
 function renderDecomm(){
   var now=new Date(),cQ=Math.floor(now.getMonth()/3)+1,cY=now.getFullYear();
@@ -2804,6 +2873,7 @@ function renderDecomm(){
     '<div class="dc-title">Decommission Report</div>'+
     '<div class="dc-sub">Asset write-offs \u00B7 Quarterly reporting for Tony (CFO)</div>'+
     (thisQ.length>0?'<div class="cfto">\u26A0 '+thisQ.length+' write-off'+(thisQ.length!==1?'s':'')+' this quarter (Q'+cQ+' '+cY+') \u2014 export CSV for Tony</div>':'')+
+    renderDecommPareto()+
     '<div class="dc-board">'+cards.map(function(c,i){return '<div class="dc-card"><div class="dc-card-top"><div class="dc-icon" style="color:'+c.color+';animation-delay:'+i*.45+'s">'+(c.icon||'')+'</div><div class="dc-name" style="color:'+c.color+'">'+c.name+'</div><div class="dc-num" style="color:'+c.color+'">'+c.cnt+'</div><div class="dc-lbl">decommissioned</div></div><div class="dc-bar" style="background:'+c.color+'55"></div></div>';}).join('')+'</div>'+
     '<div class="dc-period"><span class="dc-period-lbl">Period</span>'+sortedQs.map(function(q){return '<div class="qchip '+(q===selectedQ?'active':'')+'" onclick="setQ(\''+q+'\')">'+(q==='all'?'All time':q)+'</div>';}).join('')+'</div>'+
     '<div class="dc-actions">'+
@@ -2822,7 +2892,11 @@ function exportDc(){
 function openAddDc(){document.getElementById('ad-date').value=new Date().toISOString().split('T')[0];document.getElementById('addDcModal').classList.add('open');}
 function closeAddDc(){document.getElementById('addDcModal').classList.remove('open');}
 function saveAddDc(){
-  decommLog.unshift({id:document.getElementById('ad-id').value.trim()||'D-'+Date.now(),type:document.getElementById('ad-type').value,date:document.getElementById('ad-date').value,notes:document.getElementById('ad-notes').value.trim()});
+  var entry={id:document.getElementById('ad-id').value.trim()||'D-'+Date.now(),type:document.getElementById('ad-type').value,date:document.getElementById('ad-date').value,notes:document.getElementById('ad-notes').value.trim()};
+  var fmEl=document.getElementById('ad-failmode');
+  var fm=fmEl?fmEl.value:'';
+  if(fm)entry.failureMode=fm;
+  decommLog.unshift(entry);
   sv('us3_decomm',decommLog);closeAddDc();renderDecomm();renderStats();
 }
 
