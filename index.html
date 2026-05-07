@@ -1705,6 +1705,11 @@ function sw(id,el){
     if(showSidebar&&!sidebar.classList.contains('collapsed')){document.body.classList.add('sidebar-open');}
     else{document.body.classList.remove('sidebar-open');}
   }
+  if(history.replaceState){
+    history.replaceState(null,'','#'+id);
+  }else{
+    location.hash='#'+id;
+  }
 }
 
 // ═══ STATS ═══
@@ -4553,7 +4558,20 @@ function dismissWelcomeGuide(){
 }
 
 // ═══ BOOT ═══
-loadStorage();processExpiredJobs();applyTheme();renderStats();renderMC();updateHelpBadge();updateTabBadges();
+loadStorage();processExpiredJobs();applyTheme();renderStats();updateHelpBadge();updateTabBadges();
+(function(){
+  var validTabs=['mc','avail','fleet','assetmap','houston','sched','projects','parts','decomm'];
+  var hashTab=location.hash.replace('#','').toLowerCase();
+  var initialTab=validTabs.indexOf(hashTab)!==-1?hashTab:'mc';
+  sw(initialTab,document.querySelector('[data-page="'+initialTab+'"]'));
+})();
+window.addEventListener('hashchange',function(){
+  var hashTab=location.hash.replace('#','').toLowerCase();
+  var validTabs=['mc','avail','fleet','assetmap','houston','sched','projects','parts','decomm'];
+  if(validTabs.indexOf(hashTab)!==-1){
+    sw(hashTab,document.querySelector('[data-page="'+hashTab+'"]'));
+  }
+});
 // Login gate
 us3CheckLogin();
 document.getElementById('loginBtn').addEventListener('click',us3Login);
