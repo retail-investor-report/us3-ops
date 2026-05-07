@@ -2482,6 +2482,26 @@ var FISHBONE_MAP={'Sensor':'Electrical','Battery':'Electrical','Antenna':'Electr
 var DECOMM_FAILURE_MODES=['Dead Battery','Water Damage','Firmware (End of Life)','Physical Damage','Unknown'];
 var REPAIR_CATEGORIES=['Dead Battery (replaced)','Cable / Connector','Firmware Update Only','Water Damage (dried + battery)','Case Damage (rebuild)'];
 var REPAIR_DEMO_DATA={'Dead Battery (replaced)':70,'Cable / Connector':10,'Firmware Update Only':10,'Water Damage (dried + battery)':5,'Case Damage (rebuild)':5};
+var COMBINED_FISHBONE={
+  'Electrical':[
+    {cause:'Battery',repair:70,decomm:35}
+  ],
+  'Mechanical':[
+    {cause:'Cable / Connector',repair:10,decomm:0},
+    {cause:'Case / Enclosure',repair:5,decomm:0},
+    {cause:'Physical Damage',repair:0,decomm:15}
+  ],
+  'Environmental':[
+    {cause:'Water Damage',repair:5,decomm:20}
+  ],
+  'Process':[
+    {cause:'Firmware Update Only',repair:10,decomm:0},
+    {cause:'Firmware (End of Life)',repair:0,decomm:20}
+  ],
+  'Diagnostic':[
+    {cause:'Unknown',repair:0,decomm:10}
+  ]
+};
 var _fishboneMode=false;
 
 function getReturns(){return lv('us3_returns')||[];}
@@ -2650,83 +2670,66 @@ function renderFishbone(returns){
   var div=document.getElementById('fishboneView');
   div.style.display='block';
 
-  // 5 branches: Electrical, Mechanical, Environmental, Process, Other
-  var branchDef=[
-    {name:'Electrical', causes:['Sensor','Battery','Antenna','Software'], color:'#0071BC'},
-    {name:'Mechanical', causes:['Cable','Connector','Enclosure'], color:'#e8a020'},
-    {name:'Environmental', causes:['Water Damage'], color:'#00c49a'},
-    {name:'Process', causes:['No Fault Found','Unknown'], color:'#8844cc'},
-    {name:'Other', causes:[], color:'#A7A9AC'}
+  var W=1000,H=520,spineY=260,spineL=50,spineR=850;
+  var ribLen=240,ang=40*Math.PI/180;
+  var ribDx=ribLen*Math.cos(ang),ribDy=ribLen*Math.sin(ang);
+
+  // Rib placement: alternate up/down along spine for visual balance.
+  // 3 up: Electrical, Mechanical, Diagnostic. 2 down: Environmental, Process.
+  var ribs=[
+    {name:'Electrical',    sx:100, dir:'up'},
+    {name:'Environmental', sx:240, dir:'down'},
+    {name:'Mechanical',    sx:380, dir:'up'},
+    {name:'Process',       sx:520, dir:'down'},
+    {name:'Diagnostic',    sx:640, dir:'up'}
   ];
-  // Count by sub-cause
-  var causeCounts={};
-  FAIL_CATS.forEach(function(c){causeCounts[c]=0;});
-  returns.forEach(function(r){if(causeCounts[r.failure]!==undefined)causeCounts[r.failure]++;else causeCounts[r.failure]=1;});
-  // Assign uncategorized to Other
-  var mapped={};branchDef.forEach(function(b){b.causes.forEach(function(c){mapped[c]=true;});});
-  Object.keys(causeCounts).forEach(function(c){if(!mapped[c]&&causeCounts[c]>0)branchDef[4].causes.push(c);});
 
-  var svgW=900,svgH=420;
-  var spineY=svgH/2,spineL=60,spineR=svgW-80;
-  var isDark=!document.body.classList.contains('light');
-  var textCol=isDark?'#d0e0f0':'#1a1a2e';
-  var mutedCol=isDark?'#8aa4c4':'#4a5568';
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;max-height:520px;" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+  // Spine + arrowhead
+  svg+='<line x1="'+spineL+'" y1="'+spineY+'" x2="'+spineR+'" y2="'+spineY+'" stroke="var(--text)" stroke-width="3"/>';
+  svg+='<polygon points="'+spineR+','+spineY+' '+(spineR-14)+','+(spineY-10)+' '+(spineR-14)+','+(spineY+10)+'" fill="var(--text)"/>';
+  // Effect box on the right
+  svg+='<rect x="'+(spineR+12)+'" y="'+(spineY-32)+'" width="130" height="64" rx="6" fill="none" stroke="#ED1C24" stroke-width="2.5"/>';
+  svg+='<text x="'+(spineR+77)+'" y="'+(spineY+6)+'" text-anchor="middle" font-family="Oswald,sans-serif" font-size="15" font-weight="700" fill="#ED1C24" letter-spacing="1">DEVICE FAILURE</text>';
 
-  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="display:block;max-width:100%;" viewBox="0 0 '+svgW+' '+svgH+'">';
-  // Main spine
-  svg+='<line x1="'+spineL+'" y1="'+spineY+'" x2="'+spineR+'" y2="'+spineY+'" stroke="#0071BC" stroke-width="4"/>';
-  // Arrow head
-  svg+='<polygon points="'+(spineR)+','+(spineY)+' '+(spineR-12)+','+(spineY-8)+' '+(spineR-12)+','+(spineY+8)+'" fill="#0071BC"/>';
-  // Effect label
-  svg+='<rect x="'+(spineR-6)+'" y="'+(spineY-18)+'" width="140" height="36" rx="5" fill="none" stroke="#ED1C24" stroke-width="2.5"/>';
-  svg+='<text x="'+(spineR+64)+'" y="'+(spineY+5)+'" text-anchor="middle" font-family="Oswald" font-size="13" font-weight="700" fill="#ED1C24" letter-spacing="1">EQUIPMENT</text>';
-  svg+='<text x="'+(spineR+64)+'" y="'+(spineY+18)+'" text-anchor="middle" font-family="Oswald" font-size="10" font-weight="700" fill="#ED1C24" letter-spacing="1">FAILURE</text>';
+  ribs.forEach(function(rib){
+    var causes=(COMBINED_FISHBONE[rib.name]||[]).filter(function(c){return c.repair>0||c.decomm>0;});
+    var sx=rib.sx;
+    var tipX=sx+ribDx;
+    var tipY=rib.dir==='up'?spineY-ribDy:spineY+ribDy;
+    // Rib line
+    svg+='<line x1="'+sx+'" y1="'+spineY+'" x2="'+tipX+'" y2="'+tipY+'" stroke="var(--text)" stroke-width="2.5"/>';
+    // Branch label at tip
+    var labelY=rib.dir==='up'?tipY-14:tipY+24;
+    svg+='<text x="'+tipX+'" y="'+labelY+'" text-anchor="middle" font-family="Oswald,sans-serif" font-size="14" font-weight="700" fill="var(--accent)" letter-spacing="0.06em">'+rib.name.toUpperCase()+'</text>';
 
-  // Branch positions along spine (alternating top/bottom)
-  var branchSpacing=(spineR-spineL-160)/(branchDef.length);
-  branchDef.forEach(function(branch,bi){
-    var bx=spineL+80+bi*branchSpacing;
-    var isTop=(bi%2===0);
-    var branchLen=110;
-    var endY=isTop?spineY-branchLen:spineY+branchLen;
-    var branchTotal=0;
-    branch.causes.forEach(function(c){branchTotal+=causeCounts[c]||0;});
-
-    // Branch line (angled)
-    svg+='<line x1="'+bx+'" y1="'+spineY+'" x2="'+bx+'" y2="'+endY+'" stroke="'+branch.color+'" stroke-width="3" opacity="0.7"/>';
-    // Branch label
-    var labelY=isTop?endY-18:endY+16;
-    svg+='<text x="'+bx+'" y="'+labelY+'" text-anchor="middle" font-family="Oswald" font-size="14" font-weight="700" fill="'+branch.color+'" letter-spacing="1">'+branch.name.toUpperCase()+'</text>';
-    // Count badge
-    var badgeY=isTop?labelY-18:labelY+14;
-    svg+='<rect x="'+(bx-16)+'" y="'+(badgeY-11)+'" width="32" height="20" rx="10" fill="'+branch.color+'" opacity="0.2"/>';
-    svg+='<text x="'+bx+'" y="'+(badgeY+3)+'" text-anchor="middle" font-family="Rajdhani" font-size="13" font-weight="700" fill="'+branch.color+'">'+branchTotal+'</text>';
-
-    // Sub-causes as small branches
-    branch.causes.forEach(function(cause,ci){
-      var subOffset=(ci-(branch.causes.length-1)/2)*50;
-      var subX=bx+subOffset;
-      var subMidY=isTop?spineY-35-ci*18:spineY+35+ci*18;
-      var cnt=causeCounts[cause]||0;
-      // Small line from branch to sub-cause
-      svg+='<line x1="'+bx+'" y1="'+(isTop?spineY-30-ci*16:spineY+30+ci*16)+'" x2="'+(bx+(ci%2===0?-40:40))+'" y2="'+(isTop?spineY-38-ci*16:spineY+38+ci*16)+'" stroke="'+branch.color+'" stroke-width="1.5" opacity="0.4"/>';
-      // Sub-cause text
-      var stx=bx+(ci%2===0?-44:44);
-      var sty=isTop?spineY-38-ci*16:spineY+38+ci*16;
-      var anchor=ci%2===0?'end':'start';
-      svg+='<text x="'+stx+'" y="'+(sty+4)+'" text-anchor="'+anchor+'" font-family="Rajdhani" font-size="11" fill="'+mutedCol+'">'+cause+'</text>';
-      // Count badge
-      if(cnt>0){
-        var cbx=ci%2===0?stx-4:stx+4;
-        svg+='<text x="'+cbx+'" y="'+(sty-8)+'" text-anchor="'+anchor+'" font-family="Rajdhani" font-size="12" font-weight="700" fill="'+branch.color+'">'+cnt+'</text>';
-      }
+    causes.forEach(function(c,ci){
+      var n=causes.length;
+      var f=n===1?0.55:(0.3+(0.55*ci/(n-1)));
+      var px=sx+f*ribDx;
+      var py=rib.dir==='up'?spineY-f*ribDy:spineY+f*ribDy;
+      // Short horizontal connector to the left
+      svg+='<line x1="'+px+'" y1="'+py+'" x2="'+(px-12)+'" y2="'+py+'" stroke="var(--muted)" stroke-width="1.5"/>';
+      // foreignObject with cause + pill badges (HTML for real rounded pills)
+      var fox=px-194,foy=py-22;
+      var badges='';
+      if(c.repair>0)badges+='<span style="display:inline-block;background:#0071BC;color:#fff;font-family:\'Rajdhani\',sans-serif;font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-right:4px;letter-spacing:.04em;">REPAIR '+c.repair+'%</span>';
+      if(c.decomm>0)badges+='<span style="display:inline-block;background:#ED1C24;color:#fff;font-family:\'Rajdhani\',sans-serif;font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;letter-spacing:.04em;">DECOMM '+c.decomm+'%</span>';
+      svg+='<foreignObject x="'+fox+'" y="'+foy+'" width="180" height="44">'+
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="text-align:right;font-family:\'Rajdhani\',sans-serif;">'+
+          '<div style="font-size:13px;color:var(--text);font-weight:600;line-height:1.15;">'+c.cause+'</div>'+
+          '<div style="margin-top:3px;">'+badges+'</div>'+
+        '</div>'+
+      '</foreignObject>';
     });
   });
 
   svg+='</svg>';
-  div.innerHTML='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:16px;">Fishbone / Ishikawa Diagram</div>'+
-    '<div style="overflow-x:auto;">'+svg+'</div>'+
+
+  div.innerHTML='<div style="max-width:1100px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;">Root Cause Analysis &mdash; Combined View</div>'+
+    '<div style="font-family:\'Rajdhani\',sans-serif;font-size:13px;font-style:italic;color:var(--muted);margin-bottom:14px;">All failure causes across repair and decommission. Badges show prevalence in each pathway.</div>'+
+    svg+
   '</div>';
 }
 
