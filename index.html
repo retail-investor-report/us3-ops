@@ -2906,20 +2906,10 @@ function renderRepairPareto(){
   svg+='<path d="'+d+'" stroke="#0071BC" stroke-width="2" fill="none"/>';
   pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
 
-  var callout='<div style="flex:0 0 180px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px;">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:56px;font-weight:700;color:#00c49a;line-height:1;">95%</div>'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;letter-spacing:.1em;color:var(--text);margin-top:6px;">RECOVERABLE</div>'+
-    '<div style="font-family:\'Rajdhani\',sans-serif;font-size:12px;color:var(--muted);margin-top:8px;">Only 5% require full rebuild</div>'+
-  '</div>';
-
-  var chartCol='<div style="flex:1 1 520px;min-width:0;">'+
-    '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
-  '</div>';
-
   return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
     '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;">Repairable Return Analysis</div>'+
     '<div style="font-family:\'Rajdhani\',sans-serif;font-size:13px;font-style:italic;color:var(--muted);margin-bottom:14px;">What comes back to the shop and gets put back into circulation</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">'+callout+chartCol+'</div>'+
+    '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
   '</div>';
 }
 
