@@ -487,6 +487,22 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
 .guide-section p{font-family:'Rajdhani',sans-serif;font-size:13px;color:#c0d0e0;line-height:1.6;margin:0;}
 .guide-section .ga{color:#0071BC;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://hnkcqsvnsreczmlgcaay.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhua2Nxc3Zuc3JlY3ptbGdjYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzAwNzIsImV4cCI6MjA5Mzc0NjA3Mn0.HIBkg7WizjU6vhof6FEDNSG7ZyHruSCakEhzhe7kbt4';
+let supa=null;
+window.addEventListener('DOMContentLoaded',function(){
+  if(window.supabase){
+    supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    console.log('Supabase connected');
+    if(typeof syncFromCloud==='function')syncFromCloud();
+  } else {
+    console.error('Supabase library failed to load');
+    if(typeof setCloudStatus==='function')setCloudStatus('offline');
+  }
+});
+</script>
 </head>
 <body>
 <!-- LOGIN OVERLAY -->
@@ -527,7 +543,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
-  <div class="nr"><div class="nstats" id="navStats"></div><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
+  <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
   <div class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
     <span></span><span></span><span></span>
   </div>
@@ -1488,8 +1504,142 @@ function processExpiredJobs(){
 }
 
 // ═══ STORAGE ═══
-function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-function lv(k){try{var s=localStorage.getItem(k);return s?JSON.parse(s):null;}catch(e){return null;}}
+var _kvCache={};
+function lv(key){
+  if(_kvCache[key]!==undefined)return _kvCache[key];
+  try{
+    var raw=localStorage.getItem(key);
+    if(raw===null)return null;
+    var parsed=JSON.parse(raw);
+    _kvCache[key]=parsed;
+    return parsed;
+  }catch(e){
+    console.error('lv parse error',key,e);
+    return null;
+  }
+}
+function sv(key,value){
+  _kvCache[key]=value;
+  try{
+    localStorage.setItem(key,JSON.stringify(value));
+  }catch(e){
+    console.error('localStorage write failed',key,e);
+  }
+  if(typeof supa!=='undefined'&&supa){
+    supa.from('kvstore').upsert({
+      key:key,
+      value:value,
+      updated_at:new Date().toISOString(),
+      updated_by:(_kvCache['us3_user_email']||localStorage.getItem('us3_user_email')||'unknown').replace(/^"|"$/g,'')
+    }).then(function(res){
+      if(res.error)console.error('Supabase write error',key,res.error);
+    });
+  }
+}
+
+// ═══ CLOUD SYNC ═══
+var KNOWN_KEYS=['us3_pins','us3_counts','us3_res','us3_decomm','us3_inprod','us3_theme','us3_upcoming','us3_returns','us3_houston_reports','us3_user_email','us3_seen_guide','us3_help_messages','us3_fleet_overrides','us3_job_pins'];
+// Per-user keys that must NOT be overwritten by cloud sync (each browser has its own login)
+var KV_LOCAL_ONLY={us3_user_email:true};
+
+function setCloudStatus(state){
+  var el=document.getElementById('cloudSync');
+  if(!el)return;
+  el.style.display='inline-flex';
+  if(state==='syncing'){el.textContent='☁ syncing...';el.style.color='var(--muted)';}
+  else if(state==='synced'){
+    el.textContent='☁ synced';el.style.color='#00c49a';
+    setTimeout(function(){
+      var e=document.getElementById('cloudSync');
+      if(e&&e.textContent==='☁ synced')e.style.display='none';
+    },2000);
+  }
+  else if(state==='offline'){el.textContent='☁ offline';el.style.color='#e8a020';}
+}
+
+function _kvParse(raw){try{return JSON.parse(raw);}catch(e){return raw;}}
+
+function afterCloudSync(){
+  try{
+    if(typeof loadStorage==='function')loadStorage();
+    if(typeof processExpiredJobs==='function')processExpiredJobs();
+    if(typeof renderStats==='function')renderStats();
+    if(typeof updateHelpBadge==='function')updateHelpBadge();
+    if(typeof updateTabBadges==='function')updateTabBadges();
+    var pages=[
+      ['mc','renderMC'],['avail','renderAvail'],['fleet','renderFleet'],
+      ['assetmap','renderAssetMap'],['houston','renderHouston'],['sched','renderSched'],
+      ['projects','renderProjects'],['parts','renderParts'],['decomm','renderDecomm']
+    ];
+    pages.forEach(function(p){
+      var el=document.getElementById('page-'+p[0]);
+      if(el&&el.classList.contains('active')&&typeof window[p[1]]==='function'){
+        try{window[p[1]]();}catch(e){console.error('rerender failed',p[0],e);}
+      }
+    });
+  }catch(e){console.error('afterCloudSync error',e);}
+}
+
+function _doCloudSync(){
+  setCloudStatus('syncing');
+  supa.from('kvstore').select('key,value').then(function(res){
+    if(res.error){
+      console.error('Supabase sync error',res.error);
+      setCloudStatus('offline');
+      return;
+    }
+    var rows=res.data||[];
+    if(rows.length===0){
+      var localKeys=KNOWN_KEYS.filter(function(k){return localStorage.getItem(k)!==null;});
+      if(localKeys.length===0){
+        console.log('Cloud empty and no local data — nothing to sync');
+        setCloudStatus('synced');
+        return;
+      }
+      console.log('Cloud empty — migrating',localKeys.length,'keys from localStorage');
+      var email=(localStorage.getItem('us3_user_email')||'unknown').replace(/^"|"$/g,'');
+      var rowsToPush=localKeys.map(function(k){
+        return {key:k,value:_kvParse(localStorage.getItem(k)),updated_at:new Date().toISOString(),updated_by:email};
+      });
+      supa.from('kvstore').upsert(rowsToPush).then(function(r2){
+        if(r2.error){console.error('Migration upsert error',r2.error);setCloudStatus('offline');return;}
+        console.log('Migrated',rowsToPush.length,'keys to cloud');
+        setCloudStatus('synced');
+      });
+      return;
+    }
+    var applied=0;
+    rows.forEach(function(r){
+      try{
+        if(KV_LOCAL_ONLY[r.key])return;
+        _kvCache[r.key]=r.value;
+        if(typeof r.value==='string'){
+          localStorage.setItem(r.key,r.value);
+        } else {
+          localStorage.setItem(r.key,JSON.stringify(r.value));
+        }
+        applied++;
+      }catch(e){console.error('Failed to apply cloud row',r.key,e);}
+    });
+    console.log('Synced',applied,'keys from cloud (out of',rows.length,'rows)');
+    setCloudStatus('synced');
+    afterCloudSync();
+  }).catch(function(err){
+    console.error('Supabase sync exception',err);
+    setCloudStatus('offline');
+  });
+}
+
+function syncFromCloud(){
+  setCloudStatus('syncing');
+  var waited=0,maxWait=5000,interval=100;
+  (function tryStart(){
+    if(typeof supa!=='undefined'&&supa){_doCloudSync();return;}
+    waited+=interval;
+    if(waited>=maxWait){console.error('Supabase client not ready after 5s');setCloudStatus('offline');return;}
+    setTimeout(tryStart,interval);
+  })();
+}
 
 function loadStorage(){
   pinPos=lv('us3_pins')||{};
