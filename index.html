@@ -520,6 +520,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
     <div class="ntab" data-page="avail" onclick="sw('avail',this)"><span class="ti">📦</span>Availability</div>
     <div class="ntab" data-page="fleet" onclick="sw('fleet',this)"><span class="ti">🛰</span>Fleet Map</div>
     <div class="ntab" data-page="assetmap" onclick="sw('assetmap',this)"><span class="ti">🔵</span>Asset Map</div>
+    <div class="ntab" data-page="houston" onclick="sw('houston',this)"><span class="ti">🛢</span>Houston</div>
     <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
@@ -706,6 +707,9 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
 
 <!-- DECOMMISSION -->
 <div class="page" id="page-decomm"><div class="dc-inner" id="dcInner"></div></div>
+
+<!-- HOUSTON -->
+<div class="page" id="page-houston"><div class="dc-inner" id="houstonInner"></div></div>
 
 <!-- SHARED AVAILABILITY QUERY SIDEBAR -->
 <div id="sharedQuerySidebar">
@@ -1541,6 +1545,7 @@ function sw(id,el){
   if(id==='sched')    renderSched();
   if(id==='fleet')    renderFleet();
   if(id==='parts')    renderParts();
+  if(id==='houston')  renderHouston();
   // Show shared query sidebar only on fleet, assetmap, sched
   var sidebar=document.getElementById('sharedQuerySidebar');
   var showSidebar=(id==='fleet'||id==='assetmap'||id==='sched');
@@ -1604,9 +1609,9 @@ function toggleAdmin(){
   updateTabBadges();
   // Re-render active tab
   renderMC();
-  var pages=['avail','fleet','decomm','parts','sched','assetmap'];
+  var pages=['avail','fleet','decomm','parts','sched','assetmap','houston'];
   pages.forEach(function(p){if(document.getElementById('page-'+p)&&document.getElementById('page-'+p).classList.contains('active')){
-    if(p==='avail')renderAvail();if(p==='fleet')renderFleet();if(p==='decomm')renderDecomm();if(p==='parts')renderParts();if(p==='sched')renderSched();if(p==='assetmap')renderAssetMap();
+    if(p==='avail')renderAvail();if(p==='fleet')renderFleet();if(p==='decomm')renderDecomm();if(p==='parts')renderParts();if(p==='sched')renderSched();if(p==='assetmap')renderAssetMap();if(p==='houston')renderHouston();
   }});
 }
 
@@ -3016,6 +3021,464 @@ function renderProjects(){
     else if(p.name.indexOf('Level')>=0) logoHtml=prodLogoHtml('cric',36);
     else if(p.name.indexOf('Hach')>=0) logoHtml=prodLogoHtml('hach',36);
     return '<a class="pj-card" href="'+p.url+'" target="_blank" rel="noopener"><div class="pj-card-icon">'+(logoHtml||p.icon)+'</div><div class="pj-card-name"'+(p.color?' style="color:'+p.color+'"':'')+'">'+p.name+'</div><div class="pj-card-url">'+p.sub+'</div><div class="pj-card-arrow">\u2192 Open Portal</div></a>';}).join('');
+}
+
+// ═══ HOUSTON FLEET HEALTH ═══
+var houstonState={filter:'all',typeFilter:'',search:'',sortKey:'daysSilent',sortDir:'desc',page:1,pageSize:50,pendingImport:null};
+var HOUSTON_EXPECTED_COLS=['SiteID','SiteName','lastSample','DeviceID','Expected','TotalMessages','installDate','Description','PctTotal','SensusMeterID'];
+
+function getHoustonReports(){return lv('us3_houston_reports')||[];}
+function saveHoustonReports(arr){
+  arr.sort(function(a,b){return (a.reportDate||'').localeCompare(b.reportDate||'');});
+  for(var i=0;i<arr.length-1;i++){if(arr[i].devices)delete arr[i].devices;}
+  try{localStorage.setItem('us3_houston_reports',JSON.stringify(arr));return true;}catch(e){return false;}
+}
+function getLatestHoustonReport(){var arr=getHoustonReports();return arr.length?arr[arr.length-1]:null;}
+
+function houstonEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function houstonDaysSince(lastSample,reportDate){
+  if(!lastSample)return Infinity;
+  var ls=new Date(lastSample),rd=new Date(reportDate);
+  if(isNaN(ls.getTime())||isNaN(rd.getTime()))return Infinity;
+  return Math.floor((rd-ls)/86400000);
+}
+
+function parseHoustonCSVLine(line){
+  var out=[],cur='',inQ=false,i=0;
+  while(i<line.length){
+    var c=line[i];
+    if(inQ){
+      if(c==='"'&&line[i+1]==='"'){cur+='"';i+=2;continue;}
+      if(c==='"'){inQ=false;i++;continue;}
+      cur+=c;i++;
+    } else {
+      if(c==='"'){inQ=true;i++;continue;}
+      if(c===','){out.push(cur);cur='';i++;continue;}
+      cur+=c;i++;
+    }
+  }
+  out.push(cur);
+  return out.map(function(s){return s.trim();});
+}
+
+function houstonComputeSummary(devices,reportDate){
+  var summary={
+    totalDevices:devices.length,
+    byType:{'Sensus Cricket':0,'HJ Level':0,'Cricket':0},
+    healthBuckets:{healthy:0,mostlyWorking:0,sick:0,silent:0},
+    recencyBuckets:{within24h:0,within7d:0,within30d:0,within90d:0,silent90plus:0,silent365plus:0}
+  };
+  devices.forEach(function(d){
+    var t=d.description||'';
+    if(summary.byType.hasOwnProperty(t))summary.byType[t]++;
+    else summary.byType[t]=(summary.byType[t]||0)+1;
+    var p=d.pctTotal;
+    if(p>=100)summary.healthBuckets.healthy++;
+    else if(p>=76)summary.healthBuckets.mostlyWorking++;
+    else if(p>0)summary.healthBuckets.sick++;
+    else summary.healthBuckets.silent++;
+    var ds=houstonDaysSince(d.lastSample,reportDate);
+    if(ds<=1)summary.recencyBuckets.within24h++;
+    if(ds<=7)summary.recencyBuckets.within7d++;
+    if(ds<=30)summary.recencyBuckets.within30d++;
+    if(ds<=90)summary.recencyBuckets.within90d++;
+    if(ds>90)summary.recencyBuckets.silent90plus++;
+    if(ds>365)summary.recencyBuckets.silent365plus++;
+  });
+  return summary;
+}
+
+function parseHoustonCSV(csvText,reportDate){
+  var lines=csvText.replace(/\r\n/g,'\n').split('\n').filter(function(l){return l.length>0;});
+  if(lines.length===0)return {error:'Empty CSV.'};
+  var header=parseHoustonCSVLine(lines[0]);
+  if(header.length!==HOUSTON_EXPECTED_COLS.length){
+    return {error:'Invalid CSV format. Expected columns: '+HOUSTON_EXPECTED_COLS.join(', ')};
+  }
+  for(var i=0;i<HOUSTON_EXPECTED_COLS.length;i++){
+    if(header[i]!==HOUSTON_EXPECTED_COLS[i]){
+      return {error:'Invalid CSV format. Expected columns: '+HOUSTON_EXPECTED_COLS.join(', ')};
+    }
+  }
+  var devices=[],errors=[];
+  for(var r=1;r<lines.length;r++){
+    var cols=parseHoustonCSVLine(lines[r]);
+    if(cols.length!==HOUSTON_EXPECTED_COLS.length){errors.push(r+1);continue;}
+    try{
+      var pctRaw=String(cols[8]||'').replace('%','').trim();
+      var pct=pctRaw===''?0:parseInt(pctRaw,10);
+      if(isNaN(pct))pct=0;
+      var dev={
+        siteId:parseInt(cols[0],10)||0,
+        siteName:cols[1],
+        lastSample:cols[2]?cols[2]:null,
+        deviceId:parseInt(cols[3],10)||0,
+        expected:parseInt(cols[4],10)||0,
+        totalMessages:parseInt(cols[5],10)||0,
+        installDate:cols[6]?cols[6]:null,
+        description:cols[7],
+        pctTotal:pct,
+        sensusMeterId:cols[9]
+      };
+      devices.push(dev);
+    }catch(e){errors.push(r+1);}
+  }
+  return {devices:devices,errors:errors,summary:houstonComputeSummary(devices,reportDate)};
+}
+
+function houstonOnFilePick(evt){
+  var f=evt.target.files[0];if(!f)return;
+  var m=f.name.match(/(\d{4})(\d{2})(\d{2})/);
+  if(m){var di=document.getElementById('houstonDate');if(di)di.value=m[1]+'-'+m[2]+'-'+m[3];}
+}
+
+function houstonDoImport(){
+  var fi=document.getElementById('houstonFile');
+  var di=document.getElementById('houstonDate');
+  var st=document.getElementById('houstonImportStatus');
+  if(!fi||!fi.files[0]){st.innerHTML='<div style="color:#e05252;font-family:Rajdhani,sans-serif;">Choose a CSV file first.</div>';return;}
+  var rd=di.value||(new Date().toISOString().split('T')[0]);
+  var f=fi.files[0];
+  var rdr=new FileReader();
+  rdr.onload=function(e){
+    var res=parseHoustonCSV(e.target.result,rd);
+    if(res.error){st.innerHTML='<div style="color:#e05252;font-family:Rajdhani,sans-serif;">'+houstonEsc(res.error)+'</div>';return;}
+    houstonState.pendingImport={reportDate:rd,uploadedAt:new Date().toISOString(),summary:res.summary,devices:res.devices};
+    var s=res.summary;
+    var errMsg=res.errors.length?' <span style="color:#e8a020;">('+res.errors.length+' row'+(res.errors.length!==1?'s':'')+' skipped)</span>':'';
+    st.innerHTML='<div style="font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text);margin-bottom:10px;">Parsed '+res.devices.length+' devices'+errMsg+'. '+s.healthBuckets.healthy+' healthy, '+s.healthBuckets.silent+' silent. Click Confirm to save snapshot.</div>'+
+      '<button class="dc-btn export" onclick="houstonConfirmImport()">Confirm &amp; Save Snapshot</button> '+
+      '<button class="dc-btn" style="color:var(--muted);border-color:var(--border);" onclick="houstonCancelImport()">Cancel</button>';
+  };
+  rdr.onerror=function(){st.innerHTML='<div style="color:#e05252;font-family:Rajdhani,sans-serif;">Failed to read file.</div>';};
+  rdr.readAsText(f);
+}
+
+function houstonConfirmImport(){
+  if(!houstonState.pendingImport)return;
+  var arr=getHoustonReports();
+  var existing=-1;
+  for(var i=0;i<arr.length;i++){if(arr[i].reportDate===houstonState.pendingImport.reportDate){existing=i;break;}}
+  if(existing>=0)arr[existing]=houstonState.pendingImport;
+  else arr.push(houstonState.pendingImport);
+  var ok=saveHoustonReports(arr);
+  if(!ok){alert('Save failed — localStorage quota likely exceeded. Try removing old reports.');return;}
+  houstonState.pendingImport=null;
+  houstonState.page=1;
+  renderHouston();
+}
+
+function houstonCancelImport(){houstonState.pendingImport=null;var st=document.getElementById('houstonImportStatus');if(st)st.innerHTML='';var fi=document.getElementById('houstonFile');if(fi)fi.value='';}
+
+function houstonDeleteReport(date){
+  if(!confirm('Delete report from '+date+'?'))return;
+  var arr=getHoustonReports().filter(function(r){return r.reportDate!==date;});
+  saveHoustonReports(arr);
+  renderHouston();
+}
+
+function houstonSetFilter(f){houstonState.filter=f;houstonState.page=1;renderHoustonTable();}
+function houstonSetTypeFilter(t){houstonState.typeFilter=(houstonState.typeFilter===t?'':t);houstonState.page=1;renderHouston();}
+function houstonSetSort(k){
+  if(houstonState.sortKey===k)houstonState.sortDir=(houstonState.sortDir==='desc'?'asc':'desc');
+  else {houstonState.sortKey=k;houstonState.sortDir='desc';}
+  renderHoustonTable();
+}
+function houstonSetSearch(v){
+  houstonState.search=v;houstonState.page=1;renderHoustonTable();
+  var el=document.getElementById('houstonSearch');
+  if(el){el.focus();try{el.setSelectionRange(v.length,v.length);}catch(e){}}
+}
+function houstonSetPage(p){houstonState.page=p;renderHoustonTable();}
+
+function renderHoustonImportPanel(){
+  return '<div style="margin:0 0 20px 0;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Admin · Import Monthly Report</div>'+
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;font-family:Rajdhani,sans-serif;">'+
+      '<div><label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;">CSV File</label>'+
+        '<input type="file" id="houstonFile" accept=".csv" onchange="houstonOnFilePick(event)" style="font-family:Rajdhani,sans-serif;color:var(--text);"></div>'+
+      '<div><label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;">Report Date</label>'+
+        '<input type="date" id="houstonDate" value="'+(new Date().toISOString().split('T')[0])+'" style="font-family:Rajdhani,sans-serif;padding:6px 8px;background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:4px;"></div>'+
+      '<button class="dc-btn export" onclick="houstonDoImport()">Import Report</button>'+
+    '</div>'+
+    '<div id="houstonImportStatus" style="margin-top:12px;"></div>'+
+  '</div>';
+}
+
+function houstonHealthPareto(summary){
+  var counts={
+    'Silent':summary.healthBuckets.silent,
+    'Healthy':summary.healthBuckets.healthy,
+    'Mostly Working':summary.healthBuckets.mostlyWorking,
+    'Sick':summary.healthBuckets.sick
+  };
+  var colorMap={'Silent':'#A7A9AC','Healthy':'#00c49a','Mostly Working':'#e8a020','Sick':'#ED1C24'};
+  var total=Object.keys(counts).reduce(function(a,k){return a+counts[k];},0);
+  if(total===0)return '';
+  var sorted=Object.keys(counts).map(function(k){return {cat:k,count:counts[k],pct:(counts[k]/total)*100};}).sort(function(a,b){return b.count-a.count;});
+  var cum=0;sorted.forEach(function(it){cum+=it.pct;it.cumPct=cum;});
+  var W=800,H=440,pL=60,pR=60,pT=30,pB=70;
+  var cW=W-pL-pR,cH=H-pT-pB;
+  var n=sorted.length,slot=cW/n,barW=Math.min(80,slot*0.6);
+  var svg='';
+  [0,20,40,60,80,100].forEach(function(t){
+    var y=pT+cH-(t/100)*cH;
+    svg+='<text x="'+(pL-10)+'" y="'+(y+4)+'" text-anchor="end" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--muted)">'+t+'%</text>';
+    svg+='<text x="'+(pL+cW+10)+'" y="'+(y+4)+'" text-anchor="start" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--muted)">'+t+'%</text>';
+  });
+  svg+='<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(pT+cH)+'" stroke="var(--border)" stroke-width="1"/>';
+  svg+='<line x1="'+(pL+cW)+'" y1="'+pT+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="var(--border)" stroke-width="1"/>';
+  svg+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="var(--border)" stroke-width="1"/>';
+  var y80=pT+cH-0.8*cH;
+  svg+='<line x1="'+pL+'" y1="'+y80+'" x2="'+(pL+cW)+'" y2="'+y80+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5,4"/>';
+  svg+='<text x="'+(pL+cW-6)+'" y="'+(y80-5)+'" text-anchor="end" font-family="Rajdhani,sans-serif" font-size="11" fill="var(--muted)">80%</text>';
+  var pts=[];
+  sorted.forEach(function(it,i){
+    var bx=pL+i*slot+(slot-barW)/2;
+    var bh=(it.pct/100)*cH;
+    var by=pT+cH-bh;
+    var color=colorMap[it.cat]||'#0071BC';
+    svg+='<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+bh+'" fill="'+color+'"/>';
+    svg+='<text x="'+(bx+barW/2)+'" y="'+(by-7)+'" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="12" font-weight="600" fill="var(--text)">'+it.count+' ('+Math.round(it.pct)+'%)</text>';
+    svg+='<text x="'+(bx+barW/2)+'" y="'+(pT+cH+22)+'" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--text)">'+it.cat+'</text>';
+    pts.push({x:bx+barW,y:pT+cH-(it.cumPct/100)*cH});
+  });
+  var d='';pts.forEach(function(p,i){d+=(i===0?'M':'L')+p.x+','+p.y;});
+  svg+='<path d="'+d+'" stroke="#0071BC" stroke-width="2" fill="none"/>';
+  pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
+  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Houston Fleet Health Distribution</div>'+
+    '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
+  '</div>';
+}
+
+function houstonTrendChart(reports){
+  if(reports.length<2){
+    return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px dashed var(--borderb);border-radius:8px;background:var(--panel-bg);text-align:center;color:var(--muted);font-family:Rajdhani,sans-serif;font-size:14px;">Trend chart will appear once you import a second report.</div>';
+  }
+  var sorted=reports.slice().sort(function(a,b){return a.reportDate.localeCompare(b.reportDate);});
+  var W=800,H=320,pL=60,pR=20,pT=40,pB=50;
+  var cW=W-pL-pR,cH=H-pT-pB;
+  var maxV=0;
+  sorted.forEach(function(r){
+    if(!r.summary)return;
+    maxV=Math.max(maxV,r.summary.healthBuckets.healthy||0,r.summary.healthBuckets.silent||0,(r.summary.recencyBuckets&&r.summary.recencyBuckets.silent365plus)||0);
+  });
+  var step=maxV<=200?50:maxV<=500?100:maxV<=2000?250:500;
+  var maxY=Math.ceil(maxV/step)*step||step;
+  var n=sorted.length;
+  var x=function(i){return pL+(n===1?cW/2:(i*cW/(n-1)));};
+  var y=function(v){return pT+cH-(v/maxY)*cH;};
+  var svg='';
+  var ticks=5;
+  for(var t=0;t<=ticks;t++){
+    var v=Math.round(maxY*t/ticks);
+    var ty=pT+cH-(t/ticks)*cH;
+    svg+='<line x1="'+pL+'" y1="'+ty+'" x2="'+(pL+cW)+'" y2="'+ty+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity=".5"/>';
+    svg+='<text x="'+(pL-10)+'" y="'+(ty+4)+'" text-anchor="end" font-family="Rajdhani,sans-serif" font-size="11" fill="var(--muted)">'+v+'</text>';
+  }
+  svg+='<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(pT+cH)+'" stroke="var(--border)"/>';
+  svg+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="var(--border)"/>';
+  sorted.forEach(function(r,i){
+    svg+='<text x="'+x(i)+'" y="'+(pT+cH+20)+'" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="11" fill="var(--text)">'+r.reportDate+'</text>';
+  });
+  var lines=[
+    {color:'#00c49a',label:'Healthy',getter:function(s){return s.healthBuckets.healthy||0;}},
+    {color:'#A7A9AC',label:'Silent',getter:function(s){return s.healthBuckets.silent||0;}},
+    {color:'#ED1C24',label:'Silent 365+',getter:function(s){return (s.recencyBuckets&&s.recencyBuckets.silent365plus)||0;}}
+  ];
+  lines.forEach(function(L){
+    var d='';
+    sorted.forEach(function(r,i){if(!r.summary)return;var v=L.getter(r.summary);d+=(i===0?'M':'L')+x(i)+','+y(v);});
+    svg+='<path d="'+d+'" stroke="'+L.color+'" stroke-width="2" fill="none"/>';
+    sorted.forEach(function(r,i){
+      if(!r.summary)return;var v=L.getter(r.summary);
+      svg+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4" fill="'+L.color+'"/>';
+      svg+='<text x="'+x(i)+'" y="'+(y(v)-8)+'" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="10" fill="'+L.color+'">'+v+'</text>';
+    });
+  });
+  var legend='';
+  lines.forEach(function(L,i){
+    legend+='<g transform="translate('+(pL+i*130)+',8)"><rect width="16" height="3" y="6" fill="'+L.color+'"/><text x="22" y="12" font-family="Rajdhani,sans-serif" font-size="12" fill="var(--text)">'+L.label+'</text></g>';
+  });
+  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Fleet Health Trend</div>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;max-height:'+H+'px;" preserveAspectRatio="xMidYMid meet">'+legend+svg+'</svg>'+
+  '</div>';
+}
+
+function houstonFilteredDevices(latest){
+  var rd=latest.reportDate;
+  var devs=(latest.devices||[]).slice();
+  if(houstonState.typeFilter)devs=devs.filter(function(d){return d.description===houstonState.typeFilter;});
+  var f=houstonState.filter;
+  if(f!=='all'){
+    devs=devs.filter(function(d){
+      var p=d.pctTotal,ds=houstonDaysSince(d.lastSample,rd);
+      if(f==='healthy')return p>=100;
+      if(f==='mostlyWorking')return p>=76&&p<100;
+      if(f==='sick')return p>0&&p<76;
+      if(f==='silent')return p===0;
+      if(f==='silent365plus')return ds>365;
+      return true;
+    });
+  }
+  var q=(houstonState.search||'').trim().toLowerCase();
+  if(q){
+    devs=devs.filter(function(d){
+      return String(d.deviceId).toLowerCase().indexOf(q)>=0||
+             String(d.siteName||'').toLowerCase().indexOf(q)>=0;
+    });
+  }
+  var k=houstonState.sortKey,dir=houstonState.sortDir==='desc'?-1:1;
+  devs.sort(function(a,b){
+    var va,vb;
+    if(k==='daysSilent'){va=houstonDaysSince(a.lastSample,rd);vb=houstonDaysSince(b.lastSample,rd);if(va===Infinity)va=Number.MAX_SAFE_INTEGER;if(vb===Infinity)vb=Number.MAX_SAFE_INTEGER;return (va-vb)*dir;}
+    if(k==='pctTotal'){va=a.pctTotal||0;vb=b.pctTotal||0;return (va-vb)*dir;}
+    if(k==='lastSample'){va=a.lastSample||'0000-00-00';vb=b.lastSample||'0000-00-00';return va<vb?-1*dir:va>vb?1*dir:0;}
+    if(k==='installDate'){va=a.installDate||'0000-00-00';vb=b.installDate||'0000-00-00';return va<vb?-1*dir:va>vb?1*dir:0;}
+    return 0;
+  });
+  return devs;
+}
+
+function renderHoustonTable(){
+  var latest=getLatestHoustonReport();
+  var wrap=document.getElementById('houstonTableWrap');
+  if(!wrap||!latest||!latest.devices)return;
+  var rd=latest.reportDate;
+  var filtered=houstonFilteredDevices(latest);
+  var pageSize=houstonState.pageSize;
+  var totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));
+  if(houstonState.page>totalPages)houstonState.page=totalPages;
+  var startIdx=(houstonState.page-1)*pageSize;
+  var pageDevs=filtered.slice(startIdx,startIdx+pageSize);
+  var typeColor=function(t){return t==='Sensus Cricket'?'#e8a020':t==='HJ Level'?'#0071BC':t==='Cricket'?'#44bb88':'#888';};
+  var pctColor=function(p){return p>=100?'#00c49a':p>=76?'#e8a020':p>0?'#ED1C24':'#A7A9AC';};
+  var rows=pageDevs.map(function(d){
+    var ds=houstonDaysSince(d.lastSample,rd);
+    var dsTxt=ds===Infinity?'—':String(ds);
+    return '<tr>'+
+      '<td>'+houstonEsc(d.siteName)+'</td>'+
+      '<td>'+d.deviceId+'</td>'+
+      '<td style="color:'+typeColor(d.description)+';font-weight:600;">'+houstonEsc(d.description)+'</td>'+
+      '<td style="color:'+pctColor(d.pctTotal)+';font-weight:700;">'+d.pctTotal+'%</td>'+
+      '<td>'+(d.lastSample||'—')+'</td>'+
+      '<td>'+dsTxt+'</td>'+
+      '<td>'+(d.installDate||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+  if(!pageDevs.length)rows='<tr><td colspan="7" style="text-align:center;opacity:.6;padding:24px;">No devices match the current filter.</td></tr>';
+  var arrow=function(k){if(houstonState.sortKey!==k)return '';return houstonState.sortDir==='desc'?' ▼':' ▲';};
+  var filters=[
+    {k:'all',l:'All'},
+    {k:'healthy',l:'Healthy'},
+    {k:'mostlyWorking',l:'Mostly Working'},
+    {k:'sick',l:'Sick'},
+    {k:'silent',l:'Silent'},
+    {k:'silent365plus',l:'Silent 365+'}
+  ];
+  var filterBtns=filters.map(function(f){return '<button class="qchip '+(houstonState.filter===f.k?'active':'')+'" style="cursor:pointer;" onclick="houstonSetFilter(\''+f.k+'\')">'+f.l+'</button>';}).join('');
+  var typeFilterBadge=houstonState.typeFilter?'<span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);margin-left:8px;">Type: <strong style="color:'+typeColor(houstonState.typeFilter)+';">'+houstonEsc(houstonState.typeFilter)+'</strong> <a href="#" onclick="event.preventDefault();houstonSetTypeFilter(\''+houstonState.typeFilter.replace(/'/g,"\\'")+'\')" style="color:var(--muted);text-decoration:none;">✕</a></span>':'';
+  wrap.innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'+filterBtns+typeFilterBadge+
+      '<input type="search" id="houstonSearch" placeholder="Search Device ID or Site Name…" value="'+houstonEsc(houstonState.search)+'" oninput="houstonSetSearch(this.value)" style="margin-left:auto;padding:7px 12px;border:1px solid var(--border);border-radius:18px;background:var(--card-bg);color:var(--text);font-family:Rajdhani,sans-serif;font-size:13px;min-width:240px;">'+
+    '</div>'+
+    '<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--borderb);">'+
+      '<table class="dc-table" style="width:100%;">'+
+        '<thead><tr>'+
+          '<th>Site Name</th>'+
+          '<th>Device ID</th>'+
+          '<th>Type</th>'+
+          '<th style="cursor:pointer;user-select:none;" onclick="houstonSetSort(\'pctTotal\')">% Total'+arrow('pctTotal')+'</th>'+
+          '<th style="cursor:pointer;user-select:none;" onclick="houstonSetSort(\'lastSample\')">Last Sample'+arrow('lastSample')+'</th>'+
+          '<th style="cursor:pointer;user-select:none;" onclick="houstonSetSort(\'daysSilent\')">Days Silent'+arrow('daysSilent')+'</th>'+
+          '<th style="cursor:pointer;user-select:none;" onclick="houstonSetSort(\'installDate\')">Install Date'+arrow('installDate')+'</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);">'+
+      '<button class="dc-btn" '+(houstonState.page<=1?'disabled style="opacity:.4;cursor:not-allowed;"':'onclick="houstonSetPage('+(houstonState.page-1)+')"')+'>&larr; Prev</button>'+
+      '<span>Page '+houstonState.page+' of '+totalPages+' · '+filtered.length+' device'+(filtered.length!==1?'s':'')+'</span>'+
+      '<button class="dc-btn" '+(houstonState.page>=totalPages?'disabled style="opacity:.4;cursor:not-allowed;"':'onclick="houstonSetPage('+(houstonState.page+1)+')"')+'>Next &rarr;</button>'+
+    '</div>';
+}
+
+function renderHouston(){
+  var inner=document.getElementById('houstonInner');
+  if(!inner)return;
+  var reports=getHoustonReports();
+  var latest=getLatestHoustonReport();
+  var titleHtml='<div class="dc-title">Houston Fleet Health</div><div class="dc-sub">Cricket project · Monthly device-health snapshots from Osama</div>';
+  if(!latest){
+    inner.innerHTML=titleHtml+
+      '<div style="padding:32px;text-align:center;color:var(--muted);font-family:Rajdhani,sans-serif;font-size:15px;border:1px dashed var(--borderb);border-radius:8px;margin:24px 0;">No Houston report imported yet. Click "Import Report" to get started.</div>'+
+      (adminMode?renderHoustonImportPanel():'');
+    return;
+  }
+  var s=latest.summary;
+  var totalUnder=(s.healthBuckets.mostlyWorking||0)+(s.healthBuckets.sick||0);
+  var headerCards=[
+    {name:'Total Fleet',color:'var(--text)',cnt:s.totalDevices,sub:'devices'},
+    {name:'Healthy',color:'#00c49a',cnt:s.healthBuckets.healthy,sub:'≥100%'},
+    {name:'Underperforming',color:'#e8a020',cnt:totalUnder,sub:'<100%'},
+    {name:'Silent',color:'#A7A9AC',cnt:s.healthBuckets.silent,sub:'0%'},
+    {name:'Silent 365+',color:'#ED1C24',cnt:(s.recencyBuckets&&s.recencyBuckets.silent365plus)||0,sub:'>1yr no msg'}
+  ];
+  var headerHtml='<div class="dc-board">'+headerCards.map(function(c){return '<div class="dc-card"><div class="dc-card-top" style="padding-top:18px;"><div class="dc-name" style="color:'+c.color+'">'+c.name+'</div><div class="dc-num" style="color:'+c.color+';font-family:\'Oswald\',sans-serif;font-weight:700;font-size:42px;">'+c.cnt+'</div><div class="dc-lbl">'+c.sub+'</div></div><div class="dc-bar" style="background:'+c.color+'55"></div></div>';}).join('')+'</div>';
+  var byType=s.byType||{};
+  var typeColor=function(t){return t==='Sensus Cricket'?'#e8a020':t==='HJ Level'?'#0071BC':t==='Cricket'?'#44bb88':'#888';};
+  var typeOrder=['Sensus Cricket','HJ Level','Cricket'];
+  var extraTypes=Object.keys(byType).filter(function(t){return typeOrder.indexOf(t)<0;});
+  var allTypes=typeOrder.concat(extraTypes);
+  var typeHtml='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 20px 0;">'+
+    allTypes.map(function(t){
+      var cnt=byType[t]||0;
+      var active=houstonState.typeFilter===t;
+      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" style="cursor:pointer;flex:1;min-width:160px;padding:14px;border:'+(active?'2px solid '+typeColor(t):'1px solid var(--borderb)')+';border-radius:8px;background:'+(active?'rgba(0,113,188,.06)':'var(--panel-bg)')+';transition:all .15s;">'+
+        '<div style="font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:'+typeColor(t)+';font-weight:700;">'+houstonEsc(t)+(active?' ✕':'')+'</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:32px;font-weight:700;color:var(--text);margin-top:4px;">'+cnt+'</div>'+
+        '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);">devices'+(active?' · filter on':'')+'</div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+  var crossCount=0;
+  var decommSet={};
+  (lv('us3_decomm')||[]).forEach(function(d){if(d.id)decommSet[String(d.id).trim()]=true;});
+  (latest.devices||[]).forEach(function(d){
+    var ds=houstonDaysSince(d.lastSample,latest.reportDate);
+    if(ds>365){var did=String(d.deviceId).trim();if(!decommSet[did])crossCount++;}
+  });
+  var crossHtml='<div style="max-width:900px;margin:0 auto 16px auto;padding:14px 16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px;">Cross-Reference · Decommission Log</div>'+
+    '<div style="font-family:Rajdhani,sans-serif;font-size:15px;color:var(--text);">Silent 365+ devices not in decommission log: <strong style="color:#ED1C24;font-size:18px;">'+crossCount+'</strong> device'+(crossCount!==1?'s':'')+'</div>'+
+    '<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">These are candidates for review — devices that haven\'t reported in over a year and aren\'t logged as decommissioned.</div>'+
+  '</div>';
+  var historyHtml='<div style="margin-top:24px;padding:14px 16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Report History</div>'+
+    '<div style="font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);display:flex;gap:8px;flex-wrap:wrap;">'+
+      reports.slice().reverse().map(function(r){
+        var hasDevs=!!r.devices;
+        return '<span style="padding:5px 10px;border:1px solid '+(hasDevs?'var(--accent)':'var(--border)')+';border-radius:14px;'+(hasDevs?'background:rgba(26,127,232,.08);':'')+'">'+
+          r.reportDate+' · '+(r.summary?r.summary.totalDevices:'?')+' devices'+
+          (adminMode?' <a href="#" onclick="event.preventDefault();houstonDeleteReport(\''+r.reportDate+'\')" style="color:#e05252;text-decoration:none;margin-left:4px;" title="Delete">×</a>':'')+
+        '</span>';
+      }).join('')+
+    '</div>'+
+    (reports.length>1?'<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);font-style:italic;margin-top:6px;">Full device data only available for the most recent snapshot.</div>':'')+
+  '</div>';
+  inner.innerHTML=
+    titleHtml+
+    headerHtml+
+    (adminMode?renderHoustonImportPanel():'')+
+    typeHtml+
+    houstonHealthPareto(s)+
+    houstonTrendChart(reports)+
+    crossHtml+
+    '<div id="houstonTableWrap" style="margin-top:18px;"></div>'+
+    historyHtml;
+  renderHoustonTable();
 }
 
 // ═══ FLEET MAP — EXPERIMENTAL ═══
