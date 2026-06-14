@@ -489,6 +489,8 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const SUPABASE_URL='https://hnkcqsvnsreczmlgcaay.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhua2Nxc3Zuc3JlY3ptbGdjYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzAwNzIsImV4cCI6MjA5Mzc0NjA3Mn0.HIBkg7WizjU6vhof6FEDNSG7ZyHruSCakEhzhe7kbt4';
@@ -545,6 +547,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="kit" onclick="sw('kit',this)"><span class="ti">📦</span>Build Kit</div>
     <div class="ntab" data-page="count" onclick="sw('count',this)"><span class="ti">🧮</span>Warehouse Count</div>
+    <div class="ntab" data-page="devmap" onclick="sw('devmap',this)"><span class="ti">📍</span>Device Map</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -740,6 +743,9 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- WAREHOUSE COUNT (Build 02) -->
 <div class="page" id="page-count"><div class="dc-inner" id="countInner"></div></div>
+
+<!-- DEVICE MAP (Build 02) -->
+<div class="page" id="page-devmap"><div class="dc-inner" id="devmapInner"></div></div>
 
 <!-- SHARED AVAILABILITY QUERY SIDEBAR -->
 <div id="sharedQuerySidebar">
@@ -1713,6 +1719,7 @@ function sw(id,el){
   if(id==='scan')     renderScan();
   if(id==='kit')      renderKit();
   if(id==='count')    renderCount();
+  if(id==='devmap')   renderDevMap();
   if(id!=='scan'&&window.scanStopCamera)scanStopCamera();
   // Show shared query sidebar only on fleet, assetmap, sched
   var sidebar=document.getElementById('sharedQuerySidebar');
@@ -5083,6 +5090,76 @@ function countSaveSnapshot(){
   if(log.length>50)log.length=50;
   try{localStorage.setItem('us3_count_log',JSON.stringify(log));}catch(e){}
   alert('Count snapshot saved for '+office.label+'.');
+}
+
+// ═══ PHASE 4 — DEVICE MAP ═══
+// Data layer auto-switches: device_locations when populated (Fulcrum), else sites fallback.
+var devmapMap=null;
+function devMapLoad(cb){
+  if(typeof supa==='undefined'||!supa){cb(null);return;}
+  supa.from('device_locations').select('device_id,site_name,city,sensor_type,project_no,status,latitude,longitude').then(function(r){
+    var rows=(r&&r.data)||[];
+    if(rows.length){
+      cb({source:'device_locations',rows:rows.map(function(d){return {id:d.device_id,label:d.site_name,city:d.city,status:d.status,job:d.project_no,type:d.sensor_type,lat:d.latitude,lng:d.longitude};})});
+      return;
+    }
+    supa.from('sites').select('site_id,device_sn,job_number,city,system_type,latitude,longitude').then(function(r2){
+      var s=(r2&&r2.data)||[];
+      cb({source:'sites (fallback — device_locations empty until Fulcrum runs)',rows:s.map(function(d){return {id:d.device_sn||d.site_id,label:d.site_id,city:d.city,status:null,job:d.job_number,type:d.system_type,lat:d.latitude,lng:d.longitude};})});
+    });
+  });
+}
+function renderDevMap(){
+  us3b2InjectCSS();
+  var inner=document.getElementById('devmapInner');if(!inner)return;
+  var legend=Object.keys(US3_STATUS_COLORS).map(function(k){return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:'+US3_STATUS_COLORS[k]+';border:1px solid #0a0e16;"></span>'+us3esc(k)+'</span>';}).join('');
+  inner.innerHTML=
+  '<div style="padding:14px 18px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'+
+      '<div class="us3b2-h" style="font-size:26px;">📍 Device Map</div>'+
+      '<div id="devmapInfo" style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Loading…</div>'+
+    '</div>'+
+    '<div style="margin-bottom:8px;">'+legend+'<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:#0071BC;border:1px solid #0a0e16;"></span>no status</span></div>'+
+    '<div id="devmapBox" style="height:calc(100vh - 190px);min-height:420px;width:100%;border:1px solid var(--borderb);border-radius:12px;overflow:hidden;background:var(--panel-bg);"></div>'+
+  '</div>';
+  devMapLoad(devMapBuild);
+}
+function devMapPopup(d){
+  return '<div style="font-family:Rajdhani,sans-serif;min-width:180px;">'+
+    '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;color:#0071BC;">'+us3esc(d.id||'—')+'</div>'+
+    (d.label?('<div style="font-size:13px;margin-top:3px;">'+us3esc(d.label)+'</div>'):'')+
+    (d.city?('<div style="font-size:12px;color:#666;">'+us3esc(d.city)+'</div>'):'')+
+    '<div style="margin-top:6px;font-size:12px;">'+(d.status?('Status: <b>'+us3esc(d.status)+'</b>'):'<i>no field status</i>')+'</div>'+
+    (d.type?('<div style="font-size:12px;">Type: '+us3esc(d.type)+'</div>'):'')+
+    (d.job?('<div style="font-size:12px;">Job: '+us3esc(d.job)+'</div>'):'')+
+    '<div style="font-size:11px;color:#999;margin-top:4px;">'+(d.lat).toFixed(5)+', '+(d.lng).toFixed(5)+'</div>'+
+  '</div>';
+}
+function devMapBuild(data){
+  var box=document.getElementById('devmapBox');if(!box)return;
+  var info=document.getElementById('devmapInfo');
+  if(typeof L==='undefined'){box.innerHTML='<div class="us3b2-empty">Map library not loaded (offline?).</div>';if(info)info.textContent='offline';return;}
+  if(!data||!data.rows){box.innerHTML='<div class="us3b2-warn" style="margin:18px;">Offline — Supabase not connected; cannot load devices.</div>';if(info)info.textContent='offline';return;}
+  if(devmapMap){try{devmapMap.remove();}catch(e){}devmapMap=null;}
+  box.innerHTML='';
+  var withCoords=data.rows.filter(function(d){return typeof d.lat==='number'&&typeof d.lng==='number'&&!isNaN(d.lat)&&!isNaN(d.lng);});
+  var missing=data.rows.length-withCoords.length;
+  devmapMap=L.map('devmapBox',{scrollWheelZoom:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(devmapMap);
+  if(!withCoords.length){
+    devmapMap.setView([39.5,-98.35],4);
+    box.insertAdjacentHTML('afterbegin','');
+  }else{
+    var pts=[];
+    withCoords.forEach(function(d){
+      var col=d.status?(US3_STATUS_COLORS[String(d.status).toLowerCase()]||'#0071BC'):'#0071BC';
+      var m=L.circleMarker([d.lat,d.lng],{radius:7,weight:1,color:'#0a0e16',fillColor:col,fillOpacity:.9});
+      m.bindPopup(devMapPopup(d));m.addTo(devmapMap);pts.push([d.lat,d.lng]);
+    });
+    try{devmapMap.fitBounds(pts,{padding:[30,30],maxZoom:12});}catch(e){devmapMap.setView(pts[0],10);}
+  }
+  setTimeout(function(){if(devmapMap)devmapMap.invalidateSize();},180);
+  if(info)info.innerHTML='Source: <b>'+us3esc(data.source)+'</b> · '+withCoords.length+' mapped'+(missing?(' · <span style="color:#e8a020;">'+missing+' missing coords</span>'):'');
 }
 
 // Login gate

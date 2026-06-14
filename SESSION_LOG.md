@@ -80,3 +80,15 @@ New tab **🧮 Warehouse Count** (`page-count` → `renderCount()`). **localStor
 `CONFIG-OK`+`MAIN-OK`. No Supabase write (local-only), so no anon test needed.
 
 ---
+
+## Phase 4 — Device Map (complete)
+
+New tab **📍 Device Map** (`page-devmap` → `renderDevMap()`), Leaflet 1.9.4 (CDN).
+- **Auto-switching data layer** (`devMapLoad`): queries `device_locations` first; if it has rows, maps those (device_id, site_name, status, project_no, lat/long). Empty today → falls back to `sites` (197/200 have coords) and the info bar says so. No rework when Fulcrum lands.
+- Status-colored circle markers (US3 status palette; neutral blue when no field status). Click → view-only popup (device id, site, city, status, type, job, coords).
+- Graceful states: missing-coords counted in the info bar; empty/offline messages; world view when nothing mapped.
+- Re-entry safe: destroys prior map instance; `invalidateSize()` after layout settles.
+
+`CONFIG-OK`+`MAIN-OK`. Read-only (anon `sites`/`device_locations` SELECT already verified in Phase 0).
+
+---
