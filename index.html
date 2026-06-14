@@ -543,6 +543,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
+    <div class="ntab" data-page="kit" onclick="sw('kit',this)"><span class="ti">📦</span>Build Kit</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -732,6 +733,9 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- STATION SCANNER (Build 02) -->
 <div class="page" id="page-scan"><div class="dc-inner" id="scanInner"></div></div>
+
+<!-- BUILD KIT (Build 02) -->
+<div class="page" id="page-kit"><div class="dc-inner" id="kitInner"></div></div>
 
 <!-- SHARED AVAILABILITY QUERY SIDEBAR -->
 <div id="sharedQuerySidebar">
@@ -1703,6 +1707,7 @@ function sw(id,el){
   if(id==='parts')    renderParts();
   if(id==='houston')  renderHouston();
   if(id==='scan')     renderScan();
+  if(id==='kit')      renderKit();
   if(id!=='scan'&&window.scanStopCamera)scanStopCamera();
   // Show shared query sidebar only on fleet, assetmap, sched
   var sidebar=document.getElementById('sharedQuerySidebar');
@@ -4816,6 +4821,186 @@ function scanSubmitEvent(deviceId){
     if(r.error){alert('Save failed (RLS/insert): '+r.error.message);return;}
     if(!r.data||!r.data.length){alert('Save silently no-op — check RLS insert policy on device_events.');return;}
     scanLookup(deviceId,true); // refresh modal with new event, don't re-add to recent
+  });
+}
+
+// ═══ PHASE 2 — BUILD / SHIP KIT ═══
+var US3_KIT_STATUS_COLORS={building:'#e8a020',shipped:'#0071BC',returned:'#2ecc71'};
+function kitNewId(){var d=new Date();var s=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);var r='';var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';for(var i=0;i<4;i++)r+=a.charAt(Math.floor(Math.random()*a.length));return 'KIT-'+s+'-'+r;}
+function kitStatusPill(st){var c=US3_KIT_STATUS_COLORS[String(st||'').toLowerCase()]||'#3a3f4a';return '<span class="us3b2-pill" style="background:'+c+';color:#0a0e16;">'+us3esc(st||'—')+'</span>';}
+function kitCricketCleared(kit){return (kit.notes||'').indexOf('[CRICKET-CLEARED]')>=0;}
+
+function renderKit(){
+  us3b2InjectCSS();
+  var inner=document.getElementById('kitInner');if(!inner)return;
+  var prodOpts=US3_KIT_PRODUCTS.map(function(p){return '<option value="'+p.id+'">'+us3esc(p.label)+'</option>';}).join('');
+  inner.innerHTML=
+  '<div class="us3b2-wrap">'+
+    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">📦 Build / Ship Kit</div>'+
+    '<div class="us3b2-card">'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:12px;">New Kit</div>'+
+      '<div class="us3b2-grid2">'+
+        '<div><label class="us3b2-label">Kit ID</label><input id="kitNewIdInput" class="us3b2-input" value="'+kitNewId()+'"></div>'+
+        '<div><label class="us3b2-label">Product type</label><select id="kitNewProd" class="us3b2-select">'+prodOpts+'</select></div>'+
+        '<div><label class="us3b2-label">Tote ID</label><input id="kitNewTote" class="us3b2-input" placeholder="e.g. TOTE-12"></div>'+
+        '<div><label class="us3b2-label">Destination</label><input id="kitNewDest" class="us3b2-input" placeholder="Site / office / customer"></div>'+
+      '</div>'+
+      '<div style="text-align:right;margin-top:14px;"><button class="us3b2-btn green" onclick="kitCreate()">Create Kit</button></div>'+
+    '</div>'+
+    '<div class="us3b2-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'+
+        '<div class="us3b2-h" style="font-size:16px;">Kits</div>'+
+        '<select id="kitFilter" class="us3b2-select" style="width:auto;" onchange="kitLoadList()"><option value="">All statuses</option><option value="building">Building</option><option value="shipped">Shipped</option><option value="returned">Returned</option></select>'+
+      '</div>'+
+      '<div id="kitList"><div class="us3b2-empty">Loading…</div></div>'+
+    '</div>'+
+  '</div>';
+  kitLoadList();
+}
+function kitLoadList(){
+  var el=document.getElementById('kitList');if(!el)return;
+  if(typeof supa==='undefined'||!supa){el.innerHTML='<div class="us3b2-warn">Offline — Supabase not connected.</div>';return;}
+  var f=us3v('kitFilter');
+  var q=supa.from('kits').select('*').order('created_at',{ascending:false});
+  if(f)q=q.eq('status',f);
+  q.then(function(r){
+    if(r.error){el.innerHTML='<div class="us3b2-warn">Load failed: '+us3esc(r.error.message)+'</div>';return;}
+    var kits=r.data||[];
+    if(!kits.length){el.innerHTML='<div class="us3b2-empty">No kits yet. Create one above.</div>';return;}
+    // device counts per kit
+    supa.from('kit_devices').select('kit_id').then(function(dr){
+      var counts={};((dr&&dr.data)||[]).forEach(function(d){counts[d.kit_id]=(counts[d.kit_id]||0)+1;});
+      el.innerHTML='<table class="us3b2-tbl"><thead><tr><th>Kit ID</th><th>Product</th><th>Status</th><th>Devices</th><th>Tote</th><th>Destination</th><th></th></tr></thead><tbody>'+
+        kits.map(function(k){return '<tr><td><b>'+us3esc(k.kit_id)+'</b></td><td>'+us3esc(k.product_type||'')+'</td><td>'+kitStatusPill(k.status)+'</td><td>'+(counts[k.kit_id]||0)+'</td><td>'+us3esc(k.tote_id||'—')+'</td><td>'+us3esc(k.destination||'—')+'</td><td><button class="us3b2-btn alt" style="padding:6px 14px;font-size:12px;" onclick="kitOpen(\''+us3esc(k.kit_id).replace(/'/g,"")+'\')">Open</button></td></tr>';}).join('')+
+        '</tbody></table>';
+    });
+  });
+}
+function kitCreate(){
+  if(typeof supa==='undefined'||!supa){alert('Offline — cannot create.');return;}
+  var id=us3v('kitNewIdInput');if(!id){alert('Kit ID required.');return;}
+  var rec={kit_id:id,product_type:us3v('kitNewProd'),tote_id:us3ApplyAliases(us3v('kitNewTote'))||null,destination:us3ApplyAliases(us3v('kitNewDest'))||null,status:'building',built_by:scanGetTech()||null,built_at:new Date().toISOString()};
+  supa.from('kits').insert(rec).select().then(function(r){
+    if(r.error){alert('Create failed: '+r.error.message);return;}
+    if(!r.data||!r.data.length){alert('Create silently no-op — check RLS insert policy on kits.');return;}
+    kitLoadList();kitOpen(id);
+  });
+}
+function kitOpen(kitId){
+  if(typeof supa==='undefined'||!supa){alert('Offline.');return;}
+  us3b2OpenModal('<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:20px;">'+us3esc(kitId)+'</div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div><div class="us3b2-mbody"><div class="us3b2-empty">Loading kit…</div></div>');
+  Promise.all([
+    supa.from('kits').select('*').eq('kit_id',kitId).limit(1),
+    supa.from('kit_devices').select('*').eq('kit_id',kitId).order('added_at',{ascending:true})
+  ]).then(function(res){
+    var kit=((res[0]&&res[0].data)||[])[0];
+    var devices=(res[1]&&res[1].data)||[];
+    if(!kit){us3b2OpenModal('<div class="us3b2-mbody"><div class="us3b2-warn">Kit not found.</div></div>');return;}
+    // tote-wide device count (across all kits sharing this tote_id)
+    if(kit.tote_id){
+      supa.from('kit_devices').select('id,kits!inner(tote_id)').eq('kits.tote_id',kit.tote_id).then(function(tr){
+        var toteCount=((tr&&tr.data)||[]).length;
+        kitShowManifest(kit,devices,toteCount);
+      });
+    }else kitShowManifest(kit,devices,devices.length);
+  });
+}
+function kitShowManifest(kit,devices,toteCount){
+  var isCricket=(kit.product_type==='Cricket');
+  var cleared=kitCricketCleared(kit);
+  var toteWarn=(kit.tote_id&&toteCount>2)?('<div class="us3b2-warn" style="margin-bottom:12px;">⚠ Tote <b>'+us3esc(kit.tote_id)+'</b> holds <b>'+toteCount+'</b> devices — exceeds the 2-per-tote limit.</div>'):'';
+  var cricketWarn=isCricket?('<div class="us3b2-warn" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">'+
+      '<div>🦗 <b>Cricket kit:</b> must be <b>cleared</b> (wiped/reset) before shipping. '+(cleared?'<span style="color:#2ecc71;">Cleared ✓</span>':'<span style="color:#ED1C24;">NOT cleared</span>')+'</div>'+
+      '<button class="us3b2-btn '+(cleared?'alt':'green')+'" style="padding:7px 14px;" onclick="kitToggleCricket(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\','+(cleared?'true':'false')+')">'+(cleared?'Un-clear':'Mark Cleared')+'</button>'+
+    '</div>'):'';
+  var devRows=devices.length?devices.map(function(d){return '<tr><td><b>'+us3esc(d.device_id)+'</b></td><td>'+us3esc(d.device_type||'')+'</td><td>'+us3fmtTs(d.added_at)+'</td><td>'+(kit.status==='building'?('<button class="us3b2-btn red" style="padding:4px 10px;font-size:11px;" onclick="kitRemoveDevice(\''+d.id+'\',\''+us3esc(kit.kit_id).replace(/'/g,"")+'\')">Remove</button>'):'')+'</td></tr>';}).join(''):'<tr><td colspan="4" class="us3b2-empty" style="padding:18px;">No devices scanned in yet.</td></tr>';
+  var statusControls='';
+  if(kit.status==='building')statusControls='<button class="us3b2-btn" onclick="kitSetStatus(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\',\'shipped\')">Ship Kit →</button>';
+  else if(kit.status==='shipped')statusControls='<button class="us3b2-btn green" onclick="kitSetStatus(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\',\'returned\')">Mark Returned →</button>';
+  else statusControls='<span class="us3b2-kv" style="align-self:center;">Kit closed (returned).</span>';
+  var html=
+  '<div class="us3b2-mhead"><div><div class="us3b2-h" style="font-size:22px;">'+us3esc(kit.kit_id)+'</div><div style="margin-top:4px;">'+kitStatusPill(kit.status)+' &nbsp;<span class="us3b2-kv">'+us3esc(kit.product_type||'')+'</span></div></div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div>'+
+  '<div class="us3b2-mbody">'+
+    toteWarn+cricketWarn+
+    '<div class="us3b2-grid3" style="margin-bottom:14px;">'+
+      '<div class="us3b2-kv"><b>Tote</b>'+us3esc(kit.tote_id||'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Destination</b>'+us3esc(kit.destination||'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Built by</b>'+us3esc(kit.built_by||'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Built</b>'+(kit.built_at?us3fmtTs(kit.built_at):'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Shipped</b>'+(kit.shipped_at?us3fmtTs(kit.shipped_at):'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Returned</b>'+(kit.returned_at?us3fmtTs(kit.returned_at):'—')+'</div>'+
+    '</div>'+
+    (kit.status==='building'?('<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;"><input id="kitScanInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:200px;font-size:20px;" placeholder="Scan device into kit, Enter" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();kitAddDevice(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\');}"><button class="us3b2-btn green" onclick="kitAddDevice(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\')">Add</button></div>'):'')+
+    '<div class="us3b2-label">Manifest ('+devices.length+' device'+(devices.length===1?'':'s')+')</div>'+
+    '<div style="max-height:240px;overflow:auto;"><table class="us3b2-tbl"><thead><tr><th>Device ID</th><th>Type</th><th>Added</th><th></th></tr></thead><tbody>'+devRows+'</tbody></table></div>'+
+    '<div style="display:flex;gap:10px;margin-top:18px;justify-content:space-between;flex-wrap:wrap;">'+
+      '<button class="us3b2-btn alt" onclick="kitPrintManifest(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\')">🖨 Print Manifest</button>'+
+      '<div style="display:flex;gap:10px;">'+statusControls+'</div>'+
+    '</div>'+
+  '</div>';
+  us3b2OpenModal(html);
+  setTimeout(function(){var i=document.getElementById('kitScanInput');if(i)i.focus();},60);
+}
+function kitAddDevice(kitId){
+  var inp=document.getElementById('kitScanInput');if(!inp)return;
+  var dev=inp.value.trim();inp.value='';inp.focus();
+  if(!dev)return;
+  supa.from('kits').select('product_type,tote_id').eq('kit_id',kitId).limit(1).then(function(kr){
+    var kit=((kr&&kr.data)||[])[0]||{};
+    supa.from('kit_devices').insert({kit_id:kitId,device_id:dev,device_type:kit.product_type||null,added_by:scanGetTech()||null}).select().then(function(r){
+      if(r.error){alert('Add failed: '+r.error.message);return;}
+      if(!r.data||!r.data.length){alert('Add silently no-op — check RLS insert policy on kit_devices.');return;}
+      kitOpen(kitId);kitLoadList();
+    });
+  });
+}
+function kitRemoveDevice(rowId,kitId){
+  supa.from('kit_devices').delete().eq('id',rowId).then(function(r){
+    if(r.error){alert('Remove failed: '+r.error.message);return;}
+    kitOpen(kitId);kitLoadList();
+  });
+}
+function kitSetStatus(kitId,status){
+  supa.from('kits').select('*').eq('kit_id',kitId).limit(1).then(function(kr){
+    var kit=((kr&&kr.data)||[])[0]||{};
+    if(status==='shipped'&&kit.product_type==='Cricket'&&!kitCricketCleared(kit)){alert('Cannot ship: this Cricket kit is not marked cleared. Mark it cleared first.');return;}
+    var patch={status:status,updated_at:new Date().toISOString()};
+    if(status==='shipped')patch.shipped_at=new Date().toISOString();
+    if(status==='returned')patch.returned_at=new Date().toISOString();
+    supa.from('kits').update(patch).eq('kit_id',kitId).select().then(function(r){
+      if(r.error){alert('Update failed: '+r.error.message);return;}
+      if(!r.data||!r.data.length){alert('Update silently no-op — check RLS update policy on kits.');return;}
+      kitOpen(kitId);kitLoadList();
+    });
+  });
+}
+function kitToggleCricket(kitId,cleared){
+  supa.from('kits').select('notes').eq('kit_id',kitId).limit(1).then(function(kr){
+    var notes=(((kr&&kr.data)||[])[0]||{}).notes||'';
+    notes=notes.replace('[CRICKET-CLEARED]','').trim();
+    if(!cleared)notes=(notes+' [CRICKET-CLEARED]').trim();
+    supa.from('kits').update({notes:notes,updated_at:new Date().toISOString()}).eq('kit_id',kitId).then(function(r){
+      if(r.error){alert('Update failed: '+r.error.message);return;}
+      kitOpen(kitId);
+    });
+  });
+}
+function kitPrintManifest(kitId){
+  Promise.all([
+    supa.from('kits').select('*').eq('kit_id',kitId).limit(1),
+    supa.from('kit_devices').select('*').eq('kit_id',kitId).order('added_at',{ascending:true})
+  ]).then(function(res){
+    var kit=((res[0]&&res[0].data)||[])[0]||{};var devices=(res[1]&&res[1].data)||[];
+    var rows=devices.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+us3esc(d.device_id)+'</td><td>'+us3esc(d.device_type||'')+'</td></tr>';}).join('')||'<tr><td colspan="3">No devices</td></tr>';
+    var w=window.open('','_blank');if(!w){alert('Popup blocked.');return;}
+    w.document.write('<html><head><title>Manifest '+us3esc(kit.kit_id)+'</title><style>body{font-family:Arial,sans-serif;padding:30px;}h1{font-size:22px;}table{width:100%;border-collapse:collapse;margin-top:14px;}th,td{border:1px solid #999;padding:8px;text-align:left;font-size:14px;}th{background:#0071BC;color:#fff;}.meta{margin-top:8px;font-size:14px;color:#333;}</style></head><body>'+
+      '<h1>US3 Kit Manifest — '+us3esc(kit.kit_id)+'</h1>'+
+      '<div class="meta"><b>Product:</b> '+us3esc(kit.product_type||'')+' &nbsp; <b>Status:</b> '+us3esc(kit.status||'')+' &nbsp; <b>Tote:</b> '+us3esc(kit.tote_id||'—')+'</div>'+
+      '<div class="meta"><b>Destination:</b> '+us3esc(kit.destination||'—')+' &nbsp; <b>Built by:</b> '+us3esc(kit.built_by||'—')+'</div>'+
+      '<table><thead><tr><th>#</th><th>Device ID</th><th>Type</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<p style="margin-top:20px;font-size:12px;color:#666;">'+devices.length+' device(s) · printed '+new Date().toLocaleString()+'</p>'+
+      '</body></html>');
+    w.document.close();w.focus();w.print();
   });
 }
 

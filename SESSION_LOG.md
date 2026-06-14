@@ -51,3 +51,19 @@ Behavior:
 **Verified live:** anon (publishable-key) POST to `device_events` returned **HTTP 201 + row** (no silent no-op); test row cleaned up. `CONFIG-OK`+`MAIN-OK`.
 
 ---
+
+## Phase 2 — Build / Ship Kit (complete)
+
+New tab **📦 Build Kit** (`page-kit` → `renderKit()`).
+- **Create kit**: auto-suggested `KIT-YYYYMMDD-XXXX` id (editable), product_type ∈ FF/Cricket/Hach/RG, tote_id, destination; sets `status='building'`, `built_by`(tech), `built_at`.
+- **Kit list**: status filter (building/shipped/returned), device counts, Open.
+- **Manifest modal**: scan devices into an open (building) kit → `kit_devices` insert (`device_type`=kit product); remove device (delete) while building; live device list.
+- **2-per-tote**: counts devices across ALL kits sharing the kit's `tote_id` (PostgREST embedded `kit_devices?select=id,kits!inner(tote_id)`); shows red warning when a tote exceeds 2.
+- **Cricket-cleared state**: Cricket kits show a prominent NOT-cleared/cleared warning + toggle (persisted via `[CRICKET-CLEARED]` marker in `kits.notes`); **shipping a Cricket kit is blocked until marked cleared**.
+- **Status flow**: building→shipped (sets `shipped_at`) →returned (sets `returned_at`); each sets `updated_at`. Devices locked once shipped.
+- **Print Manifest**: opens a clean print window (numbered device list + kit meta).
+- Silent-no-op guards on every insert/update.
+
+**Verified live (anon):** kits INSERT 201, kit_devices INSERT 201, kits UPDATE 200, embedded tote FK select 200. Test rows cleaned up. `CONFIG-OK`+`MAIN-OK`.
+
+---
