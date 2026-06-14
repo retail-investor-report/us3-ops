@@ -115,3 +115,37 @@ New surfaces (Scanner/Kit/Count/Map/Analytics + 3D) were built on the style toke
 `CONFIG-OK`+`MAIN-OK`.
 
 ---
+
+## Phase 7 — 3D Product Viewer (complete)
+
+New tab **🧊 Product 3D** (`page-viewer` → `renderViewer()`), Three.js r128 + GLTFLoader + OrbitControls (CDN).
+- Loads `assets/product.glb`; auto-centers + scales to fit; ambient + 2 directional lights; OrbitControls (drag/zoom) with autorotate (manual rotate fallback).
+- **Graceful empty state** (current — no GLB yet): "No product.glb yet — drop a product.glb into assets/ and reopen this tab." Also handles missing Three/GLTFLoader/offline.
+- Re-entry & resize safe: `viewer3dStop()` cancels the RAF loop, disposes renderer/controls, removes the canvas; `sw()` stops it when leaving the tab.
+- `assets/` + `assets/README.md` slot created in Phase 0.
+
+`CONFIG-OK`+`MAIN-OK`.
+
+---
+
+## RUN COMPLETE — summary
+
+Tabs added (all wired tab→page→`sw()` hook, verified): **📲 Station Scanner · 📦 Build Kit · 🧮 Warehouse Count · 📍 Device Map · 🧊 Product 3D**. 14 tabs / 14 pages / 14 hooks aligned.
+
+- **Supabase = scanner/kit layer only**; inventory/jobs/decommission/map pins stayed on localStorage. **Decommission never written** by any new surface.
+- **No schema migration** — RLS already correct; verified anon writes live (device_events 201, kits 201, kit_devices 201, kits UPDATE 200), test rows cleaned up.
+- Every phase: `CONFIG-OK`+`MAIN-OK` (the mandated command's baseline false-failure is documented above), committed, pushed to `origin/dev`, logged here.
+- Extra hardening: added missing `.gitignore` on `dev` so `.env.txt` secrets aren't committed.
+
+### ⚠️ Deploy gap (flagged, not resolved — needs Lenny)
+us3-ops `dev` does **not** auto-deploy (GitHub Pages publishes `main` only). Per the build's "dev ONLY" instruction I pushed `dev` and did NOT touch `main`. You won't see this on a live URL until you either (a) say "ship to main", or (b) wire a dev preview (GH Actions or CF Pages). Open `index.html` locally to review now.
+
+### Human gates remaining (you)
+1. Phone-scan a product → drop `assets/product.glb` (3D viewer lights up automatically).
+2. Notepad sanity-scan one device into Station Scanner.
+3. Run Fulcrum `phase2-locations.js` (service key) to populate `device_locations` → scanner site/job context + Device Map device layer both activate automatically. Rotate the Fulcrum token + engineering2 password.
+
+### Open decisions logged (built sensible defaults, didn't stall)
+1. Failure Pareto/Fishbone built as a NEW device_events surface (Scanner tab); existing Device Returns view left intact — confirm if you want those repointed.
+2. Scanner status options exclude "Decommissioned" (sacred flow).
+3. 2-per-tote = warn when devices across a kit's `tote_id` exceed 2.
