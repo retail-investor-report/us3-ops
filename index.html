@@ -831,12 +831,14 @@ function prodLogoHtml(pid, h) {
 var ADMIN_PASSWORD = 'admin123';
 
 // ═══ PRODUCTS ═══
-// Order: Hach (white, top), Flex Flow (blue), Rain Gauge (green), Level (orange)
+// Order: Hach (white, top), FlexFlow (blue), Rain Gauge (green), Cricket (orange)
+// Vocab (Build 02): canonical product names are FlexFlow / Cricket (not "Flex Flow" / "Level").
+// ids stay 'ff'/'cric' \u2014 only display labels changed (no logic keys on these strings).
 var PRODUCTS = [
   {id:'hach',label:'Hach',       icon:'\u25C9', color:'#e8e8f0'},
-  {id:'ff',  label:'Flex Flow',  icon:'\u301C', color:'#3a8fe8'},
+  {id:'ff',  label:'FlexFlow',   icon:'\u301C', color:'#3a8fe8'},
   {id:'rg',  label:'Rain Gauge', icon:'\uD83C\uDF27', color:'#44bb88'},
-  {id:'cric',label:'Level',      icon:'\u25C8', color:'#e8a020'},
+  {id:'cric',label:'Cricket',    icon:'\u25C8', color:'#e8a020'},
 ];
 
 // Location statuses: available, reserved, maintenance (NO deployed)
@@ -855,7 +857,7 @@ var OFFICES = [
    products:null,
    customCards:[
      {id:'link', label:'Houston Project', icon:'\uD83C\uDF10', color:'#1a7fe8', url:'https://houstontx.uscubed.com/login.aspx', north:true},
-     {id:'ff',   label:'Flex Flow',       icon:'\u301C', color:'#3a8fe8', note:'Should be 0'},
+     {id:'ff',   label:'FlexFlow',       icon:'\u301C', color:'#3a8fe8', note:'Should be 0'},
      {id:'hach', label:'Hach',            icon:'\u25C9',  color:'#e8e8f0', note:'Should be 0'},
    ]},
   {id:'puertorico', label:'Puerto Rico', icon:'\uD83C\uDF34',
@@ -1921,8 +1923,8 @@ function renderFleetStatus(){
   var card=document.getElementById('fleetStatusCard');
   if(!card)return;
   var products=[
-    {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
-    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'ff',label:'FlexFlow',color:'#3a8fe8'},
+    {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#e8e8f0'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'}
   ];
@@ -2606,8 +2608,8 @@ function editReservation(idx){
   // Backward-compat: if no devices map, seed from type+qty
   if(!res.devices&&res.type){devs={};devs[res.type]=res.qty||0;}
   var pidRows=[
-    {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
-    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'ff',label:'FlexFlow',color:'#3a8fe8'},
+    {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#A7A9AC'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'}
   ].map(function(p){
@@ -3158,8 +3160,8 @@ function renderFleetOverview(){
   var container=document.getElementById('fleetOverviewPanel');
   if(!container)return;
   var products=[
-    {id:'ff',label:'Flex Flow',color:'#0071BC'},
-    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'ff',label:'FlexFlow',color:'#0071BC'},
+    {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#A7A9AC'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'},
   ];
@@ -4471,8 +4473,8 @@ function renderMCMobile(){
   var el=document.getElementById('mcMobile');
   if(!el)return;
   var products=[
-    {id:'ff',label:'Flex Flow',color:'#3a8fe8'},
-    {id:'cric',label:'Level',color:'#e8a020'},
+    {id:'ff',label:'FlexFlow',color:'#3a8fe8'},
+    {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#e8e8f0'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'}
   ];

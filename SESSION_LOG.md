@@ -105,3 +105,13 @@ Added a **Failure Analytics** card on the Station Scanner tab (`evtAnalyticsLoad
 `CONFIG-OK`+`MAIN-OK`. Read-only query (anon `device_events` SELECT verified in Phase 1).
 
 ---
+
+## Phase 6 — Visual revamp + vocab consistency (complete)
+
+New surfaces (Scanner/Kit/Count/Map/Analytics + 3D) were built on the style tokens from the start (Oswald 700 uppercase headers, Rajdhani body, Water Blue `#0071BC`, Signal Red `#ED1C24`, status palette, BIG inputs), via the shared `us3b2InjectCSS` layer — so this pass focused on the mandated vocab fix.
+
+**Vocab fix (Cricket not "Level"; FlexFlow):** verified no code keys on the label strings (`grep` for `.label===`/`==='Level'` → none; labels are display-only), then renamed all canonical product labels: `PRODUCTS` + the 4 per-view label arrays (Houston/decomm/parts/avail). `label:'Level'`→`'Cricket'`, `label:'Flex Flow'`→`'FlexFlow'`. **ids unchanged** (`cric`/`ff`) so all logic, localStorage keys, and counts are untouched. **Left intact:** Houston's real device-model strings `HJ Level` / `Sensus Cricket` (line ~3247) — those are data, not the product label.
+
+`CONFIG-OK`+`MAIN-OK`.
+
+---
