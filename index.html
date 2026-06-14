@@ -4693,8 +4693,10 @@ function renderScan(){
       '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)</div>'+
       '<div id="scanRecent"></div>'+
     '</div>'+
+    '<div class="us3b2-card"><div id="scanAnalytics"><div class="us3b2-empty">Loading analytics…</div></div></div>'+
   '</div>';
   scanRenderRecent();
+  evtAnalyticsLoad();
   setTimeout(function(){var i=document.getElementById('scanManualInput');if(i)i.focus();},60);
 }
 function scanRenderRecent(){
@@ -4833,6 +4835,7 @@ function scanSubmitEvent(deviceId){
     if(r.error){alert('Save failed (RLS/insert): '+r.error.message);return;}
     if(!r.data||!r.data.length){alert('Save silently no-op — check RLS insert policy on device_events.');return;}
     scanLookup(deviceId,true); // refresh modal with new event, don't re-add to recent
+    if(window.evtAnalyticsLoad)evtAnalyticsLoad(); // refresh failure analytics
   });
 }
 
@@ -5160,6 +5163,81 @@ function devMapBuild(data){
   }
   setTimeout(function(){if(devmapMap)devmapMap.invalidateSize();},180);
   if(info)info.innerHTML='Source: <b>'+us3esc(data.source)+'</b> · '+withCoords.length+' mapped'+(missing?(' · <span style="color:#e8a020;">'+missing+' missing coords</span>'):'');
+}
+
+// ═══ PHASE 5 — FAILURE ANALYTICS (Pareto + Fishbone on device_events) ═══
+// Added on the Scanner tab. The existing Device Returns repair/decomm view (localStorage)
+// is left intact — see SESSION_LOG open question #1.
+var evtAnalyticsMode='pareto';var evtAnalyticsData=null;
+function evtSetMode(m){evtAnalyticsMode=m;evtAnalyticsDraw();}
+function evtAnalyticsLoad(){
+  var host=document.getElementById('scanAnalytics');if(!host)return;
+  if(typeof supa==='undefined'||!supa){host.innerHTML='<div class="us3b2-empty">Offline — analytics unavailable.</div>';return;}
+  supa.from('device_events').select('status,failure_reason').then(function(r){
+    if(r.error){host.innerHTML='<div class="us3b2-warn">Analytics load failed: '+us3esc(r.error.message)+'</div>';return;}
+    evtAnalyticsData=(r&&r.data)||[];evtAnalyticsDraw();
+  });
+}
+function evtAnalyticsDraw(){
+  var host=document.getElementById('scanAnalytics');if(!host)return;
+  var data=evtAnalyticsData||[];
+  var failCounts={};data.forEach(function(e){if(e.failure_reason){failCounts[e.failure_reason]=(failCounts[e.failure_reason]||0)+1;}});
+  var hasFail=Object.keys(failCounts).length>0;
+  var header='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'+
+    '<div class="us3b2-h" style="font-size:16px;">Failure Analytics <span style="color:var(--muted);font-size:12px;font-family:Rajdhani,sans-serif;">(device_events)</span></div>'+
+    '<div style="display:flex;gap:8px;"><button class="us3b2-btn '+(evtAnalyticsMode==='pareto'?'':'alt')+'" style="padding:6px 14px;" onclick="evtSetMode(\'pareto\')">Pareto</button><button class="us3b2-btn '+(evtAnalyticsMode==='fishbone'?'':'alt')+'" style="padding:6px 14px;" onclick="evtSetMode(\'fishbone\')">Fishbone</button></div>'+
+  '</div>';
+  if(!hasFail){host.innerHTML=header+'<div class="us3b2-empty">No failure data yet — Pareto &amp; Fishbone populate as scans log failure reasons.</div>';return;}
+  if(evtAnalyticsMode==='pareto'){
+    host.innerHTML=header+'<div style="overflow-x:auto;"><canvas id="evtParetoCanvas" width="760" height="340"></canvas></div>';
+    evtDrawPareto(failCounts);
+  }else{
+    host.innerHTML=header+'<div id="evtFishbone" style="overflow-x:auto;"></div>';
+    evtDrawFishbone(data);
+  }
+}
+function evtDrawPareto(counts){
+  var c=document.getElementById('evtParetoCanvas');if(!c)return;var ctx=c.getContext('2d');
+  var keys=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
+  var total=keys.reduce(function(s,k){return s+counts[k];},0);var max=counts[keys[0]]||1;
+  var W=c.width=Math.max(760,keys.length*92+120),H=c.height=340,pL=54,pR=50,pT=34,pB=82,cw=W-pL-pR,ch=H-pT-pB;
+  var isDark=!document.body.classList.contains('light');var txt=isDark?'#d0e0f0':'#1a1a2e';var mut=isDark?'#8aa4c4':'#4a5568';var grid=isDark?'rgba(26,100,180,.15)':'rgba(0,0,0,.08)';
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle=grid;ctx.lineWidth=1;
+  for(var i=0;i<=5;i++){var yv=Math.round(max/5*i);var yp=pT+ch-ch*(yv/max);ctx.beginPath();ctx.moveTo(pL,yp);ctx.lineTo(pL+cw,yp);ctx.stroke();ctx.font='600 12px Rajdhani';ctx.fillStyle=mut;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(yv,pL-8,yp);}
+  for(var p=0;p<=4;p++){var pv=p*25;var yp2=pT+ch-ch*(pv/100);ctx.font='500 11px Rajdhani';ctx.fillStyle='#ED1C24';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(pv+'%',pL+cw+6,yp2);}
+  var gap=cw/keys.length,bw=Math.min(58,gap*0.66),cum=0,line=[];
+  keys.forEach(function(k,i){var cnt=counts[k];cum+=cnt;var cp=cum/total*100;var bh=ch*(cnt/max);var x=pL+i*gap+(gap-bw)/2;var y=pT+ch-bh;
+    ctx.fillStyle='#0071BC';ctx.fillRect(x,y,bw,bh);
+    ctx.font='700 14px Oswald';ctx.fillStyle=txt;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(cnt,x+bw/2,y-3);
+    ctx.save();ctx.translate(x+bw/2,pT+ch+6);ctx.rotate(-Math.PI/6);ctx.font='600 11px Oswald';ctx.fillStyle=mut;ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText(k,0,0);ctx.restore();
+    line.push({x:x+bw/2,y:pT+ch-ch*(cp/100)});});
+  if(line.length>1){ctx.beginPath();ctx.moveTo(line[0].x,line[0].y);for(var l=1;l<line.length;l++)ctx.lineTo(line[l].x,line[l].y);ctx.strokeStyle='#ED1C24';ctx.lineWidth=3;ctx.lineJoin='round';ctx.stroke();}
+  line.forEach(function(pt){ctx.beginPath();ctx.arc(pt.x,pt.y,4.5,0,Math.PI*2);ctx.fillStyle='#ED1C24';ctx.fill();});
+}
+function evtDrawFishbone(data){
+  var host=document.getElementById('evtFishbone');if(!host)return;
+  var byStatus={};data.forEach(function(e){if(!e.failure_reason)return;var s=e.status||'Unspecified';byStatus[s]=byStatus[s]||{};byStatus[s][e.failure_reason]=(byStatus[s][e.failure_reason]||0)+1;});
+  var statuses=Object.keys(byStatus);
+  if(!statuses.length){host.innerHTML='<div class="us3b2-empty">No categorized failures yet.</div>';return;}
+  var W=Math.max(820,statuses.length*170+180),H=440,midY=H/2,x0=60,x1=W-150;
+  var isDark=!document.body.classList.contains('light');var txt=isDark?'#d0e0f0':'#1a1a2e';
+  var svg='<svg width="'+W+'" height="'+H+'" font-family="Rajdhani,sans-serif">';
+  svg+='<line x1="'+x0+'" y1="'+midY+'" x2="'+x1+'" y2="'+midY+'" stroke="#0071BC" stroke-width="4"/>';
+  svg+='<polygon points="'+x1+','+(midY-9)+' '+(x1+20)+','+midY+' '+x1+','+(midY+9)+'" fill="#0071BC"/>';
+  svg+='<text x="'+(x1+24)+'" y="'+(midY+5)+'" fill="#ED1C24" font-family="Oswald" font-weight="700" font-size="15">FAILURES</text>';
+  var span=(x1-x0-100)/Math.max(1,statuses.length);
+  statuses.forEach(function(s,i){
+    var up=i%2===0;var bx=x0+70+i*span;var by=up?midY-140:midY+140;
+    var col=US3_STATUS_COLORS[s.toLowerCase()]||'#A7A9AC';
+    svg+='<line x1="'+bx+'" y1="'+by+'" x2="'+(bx+95)+'" y2="'+midY+'" stroke="'+col+'" stroke-width="2.5"/>';
+    svg+='<rect x="'+(bx-55)+'" y="'+(up?by-26:by+4)+'" width="120" height="22" rx="5" fill="'+col+'"/>';
+    svg+='<text x="'+(bx+5)+'" y="'+(up?by-10:by+19)+'" fill="#0a0e16" font-family="Oswald" font-weight="700" font-size="12" text-anchor="middle">'+us3esc(s)+'</text>';
+    var frs=Object.keys(byStatus[s]).sort(function(a,b){return byStatus[s][b]-byStatus[s][a];});
+    frs.slice(0,5).forEach(function(fr,j){var ly=up?(by+8+j*18):(by-8-j*18);svg+='<text x="'+(bx+72)+'" y="'+ly+'" fill="'+txt+'" font-size="12">'+us3esc(fr)+' ('+byStatus[s][fr]+')</text>';});
+  });
+  svg+='</svg>';
+  host.innerHTML=svg;
 }
 
 // Login gate

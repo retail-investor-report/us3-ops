@@ -92,3 +92,16 @@ New tab **📍 Device Map** (`page-devmap` → `renderDevMap()`), Leaflet 1.9.4 
 `CONFIG-OK`+`MAIN-OK`. Read-only (anon `sites`/`device_locations` SELECT already verified in Phase 0).
 
 ---
+
+## Phase 5 — Failure Analytics: Pareto + Fishbone on device_events (complete)
+
+Added a **Failure Analytics** card on the Station Scanner tab (`evtAnalyticsLoad`/`Draw`), Pareto⇄Fishbone toggle, driven by `device_events`:
+- **Pareto** (canvas, matches existing house style): failure_reason frequency, descending bars + cumulative % line.
+- **Fishbone** (SVG): spine = FAILURES; ribs = `status` (status-colored), bones = top-5 `failure_reason` per status with counts → "categorized by status/failure_reason".
+- **Graceful empty state** (current reality — `device_events` is empty): "populate as scans log failure reasons." Auto-refreshes after a scan logs an event.
+
+**Decision (open Q#1):** built as a NEW device_events surface rather than repointing the existing Device Returns repair+decomm Pareto/Fishbone (those run on real localStorage data; repointing them at an empty table would break a working tab). Confirm if you want the Device Returns charts themselves switched to device_events.
+
+`CONFIG-OK`+`MAIN-OK`. Read-only query (anon `device_events` SELECT verified in Phase 1).
+
+---
