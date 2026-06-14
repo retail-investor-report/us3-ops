@@ -67,3 +67,16 @@ New tab **📦 Build Kit** (`page-kit` → `renderKit()`).
 **Verified live (anon):** kits INSERT 201, kit_devices INSERT 201, kits UPDATE 200, embedded tote FK select 200. Test rows cleaned up. `CONFIG-OK`+`MAIN-OK`.
 
 ---
+
+## Phase 3 — Warehouse Count (complete)
+
+New tab **🧮 Warehouse Count** (`page-count` → `renderCount()`). **localStorage only** (inventory stays local per architecture rules — uses existing `gc()`/`kCounts` from `us3_counts`).
+- Office selector (stocking offices: El Cajon, Downey).
+- Per-product reconciliation table: **Expected on-hand = available + reserved + maintenance** (deployed excluded — it's in the field), Counted (big input + −/+ steppers), Variance (green=match, red=short, orange=over).
+- Summary: total expected / counted / net variance + mismatch count + reconcile banner.
+- Working state persisted to local `us3_count_state`; "Save Count Snapshot" appends to local `us3_count_log` (≤50) with tech + timestamp; "Reset Office Count".
+- New keys deliberately kept OUT of `KNOWN_KEYS` → local-only, no kvstore sync. Cricket shown as "Cricket" (not the legacy "Level" label).
+
+`CONFIG-OK`+`MAIN-OK`. No Supabase write (local-only), so no anon test needed.
+
+---

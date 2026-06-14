@@ -544,6 +544,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="kit" onclick="sw('kit',this)"><span class="ti">📦</span>Build Kit</div>
+    <div class="ntab" data-page="count" onclick="sw('count',this)"><span class="ti">🧮</span>Warehouse Count</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -736,6 +737,9 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- BUILD KIT (Build 02) -->
 <div class="page" id="page-kit"><div class="dc-inner" id="kitInner"></div></div>
+
+<!-- WAREHOUSE COUNT (Build 02) -->
+<div class="page" id="page-count"><div class="dc-inner" id="countInner"></div></div>
 
 <!-- SHARED AVAILABILITY QUERY SIDEBAR -->
 <div id="sharedQuerySidebar">
@@ -1708,6 +1712,7 @@ function sw(id,el){
   if(id==='houston')  renderHouston();
   if(id==='scan')     renderScan();
   if(id==='kit')      renderKit();
+  if(id==='count')    renderCount();
   if(id!=='scan'&&window.scanStopCamera)scanStopCamera();
   // Show shared query sidebar only on fleet, assetmap, sched
   var sidebar=document.getElementById('sharedQuerySidebar');
@@ -5002,6 +5007,82 @@ function kitPrintManifest(kitId){
       '</body></html>');
     w.document.close();w.focus();w.print();
   });
+}
+
+// ═══ PHASE 3 — WAREHOUSE COUNT ═══
+// Reconciles a physical count vs expected on-hand inventory (us3_counts, localStorage).
+// On-hand = available + reserved + maintenance (deployed is in the field, not the warehouse).
+function us3ProdLabel(pid){var m={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};return m[pid]||pid;}
+var countState=null;
+function countLoad(){try{countState=JSON.parse(localStorage.getItem('us3_count_state')||'null');}catch(e){countState=null;}if(!countState||typeof countState!=='object')countState={office:null,counts:{}};if(!countState.counts)countState.counts={};}
+function countSave(){try{localStorage.setItem('us3_count_state',JSON.stringify(countState));}catch(e){}}
+function countOffices(){return (typeof OFFICES!=='undefined'?OFFICES:[]).filter(function(o){return o.products&&o.products.length;});}
+function countExpected(office,prod){return (typeof gc!=='undefined')?(gc(office,prod,'available')+gc(office,prod,'reserved')+gc(office,prod,'maintenance')):0;}
+function renderCount(){
+  us3b2InjectCSS();countLoad();
+  var offices=countOffices();
+  if(!countState.office||!offices.some(function(o){return o.id===countState.office;}))countState.office=offices.length?offices[0].id:null;
+  var offBtns=offices.map(function(o){return '<button class="us3b2-btn '+(o.id===countState.office?'':'alt')+'" onclick="countSetOffice(\''+o.id+'\')">'+us3esc(o.label)+'</button>';}).join('');
+  var inner=document.getElementById('countInner');if(!inner)return;
+  inner.innerHTML=
+  '<div class="us3b2-wrap">'+
+    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">🧮 Warehouse Count</div>'+
+    '<div class="us3b2-card">'+
+      '<label class="us3b2-label">Office</label>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+offBtns+'</div>'+
+    '</div>'+
+    '<div class="us3b2-card"><div id="countBody"></div></div>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">'+
+      '<button class="us3b2-btn alt" onclick="countReset()">Reset Office Count</button>'+
+      '<button class="us3b2-btn green" onclick="countSaveSnapshot()">Save Count Snapshot</button>'+
+    '</div>'+
+  '</div>';
+  countRenderBody();
+}
+function countSetOffice(id){countState.office=id;countSave();renderCount();}
+function countRenderBody(){
+  var body=document.getElementById('countBody');if(!body)return;
+  var off=countState.office;var office=countOffices().filter(function(o){return o.id===off;})[0];
+  if(!office){body.innerHTML='<div class="us3b2-empty">No stocking office.</div>';return;}
+  var totExp=0,totCnt=0,mism=0,anyCounted=false;
+  var rows=office.products.map(function(pid){
+    var exp=countExpected(off,pid);totExp+=exp;
+    var key=off+'_'+pid;var raw=countState.counts[key];
+    var counted=(raw===''||raw===undefined||raw===null)?null:parseInt(raw,10);
+    var varCell='<span class="us3b2-kv" style="color:var(--muted);">—</span>';
+    if(counted!==null&&!isNaN(counted)){anyCounted=true;totCnt+=counted;var v=counted-exp;if(v!==0)mism++;
+      var col=v===0?'#2ecc71':(v<0?'#ED1C24':'#e8a020');
+      varCell='<b style="color:'+col+';font-family:Oswald,sans-serif;">'+(v>0?'+':'')+v+'</b>';}
+    return '<tr><td><b>'+us3esc(us3ProdLabel(pid))+'</b></td><td style="font-family:Oswald,sans-serif;font-size:18px;">'+exp+'</td>'+
+      '<td><div style="display:flex;gap:6px;align-items:center;">'+
+        '<button class="us3b2-btn alt" style="padding:6px 12px;" onclick="countStep(\''+key+'\',-1)">−</button>'+
+        '<input class="us3b2-input" style="width:84px;text-align:center;font-size:20px;padding:8px;" inputmode="numeric" value="'+(counted===null?'':counted)+'" onchange="countInput(\''+key+'\',this.value)">'+
+        '<button class="us3b2-btn alt" style="padding:6px 12px;" onclick="countStep(\''+key+'\',1)">+</button>'+
+      '</div></td><td>'+varCell+'</td></tr>';
+  }).join('');
+  var totVar=totCnt-totExp;
+  body.innerHTML=
+    '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">'+us3esc(office.label)+' — On-hand reconciliation</div>'+
+    '<table class="us3b2-tbl"><thead><tr><th>Product</th><th>Expected</th><th>Counted</th><th>Variance</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="us3b2-grid3" style="margin-top:16px;">'+
+      '<div class="us3b2-kv"><b>Total expected</b><span style="font-size:22px;font-family:Oswald,sans-serif;">'+totExp+'</span></div>'+
+      '<div class="us3b2-kv"><b>Total counted</b><span style="font-size:22px;font-family:Oswald,sans-serif;">'+(anyCounted?totCnt:'—')+'</span></div>'+
+      '<div class="us3b2-kv"><b>Net variance</b><span style="font-size:22px;font-family:Oswald,sans-serif;color:'+(!anyCounted?'var(--muted)':(totVar===0?'#2ecc71':'#ED1C24'))+';">'+(anyCounted?((totVar>0?'+':'')+totVar):'—')+'</span></div>'+
+    '</div>'+
+    (anyCounted&&mism>0?('<div class="us3b2-warn" style="margin-top:12px;">⚠ '+mism+' product line'+(mism===1?'':'s')+' do not reconcile.</div>'):(anyCounted?'<div style="margin-top:12px;color:#2ecc71;font-weight:700;font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em;">✓ All counted lines reconcile</div>':''));
+}
+function countInput(key,val){val=(val||'').trim();countState.counts[key]=(val===''?'':String(Math.max(0,parseInt(val,10)||0)));countSave();countRenderBody();}
+function countStep(key,delta){var cur=parseInt(countState.counts[key],10);if(isNaN(cur))cur=0;countState.counts[key]=String(Math.max(0,cur+delta));countSave();countRenderBody();}
+function countReset(){if(!confirm('Clear the counted values for '+countState.office+'?'))return;var pre=countState.office+'_';Object.keys(countState.counts).forEach(function(k){if(k.indexOf(pre)===0)delete countState.counts[k];});countSave();countRenderBody();}
+function countSaveSnapshot(){
+  var off=countState.office;var office=countOffices().filter(function(o){return o.id===off;})[0];if(!office)return;
+  var rows=office.products.map(function(pid){var exp=countExpected(off,pid);var raw=countState.counts[off+'_'+pid];var c=(raw===''||raw===undefined)?null:parseInt(raw,10);return {product:pid,expected:exp,counted:c,variance:(c===null?null:c-exp)};});
+  if(!rows.some(function(r){return r.counted!==null;})){alert('Nothing counted yet.');return;}
+  var log;try{log=JSON.parse(localStorage.getItem('us3_count_log')||'[]');}catch(e){log=[];}
+  log.unshift({office:off,office_label:office.label,ts:new Date().toISOString(),tech:scanGetTech()||localStorage.getItem('us3_user_email')||'',rows:rows});
+  if(log.length>50)log.length=50;
+  try{localStorage.setItem('us3_count_log',JSON.stringify(log));}catch(e){}
+  alert('Count snapshot saved for '+office.label+'.');
 }
 
 // Login gate
