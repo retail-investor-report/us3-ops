@@ -36,3 +36,18 @@ The mandated check `sed -n '/<script>/,/<\/script>/p' | sed '1d;$d' | node --che
 **Phase 0 commit:** groundwork (gitignore, SESSION_LOG, assets, validate helper). No schema migration — RLS already correct.
 
 ---
+
+## Phase 1 — Station Scanner (complete)
+
+New tab **📲 Station Scanner** (`page-scan` → `renderScan()`), inserted before Decommission. Added `html5-qrcode@2.3.8` CDN for camera scanning. Added shared Build-02 layer reused by later phases: status-color map, voice-alias mapper (`hawk→Hach`, `ring gauge→Rain Gauge`, `Alcahon→El Cajon`, `FlexFoil→FlexFlow`), HTML-escape, generic `#us3b2Modal` overlay + one-shot CSS injection (Oswald/Rajdhani, Water Blue, Signal Red, status colors, BIG inputs).
+
+Behavior:
+- **Scan input**: big manual entry (Enter to submit), auto-refocus + clears after each scan; **debounce** ignores the same code within 2.5s (scan-many-safe, no double-fire).
+- **Camera**: `html5-qrcode` rear camera, decodes QR + 1D barcodes → same debounced handler; graceful alert if library/camera unavailable. Camera auto-stops when leaving the tab (`sw()` hook).
+- **Lookup**: parallel query of `device_events` (newest-first, ≤60), `device_locations` (primary context), `sites.device_sn` (fallback), then `jobs` by `project_no`/`job_number`. Modal shows context (or the graceful "Fulcrum will populate" notice), full history table, and a log form.
+- **Log event**: inserts a `device_events` row (`event_type` default `lookup`; status options exclude Decommissioned; failure_reason from `FAIL_CATS`; notes/station alias-normalized; tech/station prefilled & persisted to `us3_scan_station`/`us3_scan_tech` local-only). Detects RLS failure AND silent no-op (checks `.select()` returned a row) and alerts.
+- Station/tech persisted; recent-scans list this session.
+
+**Verified live:** anon (publishable-key) POST to `device_events` returned **HTTP 201 + row** (no silent no-op); test row cleaned up. `CONFIG-OK`+`MAIN-OK`.
+
+---

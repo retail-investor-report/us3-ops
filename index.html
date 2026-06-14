@@ -488,6 +488,7 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
 .guide-section .ga{color:#0071BC;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const SUPABASE_URL='https://hnkcqsvnsreczmlgcaay.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhua2Nxc3Zuc3JlY3ptbGdjYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzAwNzIsImV4cCI6MjA5Mzc0NjA3Mn0.HIBkg7WizjU6vhof6FEDNSG7ZyHruSCakEhzhe7kbt4';
@@ -541,6 +542,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
+    <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -727,6 +729,9 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- HOUSTON -->
 <div class="page" id="page-houston"><div class="dc-inner" id="houstonInner"></div></div>
+
+<!-- STATION SCANNER (Build 02) -->
+<div class="page" id="page-scan"><div class="dc-inner" id="scanInner"></div></div>
 
 <!-- SHARED AVAILABILITY QUERY SIDEBAR -->
 <div id="sharedQuerySidebar">
@@ -1697,6 +1702,8 @@ function sw(id,el){
   if(id==='fleet')    renderFleet();
   if(id==='parts')    renderParts();
   if(id==='houston')  renderHouston();
+  if(id==='scan')     renderScan();
+  if(id!=='scan'&&window.scanStopCamera)scanStopCamera();
   // Show shared query sidebar only on fleet, assetmap, sched
   var sidebar=document.getElementById('sharedQuerySidebar');
   var showSidebar=(id==='fleet'||id==='assetmap'||id==='sched');
@@ -4576,6 +4583,242 @@ window.addEventListener('hashchange',function(){
     sw(hashTab,document.querySelector('[data-page="'+hashTab+'"]'));
   }
 });
+// ═══════════════════════════════════════════════════════════════════════
+// BUILD 02 — US3 MEGA BUILD (Station Scanner / Kits / Count / Map / 3D)
+// Scanner+Kit layer = Supabase (device_events/kits/kit_devices). Inventory/
+// jobs/decommission/map pins stay on localStorage. NEVER writes Decommission.
+// ═══════════════════════════════════════════════════════════════════════
+
+// ---- shared tokens / helpers ----
+var US3_STATUS_COLORS={available:'#2ecc71',reserved:'#A7A9AC',deployed:'#0071BC',maintenance:'#e8a020','in production':'#9b59b6',decommissioned:'#7a2520'};
+// Scanner status options — NO "Decommissioned": decommission is the sacred deliberate flow.
+var US3_SCAN_STATUSES=['Available','Reserved','Deployed','Maintenance','In Production'];
+var US3_KIT_PRODUCTS=[{id:'FF',label:'FlexFlow (FF)'},{id:'Cricket',label:'Cricket'},{id:'Hach',label:'Hach'},{id:'RG',label:'Rain Gauge (RG)'}];
+// Voice aliases applied to free-text entry fields.
+var US3_ALIASES=[[/\bhawk\b/gi,'Hach'],[/\bring gauge\b/gi,'Rain Gauge'],[/\balcahon\b/gi,'El Cajon'],[/\bflexfoil\b/gi,'FlexFlow']];
+function us3ApplyAliases(s){if(!s)return s;US3_ALIASES.forEach(function(a){s=s.replace(a[0],a[1]);});return s;}
+function us3esc(s){return (s===null||s===undefined)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function us3v(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+function us3StatusPill(st){if(!st)return '<span class="us3b2-pill" style="background:#3a3f4a;color:#cfd6e0;">—</span>';var c=US3_STATUS_COLORS[String(st).toLowerCase()]||'#3a3f4a';return '<span class="us3b2-pill" style="background:'+c+';color:#0a0e16;">'+us3esc(st)+'</span>';}
+function us3fmtTs(t){if(!t)return '';try{var d=new Date(t);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}catch(e){return us3esc(t);}}
+
+function us3b2OpenModal(html){var o=document.getElementById('us3b2Modal');if(!o)return;document.getElementById('us3b2ModalBox').innerHTML=html;o.classList.add('open');}
+function us3b2CloseModal(){var o=document.getElementById('us3b2Modal');if(o)o.classList.remove('open');}
+
+var _us3b2css=false;
+function us3b2InjectCSS(){
+  if(_us3b2css)return;_us3b2css=true;
+  var css=
+  ".us3b2-wrap{padding:18px;max-width:1100px;margin:0 auto;font-family:'Rajdhani',sans-serif;}"+
+  ".us3b2-h{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);}"+
+  ".us3b2-card{background:var(--panel-bg);border:1px solid var(--borderb);border-radius:12px;padding:18px;margin-bottom:16px;}"+
+  ".us3b2-label{font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;display:block;}"+
+  ".us3b2-input,.us3b2-select,.us3b2-ta{width:100%;box-sizing:border-box;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:600;padding:12px 14px;border-radius:9px;border:1.5px solid var(--borderb);background:var(--panel-bg);color:var(--text);}"+
+  ".us3b2-input:focus,.us3b2-select:focus,.us3b2-ta:focus{outline:none;border-color:#0071BC;box-shadow:0 0 0 3px rgba(0,113,188,.25);}"+
+  ".us3b2-scanin{font-size:26px;font-weight:700;letter-spacing:.04em;padding:18px 18px;border:2.5px solid #0071BC;}"+
+  ".us3b2-btn{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:15px;padding:13px 20px;border-radius:9px;border:none;cursor:pointer;background:#0071BC;color:#fff;}"+
+  ".us3b2-btn:hover{filter:brightness(1.08);}"+
+  ".us3b2-btn.alt{background:var(--panel-bg);color:var(--text);border:1.5px solid var(--borderb);}"+
+  ".us3b2-btn.red{background:#ED1C24;}.us3b2-btn.green{background:#2ecc71;color:#0a0e16;}"+
+  ".us3b2-pill{display:inline-block;font-family:'Oswald',sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;padding:3px 10px;border-radius:20px;}"+
+  ".us3b2-tbl{width:100%;border-collapse:collapse;font-family:'Rajdhani',sans-serif;}"+
+  ".us3b2-tbl th{font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:2px solid var(--borderb);}"+
+  ".us3b2-tbl td{font-size:15px;color:var(--text);padding:9px 10px;border-bottom:1px solid var(--borderb);}"+
+  ".us3b2-overlay{display:none;position:fixed;inset:0;background:rgba(5,9,16,.78);z-index:9000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 16px;}"+
+  ".us3b2-overlay.open{display:flex;}"+
+  ".us3b2-box{background:var(--panel-bg);border:1px solid var(--borderb);border-radius:14px;width:100%;max-width:720px;padding:0;box-shadow:0 20px 60px rgba(0,0,0,.5);font-family:'Rajdhani',sans-serif;}"+
+  ".us3b2-mhead{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--borderb);}"+
+  ".us3b2-mbody{padding:20px 22px;}"+
+  ".us3b2-x{font-size:26px;line-height:1;cursor:pointer;color:var(--muted);background:none;border:none;}"+
+  ".us3b2-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}"+
+  ".us3b2-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}"+
+  ".us3b2-kv{font-size:15px;color:var(--text);}.us3b2-kv b{color:var(--muted);font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;display:block;}"+
+  ".us3b2-warn{background:rgba(237,28,36,.12);border:1.5px solid #ED1C24;color:var(--text);border-radius:10px;padding:12px 14px;font-weight:600;}"+
+  ".us3b2-empty{text-align:center;color:var(--muted);font-size:16px;padding:34px 16px;}"+
+  "#scanCamRegion{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;}"+
+  "@media(max-width:640px){.us3b2-grid2,.us3b2-grid3{grid-template-columns:1fr;}}";
+  var st=document.createElement('style');st.id='us3build2css';st.textContent=css;document.head.appendChild(st);
+}
+
+// ═══ PHASE 1 — STATION SCANNER ═══
+var scanState={recent:[],lastCode:'',lastTs:0,camera:null,running:false};
+function scanGetStation(){return localStorage.getItem('us3_scan_station')||'';}
+function scanGetTech(){return localStorage.getItem('us3_scan_tech')||'';}
+function scanSaveTechStation(){
+  var s=us3v('scanStationInput'),t=us3v('scanTechInput');
+  if(s!==undefined)localStorage.setItem('us3_scan_station',us3ApplyAliases(s));
+  if(t!==undefined)localStorage.setItem('us3_scan_tech',t);
+}
+function renderScan(){
+  us3b2InjectCSS();
+  var inner=document.getElementById('scanInner');if(!inner)return;
+  var statusOpts=US3_SCAN_STATUSES.map(function(s){return '<option>'+s+'</option>';}).join('');
+  inner.innerHTML=
+  '<div class="us3b2-wrap">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
+      '<div class="us3b2-h" style="font-size:30px;">📲 Station Scanner</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Scan-many ready · scans append to <b>device_events</b></div>'+
+    '</div>'+
+    '<div class="us3b2-card us3b2-grid2">'+
+      '<div><label class="us3b2-label">Station</label><input id="scanStationInput" class="us3b2-input" placeholder="e.g. Bench 1 / Receiving" value="'+us3esc(scanGetStation())+'" onchange="scanSaveTechStation()"></div>'+
+      '<div><label class="us3b2-label">Tech</label><input id="scanTechInput" class="us3b2-input" placeholder="Your name" value="'+us3esc(scanGetTech())+'" onchange="scanSaveTechStation()"></div>'+
+    '</div>'+
+    '<div class="us3b2-card">'+
+      '<label class="us3b2-label">Scan or type Device ID</label>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
+        '<input id="scanManualInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:220px;" autocomplete="off" placeholder="Scan barcode / QR or type, then Enter" onkeydown="if(event.key===\'Enter\'){event.preventDefault();scanManualSubmit();}">'+
+        '<button class="us3b2-btn" onclick="scanManualSubmit()">Look Up</button>'+
+        '<button class="us3b2-btn alt" id="scanCamBtn" onclick="scanToggleCamera()">📷 Camera</button>'+
+      '</div>'+
+      '<div id="scanCamBox" style="display:none;margin-top:14px;"><div id="scanCamRegion"></div><div style="text-align:center;margin-top:8px;"><button class="us3b2-btn red" onclick="scanStopCamera()">Stop Camera</button></div></div>'+
+    '</div>'+
+    '<div class="us3b2-card">'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)</div>'+
+      '<div id="scanRecent"></div>'+
+    '</div>'+
+  '</div>';
+  scanRenderRecent();
+  setTimeout(function(){var i=document.getElementById('scanManualInput');if(i)i.focus();},60);
+}
+function scanRenderRecent(){
+  var el=document.getElementById('scanRecent');if(!el)return;
+  if(!scanState.recent.length){el.innerHTML='<div class="us3b2-empty" style="padding:14px;">No scans yet.</div>';return;}
+  el.innerHTML='<table class="us3b2-tbl"><thead><tr><th>Device ID</th><th>Time</th><th>Events</th><th></th></tr></thead><tbody>'+
+    scanState.recent.map(function(r){return '<tr><td><b>'+us3esc(r.code)+'</b></td><td>'+us3fmtTs(r.ts)+'</td><td>'+r.count+'</td><td><button class="us3b2-btn alt" style="padding:5px 12px;font-size:12px;" onclick="scanLookup(\''+us3esc(r.code).replace(/'/g,"")+'\')">Open</button></td></tr>';}).join('')+
+    '</tbody></table>';
+}
+function scanManualSubmit(){
+  var inp=document.getElementById('scanManualInput');if(!inp)return;
+  var v=inp.value.trim();inp.value='';inp.focus();
+  if(v)scanHandleCode(v);
+}
+function scanHandleCode(code){
+  code=(code||'').trim();if(!code)return;
+  var now=Date.now();
+  if(code===scanState.lastCode&&now-scanState.lastTs<2500)return; // debounce double-fire / rapid scans
+  scanState.lastCode=code;scanState.lastTs=now;
+  scanLookup(code);
+}
+function scanToggleCamera(){if(scanState.running)scanStopCamera();else scanStartCamera();}
+function scanStartCamera(){
+  if(typeof Html5Qrcode==='undefined'){alert('Camera library not loaded (offline?). Use manual entry.');return;}
+  var box=document.getElementById('scanCamBox');if(box)box.style.display='block';
+  if(scanState.running)return;
+  try{scanState.camera=new Html5Qrcode('scanCamRegion');}catch(e){alert('Camera init failed.');return;}
+  scanState.running=true;
+  var btn=document.getElementById('scanCamBtn');if(btn){btn.textContent='📷 Camera On';btn.classList.remove('alt');}
+  scanState.camera.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:170}},
+    function(decoded){scanHandleCode(decoded);},function(){}).catch(function(err){
+      scanState.running=false;if(btn){btn.textContent='📷 Camera';btn.classList.add('alt');}
+      alert('Could not start camera: '+err);
+    });
+}
+function scanStopCamera(){
+  var btn=document.getElementById('scanCamBtn');if(btn){btn.textContent='📷 Camera';btn.classList.add('alt');}
+  var box=document.getElementById('scanCamBox');if(box)box.style.display='none';
+  if(scanState.camera&&scanState.running){
+    scanState.running=false;
+    scanState.camera.stop().then(function(){try{scanState.camera.clear();}catch(e){}}).catch(function(){});
+  }
+}
+function scanLookup(code,skipRecent){
+  code=(code||'').trim();if(!code)return;
+  scanSaveTechStation();
+  us3b2OpenModal('<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:20px;">'+us3esc(code)+'</div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div><div class="us3b2-mbody"><div class="us3b2-empty">Loading device history…</div></div>');
+  if(typeof supa==='undefined'||!supa){
+    us3b2OpenModal('<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:20px;">'+us3esc(code)+'</div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div><div class="us3b2-mbody"><div class="us3b2-warn">Offline — Supabase not connected. Cannot load or log events.</div></div>');
+    return;
+  }
+  Promise.all([
+    supa.from('device_events').select('*').eq('device_id',code).order('created_at',{ascending:false}).limit(60),
+    supa.from('device_locations').select('*').eq('device_id',code).limit(1),
+    supa.from('sites').select('*').eq('device_sn',code).limit(1)
+  ]).then(function(res){
+    var events=(res[0]&&res[0].data)||[];
+    var loc=((res[1]&&res[1].data)||[])[0]||null;
+    var site=((res[2]&&res[2].data)||[])[0]||null;
+    if(!skipRecent){
+      scanState.recent=scanState.recent.filter(function(r){return r.code!==code;});
+      scanState.recent.unshift({code:code,ts:new Date().toISOString(),count:events.length});
+      if(scanState.recent.length>25)scanState.recent.pop();
+      scanRenderRecent();
+    }
+    var jobNo=loc?loc.project_no:(site?site.job_number:null);
+    if(jobNo){
+      supa.from('jobs').select('*').eq('job_number',jobNo).limit(1).then(function(jr){
+        scanShowModal(code,events,loc,site,((jr&&jr.data)||[])[0]||null);
+      });
+    }else scanShowModal(code,events,loc,site,null);
+  });
+}
+function scanShowModal(code,events,loc,site,job){
+  var ctxHtml;
+  if(loc||site){
+    var siteName=loc?(loc.site_name||''):(site?(site.site_id||''):'');
+    var city=loc?(loc.city||''):(site?(site.city||''):'');
+    var jobNo=loc?(loc.project_no||''):(site?(site.job_number||''):'');
+    var sensor=loc?(loc.sensor_type||''):(site?(site.system_type||''):'');
+    var locStatus=loc?loc.status:null;
+    ctxHtml='<div class="us3b2-grid3" style="margin-bottom:8px;">'+
+      '<div class="us3b2-kv"><b>Site</b>'+us3esc(siteName||'—')+'</div>'+
+      '<div class="us3b2-kv"><b>City</b>'+us3esc(city||'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Sensor / Type</b>'+us3esc(sensor||'—')+'</div>'+
+      '<div class="us3b2-kv"><b>Job #</b>'+us3esc(jobNo||'—')+'</div>'+
+      (job?('<div class="us3b2-kv"><b>Customer</b>'+us3esc(job.customer_name||job.company_name||'—')+'</div>'+
+            '<div class="us3b2-kv"><b>Project Status</b>'+us3esc(job.project_status||'—')+'</div>'):'')+
+      (locStatus?('<div class="us3b2-kv"><b>Field Status</b>'+us3StatusPill(locStatus)+'</div>'):'')+
+    '</div>';
+  }else{
+    ctxHtml='<div class="us3b2-warn" style="margin-bottom:8px;">No site/job context for this device yet. The device→site map (<b>device_locations</b>) is populated by Fulcrum — context will appear automatically once that sync runs.</div>';
+  }
+  var hist;
+  if(events.length){
+    hist='<table class="us3b2-tbl"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Failure</th><th>Notes</th><th>Tech</th><th>Station</th></tr></thead><tbody>'+
+      events.map(function(e){return '<tr><td>'+us3fmtTs(e.created_at)+'</td><td>'+us3esc(e.event_type||'')+'</td><td>'+(e.status?us3StatusPill(e.status):'—')+'</td><td>'+us3esc(e.failure_reason||'—')+'</td><td>'+us3esc(e.notes||'')+'</td><td>'+us3esc(e.tech||'')+'</td><td>'+us3esc(e.station||'')+'</td></tr>';}).join('')+
+      '</tbody></table>';
+  }else hist='<div class="us3b2-empty">No prior events for this device.</div>';
+  var failOpts='<option value="">— none —</option>'+(typeof FAIL_CATS!=='undefined'?FAIL_CATS:[]).map(function(c){return '<option>'+us3esc(c)+'</option>';}).join('');
+  var statusOpts='<option value="">— no change —</option>'+US3_SCAN_STATUSES.map(function(s){return '<option>'+s+'</option>';}).join('');
+  var typeOpts=['lookup','status','return','repair','received'].map(function(t){return '<option'+(t==='lookup'?' selected':'')+'>'+t+'</option>';}).join('');
+  var html=
+  '<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:22px;">'+us3esc(code)+'</div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div>'+
+  '<div class="us3b2-mbody">'+
+    '<div class="us3b2-label">Context</div>'+ctxHtml+
+    '<div class="us3b2-label" style="margin-top:16px;">History ('+events.length+')</div><div style="max-height:240px;overflow:auto;">'+hist+'</div>'+
+    '<div class="us3b2-label" style="margin-top:18px;">Log an event</div>'+
+    '<div class="us3b2-grid3">'+
+      '<div><label class="us3b2-label">Event type</label><select id="scanFType" class="us3b2-select">'+typeOpts+'</select></div>'+
+      '<div><label class="us3b2-label">Status</label><select id="scanFStatus" class="us3b2-select">'+statusOpts+'</select></div>'+
+      '<div><label class="us3b2-label">Failure reason</label><select id="scanFFail" class="us3b2-select">'+failOpts+'</select></div>'+
+    '</div>'+
+    '<div class="us3b2-grid2" style="margin-top:12px;">'+
+      '<div><label class="us3b2-label">Tech</label><input id="scanFTech" class="us3b2-input" value="'+us3esc(scanGetTech())+'"></div>'+
+      '<div><label class="us3b2-label">Station</label><input id="scanFStation" class="us3b2-input" value="'+us3esc(scanGetStation())+'"></div>'+
+    '</div>'+
+    '<div style="margin-top:12px;"><label class="us3b2-label">Notes</label><textarea id="scanFNotes" class="us3b2-ta" rows="2" placeholder="Optional"></textarea></div>'+
+    '<div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">'+
+      '<button class="us3b2-btn alt" onclick="us3b2CloseModal()">Close</button>'+
+      '<button class="us3b2-btn green" onclick="scanSubmitEvent(\''+us3esc(code).replace(/'/g,"")+'\')">Log Event</button>'+
+    '</div>'+
+  '</div>';
+  us3b2OpenModal(html);
+}
+function scanSubmitEvent(deviceId){
+  if(typeof supa==='undefined'||!supa){alert('Offline — cannot save.');return;}
+  var ev={device_id:deviceId,
+    station:us3ApplyAliases(us3v('scanFStation'))||null,
+    event_type:us3v('scanFType')||'lookup',
+    status:us3v('scanFStatus')||null,
+    failure_reason:us3v('scanFFail')||null,
+    notes:us3ApplyAliases(us3v('scanFNotes'))||null,
+    tech:us3v('scanFTech')||null};
+  supa.from('device_events').insert(ev).select().then(function(r){
+    if(r.error){alert('Save failed (RLS/insert): '+r.error.message);return;}
+    if(!r.data||!r.data.length){alert('Save silently no-op — check RLS insert policy on device_events.');return;}
+    scanLookup(deviceId,true); // refresh modal with new event, don't re-add to recent
+  });
+}
+
 // Login gate
 us3CheckLogin();
 document.getElementById('loginBtn').addEventListener('click',us3Login);
@@ -4591,6 +4834,10 @@ setTimeout(function(){
 </script>
 <!-- Page-independent modal root — holds modals that must render over any active page -->
 <div id="modalRoot">
+  <!-- Build 02 generic scanner/kit modal -->
+  <div class="us3b2-overlay" id="us3b2Modal" onclick="if(event.target===this)us3b2CloseModal()">
+    <div class="us3b2-box" id="us3b2ModalBox"></div>
+  </div>
   <div class="edit-overlay" id="editOverlay" onclick="closeEditPanel(event)">
     <div class="edit-panel">
       <div class="ep-title" id="epTitle">Edit Counts</div>
