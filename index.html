@@ -4744,6 +4744,7 @@ function scanStartCamera(){
     });
 }
 function scanStopCamera(){
+  if(typeof scanState==='undefined'||!scanState)return; // guard: BOOT runs before scanState is initialized
   var btn=document.getElementById('scanCamBtn');if(btn){btn.textContent='📷 Camera';btn.classList.add('alt');}
   var box=document.getElementById('scanCamBox');if(box)box.style.display='none';
   if(scanState.camera&&scanState.running){
