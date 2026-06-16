@@ -5364,15 +5364,41 @@ function load(force){
   if(typeof supa==='undefined'||!supa){LV.err='offline';return Promise.reject(new Error('offline'));}
   LV.loading=Promise.all([
     supa.from('jobs').select('job_number,customer_name,company_name,location,project_status,install_date,deinstall_date,study_length_days,no_of_sites,delivery_type,value,scope_of_work,payment_status,engineer_email'),
-    supa.from('sites').select('site_id,job_number,city,mh_number,device_sn,system_type,pipe_size,install_date,removal_date,latitude,longitude')
+    supa.from('sites').select('site_id,job_number,city,mh_number,device_sn,system_type,pipe_size,install_date,removal_date,latitude,longitude'),
+    supa.from('device_locations').select('device_id,project_no,sensor_type,status').eq('status','deployed')
   ]).then(function(r){
-    LV.jobs=(r[0]&&r[0].data)||[];LV.sites=(r[1]&&r[1].data)||[];
+    LV.jobs=(r[0]&&r[0].data)||[];LV.sites=(r[1]&&r[1].data)||[];LV.deployedDevices=(r[2]&&r[2].data)||[];
     LV.jobByNum={};LV.sitesByJob={};
     LV.jobs.forEach(function(j){if(j.job_number)LV.jobByNum[j.job_number]=j;});
     LV.sites.forEach(function(s){var k=s.job_number||'(unassigned)';(LV.sitesByJob[k]=LV.sitesByJob[k]||[]).push(s);});
+    computeDeployed();
     LV.loaded=true;LV.err=null;LV.loading=null;return LV;
   },function(e){LV.err=e;LV.loading=null;throw e;});
   return LV.loading;
+}
+// sensor_type (Fulcrum) -> app product id
+function mapProduct(stype){
+  var s=(stype||'').toLowerCase();
+  if(!s)return null;
+  if(s.indexOf('flexflow')>=0||s.indexOf('flex flow')>=0)return 'ff';
+  if(s.indexOf('hach')>=0||s.indexOf('flodar')>=0||s.indexOf('flo-dar')>=0)return 'hach';
+  if(s.indexOf('rain')>=0)return 'rg';
+  if(s.indexOf('radar')>=0||s.indexOf('level')>=0||s.indexOf('pressure')>=0||s.indexOf('cricket')>=0)return 'cric';
+  return null;
+}
+// Live Deployed = distinct devices currently deployed on an ONGOING job, by product.
+function computeDeployed(){
+  var LV=window.US3Live;
+  var seen={},by={ff:0,hach:0,rg:0,cric:0},total=0,unknown=0;
+  (LV.deployedDevices||[]).forEach(function(d){
+    var job=LV.jobByNum[d.project_no];
+    if(!job||!ongoing(job))return;           // only count devices on real, active jobs
+    var key=(d.device_id||'')+'|'+(d.project_no||'');
+    if(seen[key])return;seen[key]=1;
+    var p=mapProduct(d.sensor_type);
+    if(p){by[p]++;total++;}else{unknown++;}
+  });
+  LV.deployedByProduct=by;LV.deployedTotal=total;LV.deployedUnknown=unknown;LV.deployedReady=true;
 }
 function sortJobs(list){
   return list.slice().sort(function(a,b){
@@ -5642,6 +5668,21 @@ function onHash(){
   hideOverlay();
 }
 window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,refresh:function(){load(true).then(function(){onHash();});},live:load};
+// Migrate Deployed to live device data: getDeployedCount now reflects real
+// devices in the ground (from device_locations), falling back to the old
+// reservation-based count until the live data is ready.
+var _getDeployedCount=window.getDeployedCount;
+window.getDeployedCount=function(productId){
+  var LV=window.US3Live;
+  if(LV&&LV.deployedReady&&LV.deployedByProduct&&Object.prototype.hasOwnProperty.call(LV.deployedByProduct,productId))return LV.deployedByProduct[productId];
+  return (typeof _getDeployedCount==='function')?_getDeployedCount(productId):0;
+};
+function repaintInventory(){
+  var active=document.querySelector('.page.active');if(!active)return;
+  if(active.id==='page-mc'&&typeof renderStats==='function'){try{renderStats();}catch(e){}}
+  if(active.id==='page-avail'&&typeof renderAvail==='function'){try{renderAvail();}catch(e){}}
+  if(active.id==='page-fleet'&&typeof renderFleet==='function'){try{renderFleet();}catch(e){}}
+}
 function init(){
   injectCSS();patchMap();
   window.addEventListener('hashchange',onHash);
@@ -5649,6 +5690,7 @@ function init(){
     // repaint whichever live tab is currently showing
     var active=document.querySelector('.page.active');
     if(active){if(active.id==='page-projects'&&typeof renderProjects==='function')renderProjects();if(active.id==='page-sched')paintSched();if(active.id==='page-mc')paintMCPanel();}
+    repaintInventory();
     onHash();
   },function(){});
 }
