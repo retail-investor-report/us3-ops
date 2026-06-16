@@ -5714,6 +5714,10 @@ function jobCard(j){
 var schedFilter='ground';
 window.renderSched=function(){
   injectCSS();
+  // The live schedule is a job list, not the old week-gantt — retire its week
+  // pagination + the now-vestigial reservation button.
+  var tb=document.querySelector('.sch-toolbar');
+  if(tb)tb.querySelectorAll('.sch-nav-btn,.add-res-btn').forEach(function(b){b.style.display='none';});
   var per=document.getElementById('schPeriod');
   var tbl=document.getElementById('schTable');if(!tbl)return;
   var inground=window.US3Live.jobs.filter(inGround).length;
