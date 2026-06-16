@@ -4977,7 +4977,7 @@ function kitShowManifest(kit,devices,toteCount){
     '</div>'):'';
   var devRows=devices.length?devices.map(function(d){return '<tr><td><b>'+us3esc(d.device_id)+'</b></td><td>'+us3esc(d.device_type||'')+'</td><td>'+us3fmtTs(d.added_at)+'</td><td>'+(kit.status==='building'?('<button class="us3b2-btn red" style="padding:4px 10px;font-size:11px;" onclick="kitRemoveDevice(\''+d.id+'\',\''+us3esc(kit.kit_id).replace(/'/g,"")+'\')">Remove</button>'):'')+'</td></tr>';}).join(''):'<tr><td colspan="4" class="us3b2-empty" style="padding:18px;">No devices scanned in yet.</td></tr>';
   var statusControls='';
-  if(kit.status==='building')statusControls='<button class="us3b2-btn" onclick="kitSetStatus(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\',\'shipped\')">Ship Kit →</button>';
+  if(kit.status==='building')statusControls='<button class="us3b2-btn" onclick="kitShipPrompt(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\')">Ship Kit →</button>';
   else if(kit.status==='shipped')statusControls='<button class="us3b2-btn green" onclick="kitSetStatus(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\',\'returned\')">Mark Returned →</button>';
   else statusControls='<span class="us3b2-kv" style="align-self:center;">Kit closed (returned).</span>';
   var html=
@@ -4991,6 +4991,8 @@ function kitShowManifest(kit,devices,toteCount){
       '<div class="us3b2-kv"><b>Built</b>'+(kit.built_at?us3fmtTs(kit.built_at):'—')+'</div>'+
       '<div class="us3b2-kv"><b>Shipped</b>'+(kit.shipped_at?us3fmtTs(kit.shipped_at):'—')+'</div>'+
       '<div class="us3b2-kv"><b>Returned</b>'+(kit.returned_at?us3fmtTs(kit.returned_at):'—')+'</div>'+
+      (kit.carrier?('<div class="us3b2-kv"><b>Carrier</b>'+us3esc(kit.carrier)+'</div>'):'')+
+      (kit.tracking_number?('<div class="us3b2-kv"><b>Tracking</b>'+(kitTrackUrl(kit.carrier,kit.tracking_number)?('<a href="'+kitTrackUrl(kit.carrier,kit.tracking_number)+'" target="_blank" rel="noopener" style="color:var(--accent);">'+us3esc(kit.tracking_number)+' ↗</a>'):us3esc(kit.tracking_number))+'</div>'):'')+
     '</div>'+
     (kit.status==='building'?('<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;"><input id="kitScanInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:200px;font-size:20px;" placeholder="Scan device into kit, Enter" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();kitAddDevice(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\');}"><button class="us3b2-btn green" onclick="kitAddDevice(\''+us3esc(kit.kit_id).replace(/'/g,"")+'\')">Add</button></div>'):'')+
     '<div class="us3b2-label">Manifest ('+devices.length+' device'+(devices.length===1?'':'s')+')</div>'+
@@ -5032,6 +5034,36 @@ function kitSetStatus(kitId,status){
     supa.from('kits').update(patch).eq('kit_id',kitId).select().then(function(r){
       if(r.error){alert('Update failed: '+r.error.message);return;}
       if(!r.data||!r.data.length){alert('Update silently no-op — check RLS update policy on kits.');return;}
+      kitOpen(kitId);kitLoadList();
+    });
+  });
+}
+function kitTrackUrl(carrier,track){if(!track)return null;var c=(carrier||'').toLowerCase();if(c.indexOf('fedex')>=0)return 'https://www.fedex.com/fedextrack/?trknbr='+encodeURIComponent(track);return null;}
+function kitShipPrompt(kitId){
+  var all=(window.US3Live&&window.US3Live.jobs)?window.US3Live.jobs:[];
+  var jobs=all.filter(function(j){return j.project_status!=='Project Completed'&&j.project_status!=='Removal Complete';}).sort(function(a,b){return (a.job_number||'').localeCompare(b.job_number||'');});
+  var jobOpts='<option value="">— select destination job (optional) —</option>'+jobs.map(function(j){return '<option value="'+us3esc(j.job_number)+'">'+us3esc(j.job_number)+' — '+us3esc(j.company_name||j.customer_name||'')+'</option>';}).join('');
+  var carOpts=['FedEx','AAA Cargo','Air Cargo','Hand delivery','Other'].map(function(c){return '<option>'+c+'</option>';}).join('');
+  us3b2OpenModal('<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:20px;">Ship '+us3esc(kitId)+'</div><button class="us3b2-x" onclick="kitOpen(\''+us3esc(kitId).replace(/'/g,"")+'\')">&times;</button></div>'+
+    '<div class="us3b2-mbody">'+
+      '<label class="us3b2-label">Destination job</label><select id="shipJob" class="us3b2-input">'+jobOpts+'</select>'+
+      '<label class="us3b2-label" style="margin-top:10px;">…or free-type a destination</label><input id="shipDest" class="us3b2-input" placeholder="e.g. Parsons – Richmond">'+
+      '<div class="us3b2-grid2" style="margin-top:10px;"><div><label class="us3b2-label">Carrier</label><select id="shipCarrier" class="us3b2-input">'+carOpts+'</select></div>'+
+        '<div><label class="us3b2-label">Tracking / AWB #</label><input id="shipTrack" class="us3b2-input" placeholder="optional"></div></div>'+
+      '<div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;"><button class="us3b2-btn alt" onclick="kitOpen(\''+us3esc(kitId).replace(/'/g,"")+'\')">Cancel</button><button class="us3b2-btn green" onclick="kitShipConfirm(\''+us3esc(kitId).replace(/'/g,"")+'\')">Confirm Ship →</button></div>'+
+    '</div>');
+}
+function kitShipConfirm(kitId){
+  var job=us3v('shipJob'),dest=us3v('shipDest'),carrier=us3v('shipCarrier'),track=us3v('shipTrack');
+  var destination=dest||job||null;
+  supa.from('kits').select('*').eq('kit_id',kitId).limit(1).then(function(kr){
+    var kit=((kr&&kr.data)||[])[0]||{};
+    if(kit.product_type==='Cricket'&&!kitCricketCleared(kit)){alert('Cannot ship: this Cricket kit is not marked cleared.');return;}
+    var patch={status:'shipped',updated_at:new Date().toISOString(),shipped_at:new Date().toISOString(),ship_job:job||null,carrier:carrier||null,tracking_number:track||null};
+    if(destination)patch.destination=destination;
+    supa.from('kits').update(patch).eq('kit_id',kitId).select().then(function(r){
+      if(r.error){alert('Ship failed: '+r.error.message);return;}
+      if(!r.data||!r.data.length){alert('Ship silently no-op — check RLS update policy on kits.');return;}
       kitOpen(kitId);kitLoadList();
     });
   });
