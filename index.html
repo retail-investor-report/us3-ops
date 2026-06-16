@@ -4754,6 +4754,12 @@ function scanHandleCode(code){
   var now=Date.now();
   if(code===scanState.lastCode&&now-scanState.lastTs<2500)return; // debounce double-fire / rapid scans
   scanState.lastCode=code;scanState.lastTs=now;
+  // A kit QR/barcode (KIT-...) opens the kit; anything else is a device lookup.
+  if(/^KIT[-_ ]/i.test(code)){
+    if(typeof sw==='function')sw('kit',document.querySelector('[data-page="kit"]'));
+    if(typeof kitOpen==='function')setTimeout(function(){kitOpen(code.trim());},80);
+    return;
+  }
   scanLookup(code);
 }
 function scanToggleCamera(){if(scanState.running)scanStopCamera();else scanStartCamera();}
@@ -5388,7 +5394,16 @@ function today(){return new Date().toISOString().slice(0,10);}
 
 var JOB_STATUS_COLOR={'Monitoring':'#0071BC','New':'#9b59b6','Permitting':'#e8a020','On-Hold':'#A7A9AC','Report In-progress':'#16a085','Report Ready':'#27ae60','Project Completed':'#5a6472','Removal Complete':'#5a6472'};
 function pill(s){var c=JOB_STATUS_COLOR[s]||'#5a6472';return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:'+c+';white-space:nowrap;">'+esc(s||'—')+'</span>';}
-function inGround(j){if(!j)return false;if(j.project_status==='Project Completed'||j.project_status==='Removal Complete')return false;if(j.project_status==='Monitoring')return true;var t=today();return !!(j.install_date&&j.install_date<=t&&(!j.deinstall_date||j.deinstall_date>=t));}
+function inGround(j){
+  if(!j)return false;
+  if(j.project_status==='Project Completed'||j.project_status==='Removal Complete')return false;
+  var LV=window.US3Live;
+  // Once field data is loaded, "in the ground" means the job actually has deployed
+  // devices in Fulcrum — not just an open job record with zero sites.
+  if(LV&&LV.deployedReady&&LV.deployedProjects)return ongoing(j)&&!!LV.deployedProjects[j.job_number];
+  if(j.project_status==='Monitoring')return true;
+  var t=today();return !!(j.install_date&&j.install_date<=t&&(!j.deinstall_date||j.deinstall_date>=t));
+}
 function ongoing(j){return j&&j.project_status!=='Project Completed'&&j.project_status!=='Removal Complete';}
 function jobWho(j){return j.company_name||j.customer_name||'—';}
 function jobSites(n){return (window.US3Live.sitesByJob[n])||[];}
@@ -5427,16 +5442,17 @@ function mapProduct(stype){
 // Live Deployed = distinct devices currently deployed on an ONGOING job, by product.
 function computeDeployed(){
   var LV=window.US3Live;
-  var seen={},by={ff:0,hach:0,rg:0,cric:0},total=0,unknown=0;
+  var seen={},by={ff:0,hach:0,rg:0,cric:0},total=0,unknown=0,projs={};
   (LV.deployedDevices||[]).forEach(function(d){
     var job=LV.jobByNum[d.project_no];
     if(!job||!ongoing(job))return;           // only count devices on real, active jobs
+    projs[d.project_no]=1;                    // this job has at least one deployed device
     var key=(d.device_id||'')+'|'+(d.project_no||'');
     if(seen[key])return;seen[key]=1;
     var p=mapProduct(d.sensor_type);
     if(p){by[p]++;total++;}else{unknown++;}
   });
-  LV.deployedByProduct=by;LV.deployedTotal=total;LV.deployedUnknown=unknown;LV.deployedReady=true;
+  LV.deployedByProduct=by;LV.deployedTotal=total;LV.deployedUnknown=unknown;LV.deployedProjects=projs;LV.deployedReady=true;
 }
 function sortJobs(list){
   return list.slice().sort(function(a,b){
