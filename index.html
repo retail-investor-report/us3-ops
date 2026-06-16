@@ -4677,21 +4677,49 @@ function scanSaveTechStation(){
   if(s!==undefined)localStorage.setItem('us3_scan_station',us3ApplyAliases(s));
   if(t!==undefined)localStorage.setItem('us3_scan_tech',t);
 }
+var scanForceSetup=false;
+function scanSetupSave(){
+  var sEl=document.getElementById('scanStationInput'),tEl=document.getElementById('scanTechInput');
+  var s=(sEl?sEl.value:'').trim(),t=(tEl?tEl.value:'').trim();
+  if(!s){alert('Enter a station / bench name (e.g. Bench 1 / Receiving).');return;}
+  localStorage.setItem('us3_scan_station',us3ApplyAliases(s));
+  localStorage.setItem('us3_scan_tech',t);
+  scanForceSetup=false;renderScan();
+}
+function scanShowSetup(){scanForceSetup=true;renderScan();}
+function scanChangeTech(){var t=prompt('Tech working at this station now:',scanGetTech()||'');if(t!==null){localStorage.setItem('us3_scan_tech',(t||'').trim());renderScan();}}
 function renderScan(){
   us3b2InjectCSS();
   var inner=document.getElementById('scanInner');if(!inner)return;
-  var statusOpts=US3_SCAN_STATUSES.map(function(s){return '<option>'+s+'</option>';}).join('');
+  var station=scanGetStation(),tech=scanGetTech();
+  var setup=!station||scanForceSetup;
+  var head;
+  if(setup){
+    head='<div class="us3b2-card">'+
+      '<div class="us3b2-h" style="font-size:18px;margin-bottom:4px;">📍 Set up this scanning station</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);margin-bottom:12px;">Set this once per computer/bench. A USB scanner just plugs in and types into the box — no driver needed.</div>'+
+      '<div class="us3b2-grid2">'+
+        '<div><label class="us3b2-label">Station / Bench (fixed)</label><input id="scanStationInput" class="us3b2-input" placeholder="e.g. Bench 1 / Receiving" value="'+us3esc(station)+'"></div>'+
+        '<div><label class="us3b2-label">Tech working here now</label><input id="scanTechInput" class="us3b2-input" placeholder="Your name" value="'+us3esc(tech)+'"></div>'+
+      '</div>'+
+      '<div style="margin-top:12px;"><button class="us3b2-btn" onclick="scanSetupSave()">Save station</button>'+(station?' <button class="us3b2-btn alt" onclick="scanForceSetup=false;renderScan();">Cancel</button>':'')+'</div>'+
+    '</div>';
+  }else{
+    head='<div class="us3b2-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
+      '<div><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:20px;">📍 '+us3esc(station)+'</div>'+
+           '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);">Tech: <b>'+us3esc(tech||'— tap “Change tech”')+'</b></div></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="us3b2-btn alt" onclick="scanChangeTech()">Change tech</button><button class="us3b2-btn alt" onclick="scanShowSetup()">⚙ Station</button></div>'+
+    '</div>';
+  }
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
       '<div class="us3b2-h" style="font-size:30px;">📲 Station Scanner</div>'+
-      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Scan-many ready · scans append to <b>device_events</b></div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Scan a code → the device record pops up automatically.</div>'+
     '</div>'+
-    '<div class="us3b2-card us3b2-grid2">'+
-      '<div><label class="us3b2-label">Station</label><input id="scanStationInput" class="us3b2-input" placeholder="e.g. Bench 1 / Receiving" value="'+us3esc(scanGetStation())+'" onchange="scanSaveTechStation()"></div>'+
-      '<div><label class="us3b2-label">Tech</label><input id="scanTechInput" class="us3b2-input" placeholder="Your name" value="'+us3esc(scanGetTech())+'" onchange="scanSaveTechStation()"></div>'+
-    '</div>'+
-    '<div class="us3b2-card">'+
+    head+
+    (setup?'':
+    ('<div class="us3b2-card">'+
       '<label class="us3b2-label">Scan or type Device ID</label>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
         '<input id="scanManualInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:220px;" autocomplete="off" placeholder="Scan barcode / QR or type, then Enter" onkeydown="if(event.key===\'Enter\'){event.preventDefault();scanManualSubmit();}">'+
@@ -4704,11 +4732,10 @@ function renderScan(){
       '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)</div>'+
       '<div id="scanRecent"></div>'+
     '</div>'+
-    '<div class="us3b2-card"><div id="scanAnalytics"><div class="us3b2-empty">Loading analytics…</div></div></div>'+
+    '<div class="us3b2-card"><div id="scanAnalytics"><div class="us3b2-empty">Loading analytics…</div></div></div>'))+
   '</div>';
-  scanRenderRecent();
-  evtAnalyticsLoad();
-  setTimeout(function(){var i=document.getElementById('scanManualInput');if(i)i.focus();},60);
+  if(setup){setTimeout(function(){var i=document.getElementById('scanStationInput');if(i)i.focus();},60);}
+  else{scanRenderRecent();evtAnalyticsLoad();setTimeout(function(){var i=document.getElementById('scanManualInput');if(i)i.focus();},60);}
 }
 function scanRenderRecent(){
   var el=document.getElementById('scanRecent');if(!el)return;
@@ -4800,7 +4827,7 @@ function scanShowModal(code,events,loc,site,job){
       (locStatus?('<div class="us3b2-kv"><b>Field Status</b>'+us3StatusPill(locStatus)+'</div>'):'')+
     '</div>';
   }else{
-    ctxHtml='<div class="us3b2-warn" style="margin-bottom:8px;">No site/job context for this device yet. The device→site map (<b>device_locations</b>) is populated by Fulcrum — context will appear automatically once that sync runs.</div>';
+    ctxHtml='<div class="us3b2-warn" style="margin-bottom:8px;">No field context found for this device. It isn\'t in the Fulcrum location data (device_locations) — it may pre-date the install form or its serial was never recorded on a Site Sheet. Its scan history still logs below.</div>';
   }
   var hist;
   if(events.length){
@@ -5048,7 +5075,7 @@ function renderCount(){
   var inner=document.getElementById('countInner');if(!inner)return;
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
-    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">🧮 Warehouse Count</div>'+
+    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">🧮 Warehouse Kit Count</div>'+
     '<div class="us3b2-card">'+
       '<label class="us3b2-label">Office</label>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+offBtns+'</div>'+
@@ -5084,8 +5111,8 @@ function countRenderBody(){
   }).join('');
   var totVar=totCnt-totExp;
   body.innerHTML=
-    '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">'+us3esc(office.label)+' — On-hand reconciliation</div>'+
-    '<table class="us3b2-tbl"><thead><tr><th>Product</th><th>Expected</th><th>Counted</th><th>Variance</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">'+us3esc(office.label)+' — Kits on hand (reconciliation)</div>'+
+    '<table class="us3b2-tbl"><thead><tr><th>Kit Type</th><th>Expected</th><th>Counted</th><th>Variance</th></tr></thead><tbody>'+rows+'</tbody></table>'+
     '<div class="us3b2-grid3" style="margin-top:16px;">'+
       '<div class="us3b2-kv"><b>Total expected</b><span style="font-size:22px;font-family:Oswald,sans-serif;">'+totExp+'</span></div>'+
       '<div class="us3b2-kv"><b>Total counted</b><span style="font-size:22px;font-family:Oswald,sans-serif;">'+(anyCounted?totCnt:'—')+'</span></div>'+
@@ -5473,36 +5500,55 @@ function openDevice(id){rememberReturn();var h='#dev='+encodeURIComponent(id);if
 
 function renderProjectPage(n){
   showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-empty">Loading job '+esc(n)+'…</div>');
-  load().then(function(){
+  var devQ=(typeof supa!=='undefined'&&supa)?supa.from('device_locations').select('device_id,meter_sn,sensor_type,site_name,city,status').eq('project_no',n):Promise.resolve({data:[]});
+  Promise.all([load(),Promise.resolve(devQ)]).then(function(res){
+    var fieldDevices=((res[1]&&res[1].data)||[]).filter(function(d){return d.device_id;});
     var j=window.US3Live.jobByNum[n];
     if(!j){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">No job found for '+esc(n)+'.</div>');return;}
     var sites=jobSites(n);
+    // best-effort match Airtable site -> Fulcrum device by normalized site name / MH number
+    function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+    var byNorm={};fieldDevices.forEach(function(d){if(d.site_name)byNorm[norm(d.site_name)]=d;});
+    function matchDev(s){
+      var cands=[s.site_id,(s.site_id||'')+' '+(s.mh_number||''),s.mh_number];
+      for(var i=0;i<cands.length;i++){var k=norm(cands[i]);if(k&&byNorm[k])return byNorm[k];}
+      var mh=norm(s.mh_number);if(mh.length>=3){for(var key in byNorm){if(key.indexOf(mh)>=0)return byNorm[key];}}
+      return null;
+    }
+    var deployedN=fieldDevices.filter(function(d){return d.status==='deployed';}).length;
     var meta=[
       ['Status',pill(j.project_status)],
       ['In the ground',inGround(j)?'<b style="color:#0071BC;">Yes</b>':'No'],
       ['Install',fmtDate(j.install_date)],['De-install',fmtDate(j.deinstall_date)],
       ['Study length',(j.study_length_days?Math.round(j.study_length_days)+' days':'—')],
-      ['Sites',sites.length+(j.no_of_sites&&Number(j.no_of_sites)!==sites.length?(' (Airtable: '+Math.round(j.no_of_sites)+')'):'')],
+      ['Sites',String(sites.length)],['Field devices',fieldDevices.length+(deployedN?(' ('+deployedN+' deployed)'):'')],
       ['Delivery type',esc(j.delivery_type||'—')],['Value',money(j.value)],
       ['Payment',esc(j.payment_status||'—')],['Engineer',esc(j.engineer_email||'—')]
     ].map(function(m){return '<div><div class="k">'+m[0]+'</div><div class="v">'+m[1]+'</div></div>';}).join('');
+    // Field Devices (real serials from Fulcrum, joined by project number)
+    var fdRows=fieldDevices.length?fieldDevices.slice().sort(function(a,b){return (a.status==='deployed'?0:1)-(b.status==='deployed'?0:1);}).map(function(d){
+      return '<tr><td><span class="us3w-link" onclick="US3.openDevice(\''+js(d.device_id)+'\')"><b>'+esc(d.device_id)+'</b></span></td><td>'+esc(d.sensor_type||'—')+'</td><td>'+esc(d.site_name||'—')+'</td><td>'+esc(d.city||'—')+'</td><td>'+(d.status==='deployed'?'<span style="color:#0071BC;">deployed</span>':esc(d.status||'—'))+'</td></tr>';
+    }).join(''):'<tr><td colspan="5" class="us3w-empty">No devices recorded in Fulcrum for this job yet.</td></tr>';
     var srows=sites.length?sites.map(function(s){
-      var dev=s.device_sn?('<span class="us3w-link" onclick="US3.openDevice(\''+js(s.device_sn)+'\')">'+esc(s.device_sn)+'</span>'):'<span style="color:#5a6472;">— not linked</span>';
+      var m=matchDev(s);
+      var dev=m?('<span class="us3w-link" onclick="US3.openDevice(\''+js(m.device_id)+'\')">'+esc(m.device_id)+'</span>'):'<span style="color:#5a6472;">—</span>';
       var map=(s.latitude!=null&&s.longitude!=null)?('<span class="us3w-link" onclick="US3.mapJob(\''+js(n)+'\')">Map</span>'):'<span style="color:#5a6472;">no coords</span>';
-      return '<tr><td><b>'+esc(s.site_id||'—')+'</b></td><td>'+esc(s.mh_number||'—')+'</td><td>'+esc(s.city||'—')+'</td><td>'+esc(s.system_type||'—')+'</td><td>'+fmtDate(s.install_date)+'</td><td>'+fmtDate(s.removal_date)+'</td><td>'+dev+'</td><td>'+map+'</td></tr>';
-    }).join(''):'<tr><td colspan="8" class="us3w-empty">No sites linked to this job.</td></tr>';
+      return '<tr><td><b>'+esc(s.site_id||'—')+'</b></td><td>'+esc(s.mh_number||'—')+'</td><td>'+esc(s.city||'—')+'</td><td>'+esc(s.system_type||'—')+'</td><td>'+fmtDate(s.install_date)+'</td><td>'+dev+'</td><td>'+map+'</td></tr>';
+    }).join(''):'<tr><td colspan="7" class="us3w-empty">No sites listed in Airtable for this job.</td></tr>';
     var html=
     '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
     '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:14px;">'+
-      '<div class="us3w-h" style="font-size:32px;color:var(--text,#e8edf4);">'+esc(j.job_number||'—')+'</div>'+pill(j.project_status)+'</div>'+
+      '<div class="us3w-h" style="font-size:32px;">'+esc(j.job_number||'—')+'</div>'+pill(j.project_status)+'</div>'+
     '<div style="font-size:18px;margin-top:4px;">'+esc(jobWho(j))+'</div>'+
     '<div style="color:#8a97a8;font-size:15px;">'+esc(j.location||'—')+'</div>'+
     '<div class="us3w-card"><div class="us3w-meta">'+meta+'</div></div>'+
-    (j.scope_of_work?('<div class="us3w-card"><div class="k" style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a97a8;">Scope of work</div><div style="margin-top:6px;font-size:15px;white-space:pre-wrap;">'+esc(j.scope_of_work)+'</div></div>'):'')+
-    '<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="us3w-h" style="font-size:16px;color:var(--text,#e8edf4);">Sites ('+sites.length+')</div>'+
-      (sites.length?('<button class="us3w-back" onclick="US3.mapJob(\''+js(n)+'\')">View all on Map ›</button>'):'')+'</div>'+
-      '<table class="us3w-tbl"><thead><tr><th>Site</th><th>MH #</th><th>City</th><th>System</th><th>Install</th><th>Removal</th><th>Device</th><th></th></tr></thead><tbody>'+srows+'</tbody></table>'+
-      (sites.length?'<div style="margin-top:8px;font-size:12px;color:#5a6472;font-style:italic;">Device serial &amp; field status populate when the Fulcrum sync runs — device_locations is empty today.</div>':'')+
+    (j.scope_of_work?('<div class="us3w-card"><div class="k" style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Scope of work</div><div style="margin-top:6px;font-size:15px;white-space:pre-wrap;">'+esc(j.scope_of_work)+'</div></div>'):'')+
+    '<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><div class="us3w-h" style="font-size:16px;">Field Devices ('+fieldDevices.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">real serials from Fulcrum</span></div>'+
+      (fieldDevices.length?('<button class="us3w-back" onclick="US3.mapJob(\''+js(n)+'\')">View on Map ›</button>'):'')+'</div>'+
+      '<table class="us3w-tbl"><thead><tr><th>Device ID</th><th>Type</th><th>Site</th><th>City</th><th>Status</th></tr></thead><tbody>'+fdRows+'</tbody></table></div>'+
+    '<div class="us3w-card"><div class="us3w-h" style="font-size:16px;">Sites ('+sites.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">planned manholes from Airtable</span></div>'+
+      '<table class="us3w-tbl"><thead><tr><th>Site</th><th>MH #</th><th>City</th><th>System</th><th>Install</th><th>Device</th><th></th></tr></thead><tbody>'+srows+'</tbody></table>'+
+      '<div style="margin-top:8px;font-size:12px;color:#5a6472;font-style:italic;">Device column is a best-effort name match to the Fulcrum devices above; the Field Devices table is the authoritative list.</div>'+
     '</div>';
     showOverlay(html);
   },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline — can\'t reach Supabase to load this job.</div>');});
