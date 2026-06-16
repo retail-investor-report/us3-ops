@@ -5046,11 +5046,15 @@ function kitPrintManifest(kitId){
   ]).then(function(res){
     var kit=((res[0]&&res[0].data)||[])[0]||{};var devices=(res[1]&&res[1].data)||[];
     var rows=devices.map(function(d,i){return '<tr><td>'+(i+1)+'</td><td>'+us3esc(d.device_id)+'</td><td>'+us3esc(d.device_type||'')+'</td></tr>';}).join('')||'<tr><td colspan="3">No devices</td></tr>';
+    var kid=kit.kit_id||kitId;
+    var qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&qzone=1&data='+encodeURIComponent(kid);
     var w=window.open('','_blank');if(!w){alert('Popup blocked.');return;}
-    w.document.write('<html><head><title>Manifest '+us3esc(kit.kit_id)+'</title><style>body{font-family:Arial,sans-serif;padding:30px;}h1{font-size:22px;}table{width:100%;border-collapse:collapse;margin-top:14px;}th,td{border:1px solid #999;padding:8px;text-align:left;font-size:14px;}th{background:#0071BC;color:#fff;}.meta{margin-top:8px;font-size:14px;color:#333;}</style></head><body>'+
-      '<h1>US3 Kit Manifest — '+us3esc(kit.kit_id)+'</h1>'+
-      '<div class="meta"><b>Product:</b> '+us3esc(kit.product_type||'')+' &nbsp; <b>Status:</b> '+us3esc(kit.status||'')+' &nbsp; <b>Tote:</b> '+us3esc(kit.tote_id||'—')+'</div>'+
-      '<div class="meta"><b>Destination:</b> '+us3esc(kit.destination||'—')+' &nbsp; <b>Built by:</b> '+us3esc(kit.built_by||'—')+'</div>'+
+    w.document.write('<html><head><title>Manifest '+us3esc(kid)+'</title><style>body{font-family:Arial,sans-serif;padding:30px;}h1{font-size:22px;margin:0 0 6px;}table{width:100%;border-collapse:collapse;margin-top:14px;}th,td{border:1px solid #999;padding:8px;text-align:left;font-size:14px;}th{background:#0071BC;color:#fff;}.meta{margin-top:8px;font-size:14px;color:#333;}.qr{text-align:center;}.qr img{width:180px;height:180px;}.qr .cap{font-size:11px;color:#666;margin-top:4px;}.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}</style></head><body>'+
+      '<div class="hd"><div>'+
+        '<h1>US3 Kit Manifest — '+us3esc(kid)+'</h1>'+
+        '<div class="meta"><b>Product:</b> '+us3esc(kit.product_type||'')+' &nbsp; <b>Status:</b> '+us3esc(kit.status||'')+' &nbsp; <b>Tote:</b> '+us3esc(kit.tote_id||'—')+'</div>'+
+        '<div class="meta"><b>Destination:</b> '+us3esc(kit.destination||'—')+' &nbsp; <b>Built by:</b> '+us3esc(kit.built_by||'—')+'</div>'+
+      '</div><div class="qr"><img src="'+qr+'" alt="'+us3esc(kid)+'"><div class="cap">Scan to pull up this kit</div></div></div>'+
       '<table><thead><tr><th>#</th><th>Device ID</th><th>Type</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<p style="margin-top:20px;font-size:12px;color:#666;">'+devices.length+' device(s) · printed '+new Date().toLocaleString()+'</p>'+
       '</body></html>');
