@@ -5332,6 +5332,329 @@ setTimeout(function(){
   }
 },300);
 </script>
+<script>
+/* ════════════ US3 LIVE WEB LAYER (Build 02.5) ════════════
+   Wires Projects / Schedule / Mission Control / Device Map to the live
+   Supabase jobs+sites (Airtable-synced) as the single source of truth,
+   adds per-project and per-device detail pages, and cross-links everything.
+   Isolated module: runs after the main block so all globals exist; a fault
+   here cannot break boot/login. Device-type/field-status fields render as
+   graceful empty states until device_locations (Fulcrum) is populated. */
+(function(){
+'use strict';
+function esc(s){return window.us3esc?us3esc(s):String(s==null?'':s);}
+function js(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function fmtDate(d){if(!d)return '—';try{var x=new Date(String(d).length<=10?(d+'T00:00:00'):d);if(isNaN(x))return esc(d);return x.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return esc(d);}}
+function money(v){if(v==null||v==='')return '—';var n=Number(v);if(isNaN(n))return esc(v);return '$'+n.toLocaleString('en-US');}
+function today(){return new Date().toISOString().slice(0,10);}
+
+var JOB_STATUS_COLOR={'Monitoring':'#0071BC','New':'#9b59b6','Permitting':'#e8a020','On-Hold':'#A7A9AC','Report In-progress':'#16a085','Report Ready':'#27ae60','Project Completed':'#5a6472','Removal Complete':'#5a6472'};
+function pill(s){var c=JOB_STATUS_COLOR[s]||'#5a6472';return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:'+c+';white-space:nowrap;">'+esc(s||'—')+'</span>';}
+function inGround(j){if(!j)return false;if(j.project_status==='Project Completed'||j.project_status==='Removal Complete')return false;if(j.project_status==='Monitoring')return true;var t=today();return !!(j.install_date&&j.install_date<=t&&(!j.deinstall_date||j.deinstall_date>=t));}
+function ongoing(j){return j&&j.project_status!=='Project Completed'&&j.project_status!=='Removal Complete';}
+function jobWho(j){return j.company_name||j.customer_name||'—';}
+function jobSites(n){return (window.US3Live.sitesByJob[n])||[];}
+
+/* ---- data layer ---- */
+window.US3Live={jobs:[],sites:[],jobByNum:{},sitesByJob:{},loaded:false,loading:null,err:null,mapFilterJob:null};
+function load(force){
+  var LV=window.US3Live;
+  if(LV.loaded&&!force)return Promise.resolve(LV);
+  if(LV.loading)return LV.loading;
+  if(typeof supa==='undefined'||!supa){LV.err='offline';return Promise.reject(new Error('offline'));}
+  LV.loading=Promise.all([
+    supa.from('jobs').select('job_number,customer_name,company_name,location,project_status,install_date,deinstall_date,study_length_days,no_of_sites,delivery_type,value,scope_of_work,payment_status,engineer_email'),
+    supa.from('sites').select('site_id,job_number,city,mh_number,device_sn,system_type,pipe_size,install_date,removal_date,latitude,longitude')
+  ]).then(function(r){
+    LV.jobs=(r[0]&&r[0].data)||[];LV.sites=(r[1]&&r[1].data)||[];
+    LV.jobByNum={};LV.sitesByJob={};
+    LV.jobs.forEach(function(j){if(j.job_number)LV.jobByNum[j.job_number]=j;});
+    LV.sites.forEach(function(s){var k=s.job_number||'(unassigned)';(LV.sitesByJob[k]=LV.sitesByJob[k]||[]).push(s);});
+    LV.loaded=true;LV.err=null;LV.loading=null;return LV;
+  },function(e){LV.err=e;LV.loading=null;throw e;});
+  return LV.loading;
+}
+function sortJobs(list){
+  return list.slice().sort(function(a,b){
+    var ga=inGround(a)?0:(ongoing(a)?1:2),gb=inGround(b)?0:(ongoing(b)?1:2);
+    if(ga!==gb)return ga-gb;
+    return (b.install_date||'').localeCompare(a.install_date||'');
+  });
+}
+
+/* ---- CSS ---- */
+function injectCSS(){
+  if(document.getElementById('us3webCss'))return;
+  var s=document.createElement('style');s.id='us3webCss';
+  s.textContent=
+  '#us3Detail{position:fixed;inset:0;background:#0a0e16;z-index:4000;display:none;overflow:auto;}'+
+  '#us3DetailInner{max-width:1080px;margin:0 auto;padding:26px 20px 60px;font-family:Rajdhani,sans-serif;color:var(--text,#e8edf4);}'+
+  '.us3w-back{font-family:Oswald,sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0071BC;cursor:pointer;border:1px solid #0071BC;border-radius:7px;padding:7px 14px;display:inline-block;background:none;}'+
+  '.us3w-back:hover{background:#0071BC;color:#fff;}'+
+  '.us3w-h{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}'+
+  '.us3w-card{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:16px 18px;margin-top:14px;}'+
+  '.us3w-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:10px;}'+
+  '.us3w-meta .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#8a97a8);font-family:Oswald,sans-serif;}'+
+  '.us3w-meta .v{font-size:16px;margin-top:2px;}'+
+  '.us3w-tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}'+
+  '.us3w-tbl th{text-align:left;font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#8a97a8);border-bottom:1px solid var(--borderb,#243044);padding:7px 8px;}'+
+  '.us3w-tbl td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.05);}'+
+  '.us3w-tbl tr:hover td{background:rgba(0,113,188,.07);}'+
+  '.us3w-link{color:#0071BC;cursor:pointer;text-decoration:none;font-weight:600;}'+
+  '.us3w-link:hover{text-decoration:underline;}'+
+  '.us3jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}'+
+  '.us3jcard{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:14px 15px;cursor:pointer;transition:.12s;}'+
+  '.us3jcard:hover{border-color:#0071BC;transform:translateY(-2px);}'+
+  '.us3jcard-num{font-family:Oswald,sans-serif;font-weight:700;font-size:18px;color:var(--text,#e8edf4);}'+
+  '.us3jcard-co{font-size:14px;margin-top:5px;color:var(--text,#e8edf4);}'+
+  '.us3jcard-loc{font-size:13px;color:var(--muted,#8a97a8);}'+
+  '.us3jcard-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:9px;font-size:12px;color:var(--muted,#8a97a8);}'+
+  '.us3w-empty{padding:14px;color:var(--muted,#8a97a8);font-style:italic;}'+
+  '.us3w-fbar{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px;}'+
+  '.us3w-fbtn{font-family:Oswald,sans-serif;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;border-radius:7px;border:1px solid var(--borderb,#243044);background:none;color:var(--muted,#8a97a8);cursor:pointer;}'+
+  '.us3w-fbtn.on{background:#0071BC;border-color:#0071BC;color:#fff;}'+
+  '#us3mcPanel{position:absolute;top:12px;right:12px;width:300px;max-height:62%;overflow:auto;background:rgba(10,14,22,.93);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 13px;z-index:600;backdrop-filter:none;}'+
+  '#us3mcPanel .hd{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;color:#fff;margin-bottom:8px;display:flex;justify-content:space-between;}'+
+  '.us3mcrow{padding:8px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent;}'+
+  '.us3mcrow:hover{background:rgba(0,113,188,.12);border-color:#0071BC;}'+
+  '.us3mcrow .n{font-family:Oswald,sans-serif;font-weight:700;font-size:14px;color:#fff;}'+
+  '.us3mcrow .s{font-size:12px;color:#9fb0c4;}';
+  document.head.appendChild(s);
+}
+
+/* ---- detail overlay ---- */
+var returnHash='#mc';
+function overlay(){var o=document.getElementById('us3Detail');if(o)return o;o=document.createElement('div');o.id='us3Detail';o.innerHTML='<div id="us3DetailInner"></div>';document.body.appendChild(o);return o;}
+function showOverlay(html){injectCSS();var o=overlay();document.getElementById('us3DetailInner').innerHTML=html;o.style.display='block';o.scrollTop=0;}
+function hideOverlay(){var o=document.getElementById('us3Detail');if(o)o.style.display='none';}
+function closeDetail(){location.hash=returnHash&&!/^#(proj|dev)=/.test(returnHash)?returnHash:'#mc';}
+function rememberReturn(){var o=document.getElementById('us3Detail');if(o&&o.style.display==='block')return;returnHash=(location.hash&&!/^#(proj|dev)=/.test(location.hash))?location.hash:'#mc';}
+
+function openProject(n){rememberReturn();var h='#proj='+encodeURIComponent(n);if(location.hash===h)renderProjectPage(n);else location.hash=h;}
+function openDevice(id){rememberReturn();var h='#dev='+encodeURIComponent(id);if(location.hash===h)renderDevicePage(id);else location.hash=h;}
+
+function renderProjectPage(n){
+  showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-empty">Loading job '+esc(n)+'…</div>');
+  load().then(function(){
+    var j=window.US3Live.jobByNum[n];
+    if(!j){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">No job found for '+esc(n)+'.</div>');return;}
+    var sites=jobSites(n);
+    var meta=[
+      ['Status',pill(j.project_status)],
+      ['In the ground',inGround(j)?'<b style="color:#0071BC;">Yes</b>':'No'],
+      ['Install',fmtDate(j.install_date)],['De-install',fmtDate(j.deinstall_date)],
+      ['Study length',(j.study_length_days?Math.round(j.study_length_days)+' days':'—')],
+      ['Sites',sites.length+(j.no_of_sites&&Number(j.no_of_sites)!==sites.length?(' (Airtable: '+Math.round(j.no_of_sites)+')'):'')],
+      ['Delivery type',esc(j.delivery_type||'—')],['Value',money(j.value)],
+      ['Payment',esc(j.payment_status||'—')],['Engineer',esc(j.engineer_email||'—')]
+    ].map(function(m){return '<div><div class="k">'+m[0]+'</div><div class="v">'+m[1]+'</div></div>';}).join('');
+    var srows=sites.length?sites.map(function(s){
+      var dev=s.device_sn?('<span class="us3w-link" onclick="US3.openDevice(\''+js(s.device_sn)+'\')">'+esc(s.device_sn)+'</span>'):'<span style="color:#5a6472;">— not linked</span>';
+      var map=(s.latitude!=null&&s.longitude!=null)?('<span class="us3w-link" onclick="US3.mapJob(\''+js(n)+'\')">Map</span>'):'<span style="color:#5a6472;">no coords</span>';
+      return '<tr><td><b>'+esc(s.site_id||'—')+'</b></td><td>'+esc(s.mh_number||'—')+'</td><td>'+esc(s.city||'—')+'</td><td>'+esc(s.system_type||'—')+'</td><td>'+fmtDate(s.install_date)+'</td><td>'+fmtDate(s.removal_date)+'</td><td>'+dev+'</td><td>'+map+'</td></tr>';
+    }).join(''):'<tr><td colspan="8" class="us3w-empty">No sites linked to this job.</td></tr>';
+    var html=
+    '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
+    '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:14px;">'+
+      '<div class="us3w-h" style="font-size:32px;color:var(--text,#e8edf4);">'+esc(j.job_number||'—')+'</div>'+pill(j.project_status)+'</div>'+
+    '<div style="font-size:18px;margin-top:4px;">'+esc(jobWho(j))+'</div>'+
+    '<div style="color:var(--muted,#8a97a8);font-size:15px;">'+esc(j.location||'—')+'</div>'+
+    '<div class="us3w-card"><div class="us3w-meta">'+meta+'</div></div>'+
+    (j.scope_of_work?('<div class="us3w-card"><div class="k" style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#8a97a8);">Scope of work</div><div style="margin-top:6px;font-size:15px;white-space:pre-wrap;">'+esc(j.scope_of_work)+'</div></div>'):'')+
+    '<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="us3w-h" style="font-size:16px;color:var(--text,#e8edf4);">Sites ('+sites.length+')</div>'+
+      (sites.length?('<button class="us3w-back" onclick="US3.mapJob(\''+js(n)+'\')">View all on Map ›</button>'):'')+'</div>'+
+      '<table class="us3w-tbl"><thead><tr><th>Site</th><th>MH #</th><th>City</th><th>System</th><th>Install</th><th>Removal</th><th>Device</th><th></th></tr></thead><tbody>'+srows+'</tbody></table>'+
+      (sites.length?'<div style="margin-top:8px;font-size:12px;color:#5a6472;font-style:italic;">Device serial &amp; field status populate when the Fulcrum sync runs — device_locations is empty today.</div>':'')+
+    '</div>';
+    showOverlay(html);
+  },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline — can\'t reach Supabase to load this job.</div>');});
+}
+
+function renderDevicePage(id){
+  showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-empty">Loading device '+esc(id)+'…</div>');
+  if(typeof supa==='undefined'||!supa){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline.</div>');return;}
+  Promise.all([
+    supa.from('device_events').select('*').eq('device_id',id).order('created_at',{ascending:false}),
+    supa.from('device_locations').select('*').eq('device_id',id),
+    supa.from('kit_devices').select('*').eq('device_id',id)
+  ]).then(function(r){
+    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[];
+    var loc=locs[0];
+    var locHtml=loc?
+      ('<div class="us3w-meta">'+[
+        ['Site',esc(loc.site_name||'—')],['City',esc(loc.city||'—')],
+        ['Field status',loc.status?('<b>'+esc(loc.status)+'</b>'):'—'],
+        ['Sensor type',esc(loc.sensor_type||'—')],
+        ['Job',loc.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(loc.project_no)+'\')">'+esc(loc.project_no)+'</span>'):'—']
+      ].map(function(m){return '<div><div class="k">'+m[0]+'</div><div class="v">'+m[1]+'</div></div>';}).join('')+'</div>')
+      :'<div class="us3w-empty">No field location yet — populates automatically when the Fulcrum sync runs.</div>';
+    var ev=events.length?('<table class="us3w-tbl"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Failure</th><th>Station</th><th>Tech</th><th>Notes</th></tr></thead><tbody>'+
+      events.map(function(e){return '<tr><td>'+fmtDate(e.created_at)+'</td><td>'+esc(e.event_type||'—')+'</td><td>'+esc(e.status||'—')+'</td><td>'+esc(e.failure_reason||'—')+'</td><td>'+esc(e.station||'—')+'</td><td>'+esc(e.tech||'—')+'</td><td>'+esc(e.notes||'')+'</td></tr>';}).join('')+'</tbody></table>')
+      :'<div class="us3w-empty">No scan history yet — scan this device on the Station Scanner tab to start its log.</div>';
+    var kitHtml=kits.length?kits.map(function(k){return '<div>Kit <b>'+esc(k.kit_id)+'</b> · '+esc(k.device_type||'')+'</div>';}).join(''):'<div class="us3w-empty">Not part of any kit.</div>';
+    showOverlay(
+      '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
+      '<div class="us3w-h" style="font-size:30px;color:var(--text,#e8edf4);margin-top:14px;">'+esc(id)+'</div>'+
+      '<div style="color:var(--muted,#8a97a8);">Device record</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Current location</div>'+locHtml+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Scan history ('+events.length+')</div>'+ev+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Kit membership</div>'+kitHtml+'</div>'
+    );
+  },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Couldn\'t load device record.</div>');});
+}
+
+/* ---- Projects tab (live) ---- */
+var projFilter='ground';
+window.renderProjects=function(){
+  injectCSS();
+  var page=document.getElementById('page-projects');if(!page)return;
+  page.innerHTML='<div class="pj-inner" style="padding:18px 22px;overflow:auto;height:100%;box-sizing:border-box;">'+
+    '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">Projects</div>'+
+    '<div style="color:var(--muted,#8a97a8);font-size:14px;margin-bottom:10px;">Live jobs from the company database</div>'+
+    '<div class="us3w-fbar" id="us3projFbar"></div>'+
+    '<div id="us3projGrid"><div class="us3w-empty">Loading jobs…</div></div>'+
+    '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin-top:28px;">Portals</div>'+
+    '<div class="pj-grid" id="pjGrid" style="margin-top:10px;"></div>'+
+  '</div>';
+  if(typeof PJ_LINKS!=='undefined'&&document.getElementById('pjGrid')){
+    document.getElementById('pjGrid').innerHTML=PJ_LINKS.map(function(p){
+      var logo='';if(typeof prodLogoHtml==='function'){if(p.name.indexOf('Flex Flow')>=0)logo=prodLogoHtml('ff',36);else if(p.name.indexOf('Level')>=0)logo=prodLogoHtml('cric',36);else if(p.name.indexOf('Hach')>=0)logo=prodLogoHtml('hach',36);}
+      return '<a class="pj-card" href="'+p.url+'" target="_blank" rel="noopener"><div class="pj-card-icon">'+(logo||p.icon)+'</div><div class="pj-card-name"'+(p.color?' style="color:'+p.color+'"':'')+'">'+p.name+'</div><div class="pj-card-url">'+p.sub+'</div><div class="pj-card-arrow">→ Open Portal</div></a>';
+    }).join('');
+  }
+  paintProjFbar();
+  load().then(paintProjGrid,function(){var g=document.getElementById('us3projGrid');if(g)g.innerHTML='<div class="us3w-empty">Offline — can\'t reach the jobs database.</div>';});
+};
+function paintProjFbar(){
+  var bar=document.getElementById('us3projFbar');if(!bar)return;
+  var opts=[['ground','In the ground'],['ongoing','Ongoing'],['all','All']];
+  bar.innerHTML=opts.map(function(o){return '<button class="us3w-fbtn'+(projFilter===o[0]?' on':'')+'" onclick="US3.projFilter(\''+o[0]+'\')">'+o[1]+'</button>';}).join('');
+}
+function paintProjGrid(){
+  var g=document.getElementById('us3projGrid');if(!g)return;
+  var jobs=sortJobs(window.US3Live.jobs.filter(function(j){return projFilter==='all'?true:projFilter==='ongoing'?ongoing(j):inGround(j);}));
+  if(!jobs.length){g.innerHTML='<div class="us3w-empty">No jobs match this filter.</div>';return;}
+  g.innerHTML='<div class="us3jgrid">'+jobs.map(jobCard).join('')+'</div>';
+}
+function jobCard(j){
+  var sites=jobSites(j.job_number);
+  return '<div class="us3jcard" onclick="US3.openProject(\''+js(j.job_number)+'\')">'+
+    '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;"><div class="us3jcard-num">'+esc(j.job_number||'—')+'</div>'+pill(j.project_status)+'</div>'+
+    '<div class="us3jcard-co">'+esc(jobWho(j))+'</div>'+
+    '<div class="us3jcard-loc">'+esc(j.location||'—')+'</div>'+
+    '<div class="us3jcard-meta"><span>📅 '+fmtDate(j.install_date)+' → '+fmtDate(j.deinstall_date)+'</span><span>📍 '+sites.length+' site'+(sites.length===1?'':'s')+'</span>'+(j.delivery_type?('<span>🧪 '+esc(j.delivery_type)+'</span>'):'')+'</div>'+
+  '</div>';
+}
+
+/* ---- Schedule tab (live in-the-ground jobs) ---- */
+var schedFilter='ground';
+window.renderSched=function(){
+  injectCSS();
+  var per=document.getElementById('schPeriod');
+  var tbl=document.getElementById('schTable');if(!tbl)return;
+  var inground=window.US3Live.jobs.filter(inGround).length;
+  if(per)per.innerHTML='Live jobs — '+(window.US3Live.loaded?(inground+' in the ground'):'loading…');
+  tbl.innerHTML='<tbody><tr><td class="us3w-empty">Loading schedule…</td></tr></tbody>';
+  load().then(paintSched,function(){tbl.innerHTML='<tbody><tr><td class="us3w-empty">Offline — can\'t reach the jobs database.</td></tr></tbody>';});
+};
+function paintSched(){
+  var tbl=document.getElementById('schTable');if(!tbl)return;
+  var per=document.getElementById('schPeriod');
+  var inground=window.US3Live.jobs.filter(inGround).length;
+  if(per)per.innerHTML='Live jobs — '+inground+' in the ground';
+  var jobs=sortJobs(window.US3Live.jobs.filter(function(j){return schedFilter==='all'?true:schedFilter==='ongoing'?ongoing(j):inGround(j);}));
+  var fbar='<div class="us3w-fbar" style="padding:0 4px;">'+[['ground','In the ground'],['ongoing','Ongoing'],['all','All']].map(function(o){return '<button class="us3w-fbtn'+(schedFilter===o[0]?' on':'')+'" onclick="US3.schedFilter(\''+o[0]+'\')">'+o[1]+'</button>';}).join('')+'</div>';
+  var rows=jobs.length?jobs.map(function(j){
+    var sites=jobSites(j.job_number);var ig=inGround(j);
+    return '<tr style="cursor:pointer;" onclick="US3.openProject(\''+js(j.job_number)+'\')">'+
+      '<td style="border-left:4px solid '+(JOB_STATUS_COLOR[j.project_status]||'#5a6472')+';padding-left:10px;"><b class="us3w-link">'+esc(j.job_number||'—')+'</b></td>'+
+      '<td>'+esc(jobWho(j))+'</td>'+
+      '<td>'+esc(j.location||'—')+'</td>'+
+      '<td>'+esc(j.delivery_type||'—')+'</td>'+
+      '<td>'+pill(j.project_status)+'</td>'+
+      '<td style="white-space:nowrap;">'+fmtDate(j.install_date)+' → '+fmtDate(j.deinstall_date)+'</td>'+
+      '<td style="text-align:center;">'+sites.length+'</td>'+
+      '<td style="text-align:center;">'+(ig?'<span title="In the ground" style="color:#0071BC;">●</span>':'<span style="color:#3a4456;">○</span>')+'</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="8" class="us3w-empty">No jobs match this filter.</td></tr>';
+  tbl.innerHTML='<thead><tr><th style="padding-left:10px;">Job #</th><th>Customer</th><th>Location</th><th>Type</th><th>Status</th><th>Install → De-install</th><th style="text-align:center;">Sites</th><th style="text-align:center;">In&nbsp;ground</th></tr></thead><tbody>'+rows+'</tbody>';
+  // filter bar above the table
+  var body=tbl.parentNode;
+  if(body&&!document.getElementById('us3schFbar')){var d=document.createElement('div');d.id='us3schFbar';d.innerHTML=fbar;body.insertBefore(d,tbl);}
+  else if(document.getElementById('us3schFbar')){document.getElementById('us3schFbar').innerHTML=fbar;}
+}
+
+/* ---- Mission Control live panel ---- */
+var _renderMC=window.renderMC;
+window.renderMC=function(){
+  if(typeof _renderMC==='function'){try{_renderMC();}catch(e){}}
+  injectCSS();
+  load().then(paintMCPanel,function(){});
+};
+function paintMCPanel(){
+  var host=document.getElementById('mc');if(!host)return;
+  var panel=document.getElementById('us3mcPanel');
+  if(!panel){panel=document.createElement('div');panel.id='us3mcPanel';host.appendChild(panel);}
+  var jobs=sortJobs(window.US3Live.jobs.filter(inGround)).slice(0,40);
+  panel.innerHTML='<div class="hd"><span>Active Jobs</span><span style="color:#9fb0c4;font-weight:400;">'+jobs.length+'</span></div>'+
+    (jobs.length?jobs.map(function(j){return '<div class="us3mcrow" onclick="US3.openProject(\''+js(j.job_number)+'\')"><div class="n">'+esc(j.job_number||'—')+'</div><div class="s">'+esc(jobWho(j))+' · '+esc(j.project_status||'')+' · '+jobSites(j.job_number).length+' sites</div></div>';}).join(''):'<div class="us3w-empty" style="color:#9fb0c4;">No active jobs.</div>');
+}
+
+/* ---- Device Map popup links + per-job filter ---- */
+function patchMap(){
+  if(typeof window.devMapPopup==='function'&&!window.devMapPopup._patched){
+    var _pop=window.devMapPopup;
+    window.devMapPopup=function(d){
+      var base=_pop(d);
+      var links='<div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap;">';
+      if(d&&d.job)links+='<span class="us3w-link" style="font-size:12px;" onclick="US3.openProject(\''+js(d.job)+'\')">View job ›</span>';
+      if(d&&d.id&&d.source!=='siteid')links+='<span class="us3w-link" style="font-size:12px;" onclick="US3.openDevice(\''+js(d.id)+'\')">Device history ›</span>';
+      links+='</div>';
+      return base.replace('</div>',links+'</div>');
+    };
+    window.devMapPopup._patched=true;
+  }
+  if(typeof window.devMapBuild==='function'&&!window.devMapBuild._patched){
+    var _build=window.devMapBuild;
+    window.devMapBuild=function(data){
+      if(data&&data.rows&&window.US3Live.mapFilterJob){
+        var f=window.US3Live.mapFilterJob;
+        data={source:data.source,rows:data.rows.filter(function(r){return r.job===f;})};
+        var ret=_build(data);
+        var info=document.getElementById('devmapInfo');
+        if(info)info.innerHTML='Filtered to job <b>'+esc(f)+'</b> — <span class="us3w-link" onclick="US3.clearMapFilter()">show all</span>';
+        return ret;
+      }
+      return _build(data);
+    };
+    window.devMapBuild._patched=true;
+  }
+}
+function mapJob(n){window.US3Live.mapFilterJob=n;closeDetail();patchMap();location.hash='#devmap';setTimeout(function(){if(typeof renderDevMap==='function')renderDevMap();},30);}
+function clearMapFilter(){window.US3Live.mapFilterJob=null;if(typeof renderDevMap==='function')renderDevMap();}
+
+/* ---- routing + init ---- */
+function onHash(){
+  var h=location.hash||'';
+  var mp=h.match(/^#proj=(.+)$/),md=h.match(/^#dev=(.+)$/);
+  if(mp){renderProjectPage(decodeURIComponent(mp[1]));return;}
+  if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
+  hideOverlay();
+}
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,refresh:function(){load(true).then(function(){onHash();});},live:load};
+function init(){
+  injectCSS();patchMap();
+  window.addEventListener('hashchange',onHash);
+  load().then(function(){
+    // repaint whichever live tab is currently showing
+    var active=document.querySelector('.page.active');
+    if(active){if(active.id==='page-projects'&&typeof renderProjects==='function')renderProjects();if(active.id==='page-sched')paintSched();if(active.id==='page-mc')paintMCPanel();}
+    onHash();
+  },function(){});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 <!-- Page-independent modal root — holds modals that must render over any active page -->
 <div id="modalRoot">
   <!-- Build 02 generic scanner/kit modal -->
