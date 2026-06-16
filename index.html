@@ -5580,10 +5580,15 @@ function renderDevicePage(id){
   Promise.all([
     supa.from('device_events').select('*').eq('device_id',id).order('created_at',{ascending:false}),
     supa.from('device_locations').select('*').eq('device_id',id),
-    supa.from('kit_devices').select('*').eq('device_id',id)
+    supa.from('kit_devices').select('*').eq('device_id',id),
+    supa.from('device_scans').select('*').eq('device_id',id).order('scanned_at',{ascending:false})
   ]).then(function(r){
-    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[];
+    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[];
     var loc=locs[0];
+    function dirColor(d){var s=(d||'').toLowerCase();return s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';}
+    function dirChip(d){return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff;background:'+dirColor(d)+';">'+esc(d||'—')+'</span>';}
+    var last=scans[0];
+    var lastLine=last?(' · last scan: '+(last.direction||'')+' @ '+esc(last.location||last.note||'—')+' · '+fmtDate(last.scanned_at)):'';
     var locHtml=loc?
       ('<div class="us3w-meta">'+[
         ['Site',esc(loc.site_name||'—')],['City',esc(loc.city||'—')],
@@ -5591,18 +5596,22 @@ function renderDevicePage(id){
         ['Sensor type',esc(loc.sensor_type||'—')],
         ['Job',loc.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(loc.project_no)+'\')">'+esc(loc.project_no)+'</span>'):'—']
       ].map(function(m){return '<div><div class="k">'+m[0]+'</div><div class="v">'+m[1]+'</div></div>';}).join('')+'</div>')
-      :'<div class="us3w-empty">No field location yet — populates automatically when the Fulcrum sync runs.</div>';
+      :'<div class="us3w-empty">No Fulcrum field location on record for this device.</div>';
+    var mv=scans.length?('<table class="us3w-tbl"><thead><tr><th>When</th><th>Direction</th><th>Location</th><th>Note</th><th>Client</th><th>Job</th></tr></thead><tbody>'+
+      scans.map(function(s){return '<tr><td>'+fmtDate(s.scanned_at)+'</td><td>'+dirChip(s.direction)+'</td><td>'+esc(s.location||'—')+'</td><td>'+esc(s.note||'')+'</td><td>'+esc(s.client_name||'')+'</td><td>'+esc(s.job_number||'')+'</td></tr>';}).join('')+'</tbody></table>')
+      :'<div class="us3w-empty">No ship/receive scans for this device in the scan log.</div>';
     var ev=events.length?('<table class="us3w-tbl"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Failure</th><th>Station</th><th>Tech</th><th>Notes</th></tr></thead><tbody>'+
       events.map(function(e){return '<tr><td>'+fmtDate(e.created_at)+'</td><td>'+esc(e.event_type||'—')+'</td><td>'+esc(e.status||'—')+'</td><td>'+esc(e.failure_reason||'—')+'</td><td>'+esc(e.station||'—')+'</td><td>'+esc(e.tech||'—')+'</td><td>'+esc(e.notes||'')+'</td></tr>';}).join('')+'</tbody></table>')
-      :'<div class="us3w-empty">No scan history yet — scan this device on the Station Scanner tab to start its log.</div>';
+      :'<div class="us3w-empty">No warehouse scan events yet — Station Scanner logs append here.</div>';
     var kitHtml=kits.length?kits.map(function(k){return '<div>Kit <b>'+esc(k.kit_id)+'</b> · '+esc(k.device_type||'')+'</div>';}).join(''):'<div class="us3w-empty">Not part of any kit.</div>';
     showOverlay(
       '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
-      '<div class="us3w-h" style="font-size:30px;color:var(--text,#e8edf4);margin-top:14px;">'+esc(id)+'</div>'+
-      '<div style="color:#8a97a8;">Device record</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Current location</div>'+locHtml+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Scan history ('+events.length+')</div>'+ev+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Kit membership</div>'+kitHtml+'</div>'
+      '<div class="us3w-h" style="font-size:30px;margin-top:14px;">'+esc(id)+'</div>'+
+      '<div style="color:#8a97a8;">Device record'+lastLine+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location</div>'+locHtml+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')</div>'+ev+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Kit membership</div>'+kitHtml+'</div>'
     );
   },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Couldn\'t load device record.</div>');});
 }
