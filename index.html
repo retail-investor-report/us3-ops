@@ -5157,23 +5157,30 @@ function devMapBuild(data){
   if(!data||!data.rows){box.innerHTML='<div class="us3b2-warn" style="margin:18px;">Offline — Supabase not connected; cannot load devices.</div>';if(info)info.textContent='offline';return;}
   if(devmapMap){try{devmapMap.remove();}catch(e){}devmapMap=null;}
   box.innerHTML='';
-  var withCoords=data.rows.filter(function(d){return typeof d.lat==='number'&&typeof d.lng==='number'&&!isNaN(d.lat)&&!isNaN(d.lng);});
+  // Clamp to North America + PR — some Fulcrum rows have garbage coords (missing
+  // decimal / flipped sign) that otherwise blow the bounds out to world zoom.
+  var withCoords=data.rows.filter(function(d){return typeof d.lat==='number'&&typeof d.lng==='number'&&!isNaN(d.lat)&&!isNaN(d.lng)&&d.lat>=17&&d.lat<=50&&d.lng>=-160&&d.lng<=-64;});
   var missing=data.rows.length-withCoords.length;
   devmapMap=L.map('devmapBox',{scrollWheelZoom:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(devmapMap);
+  var pts=[];
   if(!withCoords.length){
     devmapMap.setView([39.5,-98.35],4);
-    box.insertAdjacentHTML('afterbegin','');
   }else{
-    var pts=[];
     withCoords.forEach(function(d){
       var col=d.status?(US3_STATUS_COLORS[String(d.status).toLowerCase()]||'#0071BC'):'#0071BC';
       var m=L.circleMarker([d.lat,d.lng],{radius:7,weight:1,color:'#0a0e16',fillColor:col,fillOpacity:.9});
       m.bindPopup(devMapPopup(d));m.addTo(devmapMap);pts.push([d.lat,d.lng]);
     });
-    try{devmapMap.fitBounds(pts,{padding:[30,30],maxZoom:12});}catch(e){devmapMap.setView(pts[0],10);}
+    devmapMap.setView(pts[0],10); // provisional, refit below once sized
   }
-  setTimeout(function(){if(devmapMap)devmapMap.invalidateSize();},180);
+  // Size the container FIRST, then fit — otherwise Leaflet fits against a
+  // zero/under-sized box and gets stuck at world zoom (the broken-map bug).
+  setTimeout(function(){
+    if(!devmapMap)return;
+    devmapMap.invalidateSize();
+    if(pts.length){try{devmapMap.fitBounds(pts,{padding:[30,30],maxZoom:12});}catch(e){devmapMap.setView(pts[0],10);}}
+  },220);
   if(info)info.innerHTML='Source: <b>'+us3esc(data.source)+'</b> · '+withCoords.length+' mapped'+(missing?(' · <span style="color:#e8a020;">'+missing+' missing coords</span>'):'');
 }
 
@@ -5413,17 +5420,22 @@ function injectCSS(){
   if(document.getElementById('us3webCss'))return;
   var s=document.createElement('style');s.id='us3webCss';
   s.textContent=
-  '#us3Detail{position:fixed;inset:0;background:#0a0e16;z-index:4000;display:none;overflow:auto;}'+
-  '#us3DetailInner{max-width:1080px;margin:0 auto;padding:26px 20px 60px;font-family:Rajdhani,sans-serif;color:var(--text,#e8edf4);}'+
+  '#us3Detail{position:fixed;inset:0;background:#0b0f17;z-index:4000;display:none;overflow:auto;}'+
+  /* overlay is a self-contained DARK surface — use FIXED colors, never theme vars (which flip dark-on-dark in light mode) */
+  '#us3DetailInner{max-width:1080px;margin:0 auto;padding:26px 20px 60px;font-family:Rajdhani,sans-serif;color:#e8edf4;}'+
+  '#us3Detail .us3w-h{color:#e8edf4!important;}'+
+  '#us3Detail .us3w-card{background:#121826!important;border-color:#243044!important;}'+
+  '#us3Detail .us3w-meta .k, #us3Detail .k{color:#8a97a8!important;}'+
+  '#us3Detail .us3w-tbl th{color:#8a97a8!important;}'+
   '.us3w-back{font-family:Oswald,sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0071BC;cursor:pointer;border:1px solid #0071BC;border-radius:7px;padding:7px 14px;display:inline-block;background:none;}'+
   '.us3w-back:hover{background:#0071BC;color:#fff;}'+
   '.us3w-h{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}'+
   '.us3w-card{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:16px 18px;margin-top:14px;}'+
   '.us3w-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:10px;}'+
-  '.us3w-meta .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#8a97a8);font-family:Oswald,sans-serif;}'+
+  '.us3w-meta .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a97a8;font-family:Oswald,sans-serif;}'+
   '.us3w-meta .v{font-size:16px;margin-top:2px;}'+
   '.us3w-tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}'+
-  '.us3w-tbl th{text-align:left;font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#8a97a8);border-bottom:1px solid var(--borderb,#243044);padding:7px 8px;}'+
+  '.us3w-tbl th{text-align:left;font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a97a8;border-bottom:1px solid var(--borderb,#243044);padding:7px 8px;}'+
   '.us3w-tbl td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.05);}'+
   '.us3w-tbl tr:hover td{background:rgba(0,113,188,.07);}'+
   '.us3w-link{color:#0071BC;cursor:pointer;text-decoration:none;font-weight:600;}'+
@@ -5433,11 +5445,11 @@ function injectCSS(){
   '.us3jcard:hover{border-color:#0071BC;transform:translateY(-2px);}'+
   '.us3jcard-num{font-family:Oswald,sans-serif;font-weight:700;font-size:18px;color:var(--text,#e8edf4);}'+
   '.us3jcard-co{font-size:14px;margin-top:5px;color:var(--text,#e8edf4);}'+
-  '.us3jcard-loc{font-size:13px;color:var(--muted,#8a97a8);}'+
-  '.us3jcard-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:9px;font-size:12px;color:var(--muted,#8a97a8);}'+
-  '.us3w-empty{padding:14px;color:var(--muted,#8a97a8);font-style:italic;}'+
+  '.us3jcard-loc{font-size:13px;color:#8a97a8;}'+
+  '.us3jcard-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:9px;font-size:12px;color:#8a97a8;}'+
+  '.us3w-empty{padding:14px;color:#8a97a8;font-style:italic;}'+
   '.us3w-fbar{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px;}'+
-  '.us3w-fbtn{font-family:Oswald,sans-serif;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;border-radius:7px;border:1px solid var(--borderb,#243044);background:none;color:var(--muted,#8a97a8);cursor:pointer;}'+
+  '.us3w-fbtn{font-family:Oswald,sans-serif;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;border-radius:7px;border:1px solid var(--borderb,#243044);background:none;color:#8a97a8;cursor:pointer;}'+
   '.us3w-fbtn.on{background:#0071BC;border-color:#0071BC;color:#fff;}'+
   '#us3mcPanel{position:absolute;top:12px;right:12px;width:300px;max-height:62%;overflow:auto;background:rgba(10,14,22,.93);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 13px;z-index:600;backdrop-filter:none;}'+
   '#us3mcPanel .hd{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;color:#fff;margin-bottom:8px;display:flex;justify-content:space-between;}'+
@@ -5484,9 +5496,9 @@ function renderProjectPage(n){
     '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:14px;">'+
       '<div class="us3w-h" style="font-size:32px;color:var(--text,#e8edf4);">'+esc(j.job_number||'—')+'</div>'+pill(j.project_status)+'</div>'+
     '<div style="font-size:18px;margin-top:4px;">'+esc(jobWho(j))+'</div>'+
-    '<div style="color:var(--muted,#8a97a8);font-size:15px;">'+esc(j.location||'—')+'</div>'+
+    '<div style="color:#8a97a8;font-size:15px;">'+esc(j.location||'—')+'</div>'+
     '<div class="us3w-card"><div class="us3w-meta">'+meta+'</div></div>'+
-    (j.scope_of_work?('<div class="us3w-card"><div class="k" style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#8a97a8);">Scope of work</div><div style="margin-top:6px;font-size:15px;white-space:pre-wrap;">'+esc(j.scope_of_work)+'</div></div>'):'')+
+    (j.scope_of_work?('<div class="us3w-card"><div class="k" style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a97a8;">Scope of work</div><div style="margin-top:6px;font-size:15px;white-space:pre-wrap;">'+esc(j.scope_of_work)+'</div></div>'):'')+
     '<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="us3w-h" style="font-size:16px;color:var(--text,#e8edf4);">Sites ('+sites.length+')</div>'+
       (sites.length?('<button class="us3w-back" onclick="US3.mapJob(\''+js(n)+'\')">View all on Map ›</button>'):'')+'</div>'+
       '<table class="us3w-tbl"><thead><tr><th>Site</th><th>MH #</th><th>City</th><th>System</th><th>Install</th><th>Removal</th><th>Device</th><th></th></tr></thead><tbody>'+srows+'</tbody></table>'+
@@ -5521,7 +5533,7 @@ function renderDevicePage(id){
     showOverlay(
       '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
       '<div class="us3w-h" style="font-size:30px;color:var(--text,#e8edf4);margin-top:14px;">'+esc(id)+'</div>'+
-      '<div style="color:var(--muted,#8a97a8);">Device record</div>'+
+      '<div style="color:#8a97a8;">Device record</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Current location</div>'+locHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Scan history ('+events.length+')</div>'+ev+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;color:var(--text,#e8edf4);">Kit membership</div>'+kitHtml+'</div>'
@@ -5536,7 +5548,7 @@ window.renderProjects=function(){
   var page=document.getElementById('page-projects');if(!page)return;
   page.innerHTML='<div class="pj-inner" style="padding:18px 22px;overflow:auto;height:100%;box-sizing:border-box;">'+
     '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">Projects</div>'+
-    '<div style="color:var(--muted,#8a97a8);font-size:14px;margin-bottom:10px;">Live jobs from the company database</div>'+
+    '<div style="color:#8a97a8;font-size:14px;margin-bottom:10px;">Live jobs from the company database</div>'+
     '<div class="us3w-fbar" id="us3projFbar"></div>'+
     '<div id="us3projGrid"><div class="us3w-empty">Loading jobs…</div></div>'+
     '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin-top:28px;">Portals</div>'+
@@ -5617,13 +5629,15 @@ window.renderMC=function(){
   injectCSS();
   load().then(paintMCPanel,function(){});
 };
+var mcPanelOpen=false; // collapsed by default so it doesn't cover the Fleet Status card
 function paintMCPanel(){
   var host=document.getElementById('mc');if(!host)return;
   var panel=document.getElementById('us3mcPanel');
   if(!panel){panel=document.createElement('div');panel.id='us3mcPanel';host.appendChild(panel);}
+  panel.className=mcPanelOpen?'open':'closed';
   var jobs=sortJobs(window.US3Live.jobs.filter(inGround)).slice(0,40);
-  panel.innerHTML='<div class="hd"><span>Active Jobs</span><span style="color:#9fb0c4;font-weight:400;">'+jobs.length+'</span></div>'+
-    (jobs.length?jobs.map(function(j){return '<div class="us3mcrow" onclick="US3.openProject(\''+js(j.job_number)+'\')"><div class="n">'+esc(j.job_number||'—')+'</div><div class="s">'+esc(jobWho(j))+' · '+esc(j.project_status||'')+' · '+jobSites(j.job_number).length+' sites</div></div>';}).join(''):'<div class="us3w-empty" style="color:#9fb0c4;">No active jobs.</div>');
+  var body=mcPanelOpen?(jobs.length?jobs.map(function(j){return '<div class="us3mcrow" onclick="US3.openProject(\''+js(j.job_number)+'\')"><div class="n">'+esc(j.job_number||'—')+'</div><div class="s">'+esc(jobWho(j))+' · '+esc(j.project_status||'')+' · '+jobSites(j.job_number).length+' sites</div></div>';}).join(''):'<div class="us3w-empty" style="color:#9fb0c4;">No active jobs.</div>'):'';
+  panel.innerHTML='<div class="hd" onclick="US3.toggleMC()" style="cursor:pointer;"><span>Active Jobs <span style="color:#9fb0c4;font-weight:400;">'+jobs.length+'</span></span><span style="color:#9fb0c4;">'+(mcPanelOpen?'▾ hide':'▸ show')+'</span></div>'+body;
 }
 
 /* ---- Device Map popup links + per-job filter ---- */
@@ -5667,7 +5681,7 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,refresh:function(){load(true).then(function(){onHash();});},live:load};
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,toggleMC:function(){mcPanelOpen=!mcPanelOpen;paintMCPanel();},refresh:function(){load(true).then(function(){onHash();});},live:load};
 // Migrate Deployed to live device data: getDeployedCount now reflects real
 // devices in the ground (from device_locations), falling back to the old
 // reservation-based count until the live data is ready.
