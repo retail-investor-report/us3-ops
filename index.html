@@ -5554,7 +5554,19 @@ function injectCSS(){
   '.us3station{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:16px 18px;}'+
   '.us3station-h{font-family:Oswald,sans-serif;font-weight:700;font-size:18px;color:var(--text,#e8edf4);text-transform:uppercase;letter-spacing:.03em;}'+
   '.us3station-n{font-family:Oswald,sans-serif;font-weight:700;font-size:34px;line-height:1;color:#0071BC;margin-top:10px;}'+
-  '.us3station-l{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:#8a97a8;}';
+  '.us3station-l{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:#8a97a8;}'+
+  '.us3pack{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-family:Rajdhani,sans-serif;font-size:15px;}'+
+  '.us3pack:hover{background:rgba(0,113,188,.08);}'+
+  '.us3pack input{width:18px;height:18px;}'+
+  '.us3help{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid #8a97a8;color:#8a97a8;font-size:11px;font-family:Rajdhani,sans-serif;cursor:help;margin-left:6px;position:relative;font-weight:700;}'+
+  '.us3help:hover{border-color:#0071BC;color:#0071BC;}'+
+  '.us3help .tip{display:none;position:absolute;top:22px;left:50%;transform:translateX(-50%);width:240px;background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.45;font-weight:400;text-transform:none;letter-spacing:0;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.4);text-align:left;}'+
+  '.us3help:hover .tip{display:block;}'+
+  '.us3tour-back{position:fixed;inset:0;background:rgba(5,8,14,.78);z-index:5000;display:none;}'+
+  '.us3tour-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:16px;padding:26px 28px;z-index:5001;font-family:Rajdhani,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);}'+
+  '.us3tour-box h2{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:22px;margin:0 0 4px;}'+
+  '.us3tour-box .step{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;color:#0071BC;text-transform:uppercase;}'+
+  '.us3tour-box p{font-size:16px;line-height:1.5;color:#cdd6e2;}';
   document.head.appendChild(s);
 }
 
@@ -5625,6 +5637,16 @@ function renderProjectPage(n){
   },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline — can\'t reach Supabase to load this job.</div>');});
 }
 
+function deviceAddNote(id){
+  var i=document.getElementById('devNoteInput');if(!i)return;var v=(i.value||'').trim();if(!v)return;
+  if(typeof supa==='undefined'||!supa)return;
+  var author=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').split('@')[0])||null;
+  i.disabled=true;
+  supa.from('device_notes').insert({device_id:id,note:v,author:author}).then(function(r){
+    if(r&&r.error){alert('Note failed: '+r.error.message);i.disabled=false;return;}
+    renderDevicePage(id);
+  });
+}
 function renderDevicePage(id){
   showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-empty">Loading device '+esc(id)+'…</div>');
   if(typeof supa==='undefined'||!supa){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline.</div>');return;}
@@ -5632,9 +5654,10 @@ function renderDevicePage(id){
     supa.from('device_events').select('*').eq('device_id',id).order('created_at',{ascending:false}),
     supa.from('device_locations').select('*').eq('device_id',id),
     supa.from('kit_devices').select('*').eq('device_id',id),
-    supa.from('device_scans').select('*').eq('device_id',id).order('scanned_at',{ascending:false})
+    supa.from('device_scans').select('*').eq('device_id',id).order('scanned_at',{ascending:false}),
+    supa.from('device_notes').select('*').eq('device_id',id).order('created_at',{ascending:false})
   ]).then(function(r){
-    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[];
+    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[];
     var loc=locs[0];
     function dirColor(d){var s=(d||'').toLowerCase();return s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';}
     function dirChip(d){return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff;background:'+dirColor(d)+';">'+esc(d||'—')+'</span>';}
@@ -5655,11 +5678,14 @@ function renderDevicePage(id){
       events.map(function(e){return '<tr><td>'+fmtDate(e.created_at)+'</td><td>'+esc(e.event_type||'—')+'</td><td>'+esc(e.status||'—')+'</td><td>'+esc(e.failure_reason||'—')+'</td><td>'+esc(e.station||'—')+'</td><td>'+esc(e.tech||'—')+'</td><td>'+esc(e.notes||'')+'</td></tr>';}).join('')+'</tbody></table>')
       :'<div class="us3w-empty">No warehouse scan events yet — Station Scanner logs append here.</div>';
     var kitHtml=kits.length?kits.map(function(k){return '<div>Kit <b>'+esc(k.kit_id)+'</b> · '+esc(k.device_type||'')+'</div>';}).join(''):'<div class="us3w-empty">Not part of any kit.</div>';
+    var notesHtml=(notes.length?notes.map(function(nn){return '<div class="us3prow" style="cursor:default;align-items:flex-start;"><div><div style="font-size:15px;color:#e8edf4;">'+esc(nn.note)+'</div><div style="font-size:11px;color:#8a97a8;">'+esc(nn.author||'—')+' · '+fmtDate(nn.created_at)+'</div></div></div>';}).join(''):'<div class="us3w-empty">No notes yet — add one to flag this device (e.g. faulty antenna).</div>')+
+      '<div style="display:flex;gap:8px;margin-top:10px;"><input id="devNoteInput" class="us3b2-input" style="flex:1;" placeholder="Add a note…" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();US3.addNote(\''+js(id)+'\');}"><button class="us3b2-btn" onclick="US3.addNote(\''+js(id)+'\')">Add</button></div>';
     showOverlay(
       '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
       '<div class="us3w-h" style="font-size:30px;margin-top:14px;">'+esc(id)+'</div>'+
       '<div style="color:#8a97a8;">Device record'+lastLine+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location</div>'+locHtml+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📝 Notes ('+notes.length+')</div>'+notesHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')</div>'+ev+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Kit membership</div>'+kitHtml+'</div>'
@@ -5774,8 +5800,40 @@ function renderDashboard(){
   if(!w){page.innerHTML='<div id="dashWrap" class="us3dash-wrap"></div>';w=document.getElementById('dashWrap');w.innerHTML='<div class="us3w-empty">Loading operations…</div>';}
   Promise.all([load(),loadOps().catch(function(){return null;})]).then(function(res){paintDashboard(res[1]||{});},function(){var x=document.getElementById('dashWrap');if(x)x.innerHTML='<div class="us3w-empty">Offline — can\'t reach the database.</div>';});
 }
-function kpi(n,label,sub,tab){return '<div class="us3kpi" onclick="US3.go(\''+tab+'\')"><div class="n">'+n+'</div><div class="l">'+label+'</div>'+(sub?'<div class="s">'+sub+'</div>':'')+'</div>';}
-function panel(title,bodyHtml,sub){return '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">'+title+(sub?' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">'+sub+'</span>':'')+'</div>'+bodyHtml+'</div>';}
+function help(txt){return '<span class="us3help">?<span class="tip">'+esc(txt)+'</span></span>';}
+function kpi(n,label,sub,tab,tip){return '<div class="us3kpi" onclick="US3.go(\''+tab+'\')"><div class="n">'+n+'</div><div class="l">'+label+(tip?help(tip):'')+'</div>'+(sub?'<div class="s">'+sub+'</div>':'')+'</div>';}
+function panel(title,bodyHtml,sub,tip){return '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">'+title+(tip?help(tip):'')+(sub?' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">'+sub+'</span>':'')+'</div>'+bodyHtml+'</div>';}
+/* ---- guided tour ---- */
+var TOUR=[
+  {h:'Welcome to US3 Operations',p:'This is your live operations hub. The data here is pulled automatically from three places — your Airtable job tracker, the Fulcrum field app, and the warehouse door-scanner log. Nothing here is typed by hand. Let me show you around.'},
+  {h:'Dashboard',p:'The landing page. Top row = live counts (jobs in the ground, devices deployed, devices out the door). Below are the things that need your attention: studies ending soon, equipment overdue for return, upcoming jobs, and data-hygiene alerts. Every card is clickable.'},
+  {h:'Where the jobs come from',p:'“Jobs” are your company Airtable project tracker (last synced June 4). That includes early sales-stage jobs (“New”) you may not recognise yet — they only become warehouse-relevant once devices ship. “In the ground” now means a job that actually has deployed devices, not just an open record.'},
+  {h:'Shipping Desk (Shop Floor)',p:'Your daily tool. Look up any device by ID to see its full ship/receive history. Build a shipment: scan/paste device IDs, hit “Copy for email”, and tick them off the packing checklist as they go in the box. Station tiles + activity show the door scanners.'},
+  {h:'Projects & Schedule',p:'Two views of the same live jobs. Projects = cards; Schedule = a list of what’s in the ground. Click any job to open its page: real Fulcrum devices, sites, dates, value, and links out to the map and each device.'},
+  {h:'Device pages',p:'Click any device ID anywhere and you get its page: current field location (Fulcrum), full movement history (the door scans), kit membership, and a Notes section you can add to — handy for flagging a faulty unit.'},
+  {h:'Device Map & the rest',p:'Device Map plots deployed devices (filter by job). Build Kit packs/ships totes with a scannable QR manifest. Station Scanner logs devices at a bench. Availability / Fleet Map / Decommission are the older inventory tools. That’s the tour — explore, then tell me what to change.'}
+];
+var tourI=0;
+function tourEnsure(){
+  if(document.getElementById('us3Tour'))return;
+  var b=document.createElement('div');b.id='us3TourBack';b.className='us3tour-back';
+  var box=document.createElement('div');box.id='us3Tour';box.className='us3tour-box';box.style.display='none';
+  b.style.display='none';document.body.appendChild(b);document.body.appendChild(box);
+  b.addEventListener('click',endTour);
+}
+function startTour(){injectCSS();tourEnsure();tourI=0;paintTour();}
+function paintTour(){
+  var b=document.getElementById('us3TourBack'),box=document.getElementById('us3Tour');if(!box)return;
+  b.style.display='block';box.style.display='block';
+  var t=TOUR[tourI];
+  box.innerHTML='<div class="step">Step '+(tourI+1)+' of '+TOUR.length+'</div><h2>'+esc(t.h)+'</h2><p>'+esc(t.p)+'</p>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:18px;">'+
+      '<button class="us3w-back" onclick="US3.tour(\'end\')">Skip</button>'+
+      '<div style="display:flex;gap:8px;">'+(tourI>0?'<button class="us3w-back" onclick="US3.tour(\'prev\')">‹ Back</button>':'')+
+      '<button class="us3b2-btn" onclick="US3.tour(\''+(tourI<TOUR.length-1?'next':'end')+'\')">'+(tourI<TOUR.length-1?'Next ›':'Done')+'</button></div></div>';
+}
+function tourNav(dir){if(dir==='end')return endTour();if(dir==='next')tourI=Math.min(TOUR.length-1,tourI+1);if(dir==='prev')tourI=Math.max(0,tourI-1);paintTour();}
+function endTour(){var b=document.getElementById('us3TourBack'),box=document.getElementById('us3Tour');if(b)b.style.display='none';if(box)box.style.display='none';try{localStorage.setItem('us3_tour_seen','1');}catch(e){}}
 function jobRow(j,right){return '<div class="us3prow" onclick="US3.openProject(\''+js(j.job_number)+'\')"><div><b>'+esc(j.job_number||'—')+'</b> <span style="color:#8a97a8;font-size:13px;">'+esc(jobWho(j))+'</span></div>'+(right||'')+'</div>';}
 function paintDashboard(ops){
   var LV=window.US3Live,jobs=LV.jobs;
@@ -5794,10 +5852,10 @@ function paintDashboard(ops){
   function scanRow(s){return '<div class="us3prow" onclick="US3.openDevice(\''+js(s.device_id)+'\')"><div><b>'+esc(s.device_id)+'</b> <span style="color:#8a97a8;font-size:12px;">'+esc(s.location||s.note||s.client_name||'')+'</span></div><div style="text-align:right;">'+dirChip(s.direction)+'<div style="font-size:11px;color:#8a97a8;">'+fmtDate(s.scanned_at)+'</div></div></div>';}
 
   var kpis='<div class="us3kpi-row">'+
-    kpi(inGroundJobs.length,'Jobs in the ground',ongoingJobs.length+' ongoing total','sched')+
-    kpi(LV.deployedTotal||0,'Devices deployed','FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap')+
-    kpi((ops.devices_out!=null?ops.devices_out:'—'),'Out the door','shipped, not yet received back','shop')+
-    kpi((ops.ship_7d||0)+' / '+(ops.receive_7d||0),'Ship / Receive (7d)','recent door activity','shop')+
+    kpi(inGroundJobs.length,'Jobs in the ground',ongoingJobs.length+' ongoing total','sched','Jobs from your Airtable tracker that have at least one device deployed in the field (per Fulcrum). "Ongoing" = any job not marked completed.')+
+    kpi(LV.deployedTotal||0,'Devices deployed','FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap','Distinct devices currently deployed on active jobs, from the Fulcrum Site Sheet form, grouped by product type.')+
+    kpi((ops.devices_out!=null?ops.devices_out:'—'),'Out the door','shipped, not yet received back','shop','From the warehouse door-scanner log (ws.uscubed.com): devices whose most recent scan is "Ship" with no later "Receive". Includes historical units never scanned back.')+
+    kpi((ops.ship_7d||0)+' / '+(ops.receive_7d||0),'Ship / Receive (7d)','recent door activity','shop','Door scans in the last 7 days — Ship count / Receive count — from the scan log.')+
   '</div>';
 
   var endingHtml=ending.length?ending.map(function(j){var d=daysLeft(j);var col=d<=7?'#ED1C24':d<=21?'#e8a020':'#2ecc71';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+col+';">'+d+'d left</span>');}).join(''):'<div class="us3w-empty">No active studies with an end date.</div>';
@@ -5808,27 +5866,50 @@ function paintDashboard(ops){
     (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>');
 
   document.getElementById('dashWrap').innerHTML=
-    '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
       '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">US3 Operations</div>'+
-      '<div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · jobs from Airtable · devices from Fulcrum + scan log</div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
+        '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     kpis+
     '<div class="us3dash-grid">'+
-      panel('⏳ Studies ending soon',endingHtml,'days until de-install')+
-      panel('⚠ Overdue for return',overdueHtml,'study ended, devices still out')+
-      panel('🔜 Upcoming jobs',upcomingHtml,'prep &amp; ship')+
-      panel('🩺 Open items',openItems,'data hygiene &amp; alerts')+
-      panel('🚚 Recent shipments',(ships.length?ships.map(scanRow).join(''):'<div class="us3w-empty">No recent ships.</div>'),'out the door')+
-      panel('📥 Recent returns',(recvs.length?recvs.map(scanRow).join(''):'<div class="us3w-empty">No recent receives.</div>'),'in the door')+
+      panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.')+
+      panel('⚠ Overdue for return',overdueHtml,'study ended, devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Cross-check the scan log for a Receive.')+
+      panel('🔜 Upcoming jobs',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped.')+
+      panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).')+
+      panel('🚚 Recent shipments',(ships.length?ships.map(scanRow).join(''):'<div class="us3w-empty">No recent ships.</div>'),'out the door','Most recent "Ship" scans from the warehouse door-scanner log.')+
+      panel('📥 Recent returns',(recvs.length?recvs.map(scanRow).join(''):'<div class="us3w-empty">No recent receives.</div>'),'in the door','Most recent "Receive" scans from the warehouse door-scanner log.')+
     '</div>';
 }
 
 /* ════ SHOP FLOOR cockpit ════ */
+var shipPacked={};
 function renderShop(){
   injectCSS();
   var inner=document.getElementById('shopInner');if(!inner)return;
-  inner.innerHTML='<div class="us3w-empty">Loading shop floor…</div>';
+  inner.innerHTML='<div class="us3w-empty">Loading shipping desk…</div>';
   loadOps().then(paintShop,function(){inner.innerHTML='<div class="us3w-empty">Offline — can\'t reach the scan database.</div>';});
 }
+function shopSearch(){var i=document.getElementById('shopSearchInput');if(!i)return;var v=(i.value||'').trim();if(v)openDevice(v);}
+function shipParseIds(){var t=document.getElementById('shipIds');if(!t)return [];var seen={},out=[];t.value.split(/[\s,;]+/).forEach(function(x){x=x.trim();if(x&&!seen[x]){seen[x]=1;out.push(x);}});return out;}
+function shipPull(){
+  var ops=(window.US3Live&&window.US3Live.ops)||{};
+  var ids=(ops.recent||[]).filter(function(s){return s.direction==='Ship';}).map(function(s){return s.device_id;});
+  var seen={},uniq=[];ids.forEach(function(x){if(x&&!seen[x]){seen[x]=1;uniq.push(x);}});
+  var t=document.getElementById('shipIds');if(t){t.value=uniq.join('\n');shipGen();}
+}
+function shipGen(){
+  var ids=shipParseIds();
+  var to=(document.getElementById('shipTo')||{}).value||'';
+  var job=(document.getElementById('shipJobF')||{}).value||'';
+  var date=(document.getElementById('shipDate')||{}).value||'';
+  var lines=['US3 OUTGOING SHIPMENT','Date: '+(date||'—')+'   To: '+(to||'—')+(job?('   Job: '+job):''),'','Devices ('+ids.length+'):'].concat(ids);
+  var out=document.getElementById('shipOutput');if(out)out.value=lines.join('\n');
+  // packing checklist
+  var packed=0;var rows=ids.map(function(id){var ck=shipPacked[id]?'checked':'';if(shipPacked[id])packed++;return '<label class="us3pack"><input type="checkbox" '+ck+' onchange="US3.shipPack(\''+js(id)+'\',this.checked)"> <b>'+esc(id)+'</b></label>';}).join('');
+  var cl=document.getElementById('shipChecklist');if(cl)cl.innerHTML=(ids.length?(rows+'<div style="margin-top:8px;font-family:Oswald,sans-serif;font-weight:700;color:'+(packed===ids.length&&ids.length?'#2ecc71':'#8a97a8')+';">'+packed+' / '+ids.length+' packed'+(packed===ids.length&&ids.length?' ✓':'')+'</div>'):'<div class="us3w-empty">Add device IDs above to build the packing checklist.</div>');
+}
+function shipCopy(){var out=document.getElementById('shipOutput');if(!out)return;out.select();try{navigator.clipboard.writeText(out.value);}catch(e){document.execCommand('copy');}var b=document.getElementById('shipCopyBtn');if(b){var o=b.textContent;b.textContent='Copied ✓';setTimeout(function(){b.textContent=o;},1500);}}
+function shipPack(id,on){shipPacked[id]=!!on;shipGen();}
 function paintShop(ops){
   var inner=document.getElementById('shopInner');if(!inner)return;
   var stations=(ops.by_station||[]).filter(function(s){return s.scanner_id;});
@@ -5848,18 +5929,39 @@ function paintShop(ops){
   }).join(''):'<div class="us3w-empty">No station activity.</div>';
   var outDoor=recent.filter(function(s){return s.direction==='Ship';}).slice(0,12);
   var inDoor=recent.filter(function(s){return s.direction==='Receive';}).slice(0,12);
+  var today=new Date().toISOString().slice(0,10);
   inner.innerHTML=
-    '<div class="us3w-wrap" style="padding:4px 2px;">'+
-    '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
-      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Shop Floor</div>'+
+    '<div class="us3dash-wrap" style="padding:14px 18px 60px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px;">'+
+      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Shipping Desk</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div></div>'+
+    // device lookup
+    '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><input id="shopSearchInput" class="us3b2-input" style="flex:1;min-width:220px;" placeholder="Type or scan a device ID → see full history &amp; notes" autocomplete="off" onkeydown="if(event.key===\'Enter\')US3.search()"><button class="us3b2-btn" onclick="US3.search()">Open device ›</button></div></div>'+
+    // shipment composer
+    '<div class="us3dash-grid" style="margin-top:14px;">'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📧 Build today\'s shipment email</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">'+
+          '<input id="shipTo" class="us3b2-input" placeholder="To (recipient)" onkeyup="US3.shipGen()">'+
+          '<input id="shipDate" class="us3b2-input" type="date" value="'+today+'" onchange="US3.shipGen()"></div>'+
+        '<input id="shipJobF" class="us3b2-input" style="margin-top:8px;" placeholder="Job / destination (optional)" onkeyup="US3.shipGen()">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><label class="us3b2-label" style="margin:0;">Device IDs (scan or paste, one per line)</label><button class="us3b2-btn alt" style="padding:5px 12px;font-size:12px;" onclick="US3.shipPull()">Pull recent ships</button></div>'+
+        '<textarea id="shipIds" class="us3b2-input" style="height:120px;font-family:monospace;margin-top:6px;" placeholder="4941\n4962\n…" onkeyup="US3.shipGen()"></textarea>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><label class="us3b2-label" style="margin:0;">Email text</label><button id="shipCopyBtn" class="us3b2-btn green" style="padding:5px 14px;font-size:12px;" onclick="US3.shipCopy()">Copy for email</button></div>'+
+        '<textarea id="shipOutput" class="us3b2-input" style="height:130px;font-family:monospace;margin-top:6px;" readonly></textarea></div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📦 Packing checklist <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">eyeball each into the box</span></div>'+
+        '<div id="shipChecklist" style="margin-top:8px;"><div class="us3w-empty">Add device IDs to build the checklist.</div></div></div>'+
+    '</div>'+
+    // station overview
+    '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin:20px 0 10px;">Stations</div>'+
     '<div class="us3shop-grid">'+tiles+'</div>'+
-    '<div class="us3dash-grid" style="margin-top:16px;">'+
+    '<div class="us3dash-grid" style="margin-top:14px;">'+
       panel('🚪➡ Out the door',(outDoor.length?outDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent ships')+
       panel('➡🚪 In the door',(inDoor.length?inDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent receives')+
     '</div>'+
     panel('📡 Live activity feed',(recent.length?recent.slice(0,30).map(scanRow).join(''):'<div class="us3w-empty">No scans.</div>'),'newest first, all stations')+
     '</div>';
+  shipGen();
 }
 
 /* ---- Device Map popup links + per-job filter ---- */
@@ -5903,7 +6005,7 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,tour:tourNav,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
 // Migrate Deployed to live device data: getDeployedCount now reflects real
 // devices in the ground (from device_locations), falling back to the old
 // reservation-based count until the live data is ready.
@@ -5926,6 +6028,7 @@ function init(){
     // repaint whichever live tab is currently showing
     var active=document.querySelector('.page.active');
     if(active){if(active.id==='page-projects'&&typeof renderProjects==='function')renderProjects();if(active.id==='page-sched')paintSched();if(active.id==='page-mc')renderDashboard();if(active.id==='page-shop')renderShop();}
+    try{if(!localStorage.getItem('us3_tour_seen')&&active&&active.id==='page-mc')setTimeout(startTour,1100);}catch(e){}
     repaintInventory();
     onHash();
   },function(){});
