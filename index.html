@@ -4171,7 +4171,7 @@ function renderFleet(){
     for(var i=0;i<maint;i++){assets.push({id:unitNum++,baseStatus:'maintenance',office:o.label,officeId:o.id});}
   });
   // Company deployed rows start BLUE — tagged with real Fulcrum device/job/site
-  for(var i=0;i<totalDeployed;i++){var du=deployedUnits[i];assets.push({id:unitNum++,baseStatus:'deployed',office:du&&du.project_no?du.project_no:'Deployed',officeId:'company',deviceId:du?du.device_id:null,fulcrumJob:du?du.project_no:null,site:du?du.site_name:null});}
+  for(var i=0;i<totalDeployed;i++){var du=deployedUnits[i];var did=(du&&du.device_id&&String(du.device_id).toLowerCase()!=='n/a')?du.device_id:null;assets.push({id:unitNum++,baseStatus:'deployed',office:du&&du.project_no?du.project_no:'Deployed',officeId:'company',deviceId:did,fulcrumJob:du?du.project_no:null,site:du?du.site_name:null});}
 
   // STEP 2 — Initialize the 2D status grid
   var numRows=assets.length;
