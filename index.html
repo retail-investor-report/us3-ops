@@ -546,7 +546,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="houston" onclick="sw('houston',this)"><span class="ti">🛢</span>Houston</div>
     <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
-    <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Device Returns<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
+    <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Red Tag<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="kit" onclick="sw('kit',this)"><span class="ti">📦</span>Build Kit</div>
     <div class="ntab" data-page="count" onclick="sw('count',this)"><span class="ti">🧮</span>Warehouse Count</div>
@@ -690,11 +690,12 @@ window.addEventListener('DOMContentLoaded',function(){
   <div style="padding:20px 24px;max-width:1200px;margin:0 auto;overflow-y:auto;height:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
-        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Device Returns</div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">Device return tracking and failure categorization</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">🔧 Red Tag — Maintenance Shelf</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">Devices in maintenance (red shelf). Scan the shelves to tag devices green/red; manage and return them here.</div>
       </div>
       <div style="display:flex;gap:8px;"></div>
     </div>
+    <div id="redTagSection" style="margin-bottom:22px;"></div>
     <div id="repairRecoveryChart" style="margin-bottom:20px;"></div>
     <div id="partsAdminForm" style="display:none;margin-bottom:20px;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);"></div>
     <div id="paretoChart" style="margin-bottom:20px;"></div>
@@ -2232,7 +2233,31 @@ function renderAvail(){
   }).join('');
   depCard.innerHTML='<div class="av-card-head"><div class="av-card-icon" style="color:var(--deployed)">\uD83C\uDF0D</div><div class="av-card-name" style="color:var(--deployed)">Company Deployed</div><span class="av-edit-btn" style="cursor:default;color:var(--muted);border-color:transparent;background:transparent;">auto</span></div><table class="av-table"><thead><tr>'+depHeads+'</tr></thead><tbody>'+depRows+'</tbody></table>';
   grid.appendChild(depCard);
-
+  availLoadKitSummary();
+}
+// Company-wide KIT availability (computed from inventory_components) + reserved kits / maintenance devices
+// (warehouse_devices) + live deployed (Fulcrum). Prepended to the Availability grid.
+function availLoadKitSummary(){
+  var grid=document.getElementById('avGrid');if(!grid||typeof supa==='undefined'||!supa)return;
+  var card=document.createElement('div');card.className='av-card';card.id='avKitCard';
+  card.innerHTML='<div class="av-card-head"><div class="av-card-icon">\uD83D\uDCE6</div><div class="av-card-name">Company Kit Availability</div></div><div style="padding:10px;color:var(--muted);font-family:Rajdhani,sans-serif;">Loading\u2026</div>';
+  grid.insertBefore(card,grid.firstChild);
+  Promise.all([
+    supa.from('inventory_components').select('component_key,qty'),
+    supa.from('warehouse_devices').select('product,status')
+  ]).then(function(r){
+    var comp={};((r[0]&&r[0].data)||[]).forEach(function(row){comp[row.component_key]=(comp[row.component_key]||0)+(Number(row.qty)||0);});
+    function kitsFor(p){var min=Infinity;(US3_KIT_RECIPES[p]||[]).forEach(function(rec){var a=Math.floor((comp[rec[0]]||0)/rec[1]);if(a<min)min=a;});return isFinite(min)?min:0;}
+    var wd=(r[1]&&r[1].data)||[];var reserved={},maint={};
+    wd.forEach(function(d){if(!d.product)return;if(d.status==='reserved')reserved[d.product]=(reserved[d.product]||0)+1;else if(d.status==='red')maint[d.product]=(maint[d.product]||0)+1;});
+    var rows=Object.keys(US3_KIT_LABELS).map(function(p){
+      return '<tr><td>'+US3_KIT_LABELS[p]+'</td><td class="available">'+kitsFor(p)+'</td><td class="reserved">'+(reserved[p]||0)+'</td><td class="maintenance">'+(maint[p]||0)+'</td><td class="deployed">'+(typeof getDeployedCount==='function'?getDeployedCount(p):0)+'</td></tr>';
+    }).join('');
+    var c=document.getElementById('avKitCard');if(!c)return;
+    c.innerHTML='<div class="av-card-head"><div class="av-card-icon">\uD83D\uDCE6</div><div class="av-card-name">Company Kit Availability</div><span class="av-edit-btn" style="cursor:default;color:var(--muted);border-color:transparent;background:transparent;">live</span></div>'+
+      '<table class="av-table"><thead><tr><th>Product</th><th>Available</th><th>Reserved</th><th>Maint.</th><th>Deployed</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div style="padding:6px 10px;font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;">Available &amp; Reserved = whole <b>kits</b> (computed from components). Maint. &amp; Deployed = individual <b>devices</b>.</div>';
+  });
 }
 
 
@@ -2705,7 +2730,88 @@ var _fishboneMode=false;
 function getReturns(){return lv('us3_returns')||[];}
 function saveReturns(arr){sv('us3_returns',arr);}
 
+// ═══ RED TAG / SHELF SCAN (Phase 2) — green/red device tagging → warehouse_devices ═══
+var US3_DEV_PRODUCTS=[['ff','FlexFlow'],['cric','Cricket'],['rg','Rain Gauge']]; // serial RTUs only (Hach isn't serialized)
+function redTagRender(){
+  if(typeof us3b2InjectCSS==='function')us3b2InjectCSS();
+  var host=document.getElementById('redTagSection');if(!host)return;
+  if(typeof supa==='undefined'||!supa){host.innerHTML='<div class="us3b2-warn" style="padding:12px;border:1px solid var(--borderb);border-radius:8px;">Offline — Red Tag needs Supabase.</div>';return;}
+  var offices=(typeof OFFICES!=='undefined'?OFFICES:[]).filter(function(o){return o.products&&o.products.length;});
+  var offOpts=offices.map(function(o){return '<option value="'+o.id+'">'+us3esc(o.label)+'</option>';}).join('');
+  var prodOpts='<option value="">Product (optional)</option>'+US3_DEV_PRODUCTS.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>';}).join('');
+  host.innerHTML=
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+
+    '<div style="border:1px solid var(--borderb);border-radius:10px;padding:14px 16px;background:var(--panel-bg);">'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Shelf scan</div>'+
+      '<div style="font-size:13px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-bottom:8px;">Scan or paste device IDs (one per line), pick a tag, apply. Green = tested/available · Red = in maintenance.</div>'+
+      '<textarea id="rtScanIds" rows="5" placeholder="Scan here — one device per line" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:14px;padding:8px;border:1px solid var(--borderb);border-radius:6px;background:var(--input-bg,#0e1420);color:var(--text);"></textarea>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">'+
+        '<select id="rtProd" class="us3b2-select" style="max-width:160px;">'+prodOpts+'</select>'+
+        '<select id="rtOffice" class="us3b2-select" style="max-width:160px;">'+offOpts+'</select>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;margin-top:10px;">'+
+        '<button class="us3b2-btn green" style="flex:1;" onclick="redTagApply(\'green\')">🟢 Green-tag</button>'+
+        '<button class="us3b2-btn red" style="flex:1;" onclick="redTagApply(\'red\')">🔴 Red-tag</button>'+
+      '</div>'+
+      '<div id="rtScanMsg" style="margin-top:8px;font-size:13px;font-family:Rajdhani,sans-serif;color:var(--muted);"></div>'+
+    '</div>'+
+    '<div style="border:1px solid var(--borderb);border-radius:10px;padding:14px 16px;background:var(--panel-bg);">'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Tagged totals</div>'+
+      '<div id="rtTotals" style="font-family:Rajdhani,sans-serif;color:var(--muted);">Loading…</div>'+
+    '</div>'+
+  '</div>'+
+  '<div style="margin-top:16px;border:1px solid var(--borderb);border-radius:10px;padding:14px 16px;background:var(--panel-bg);">'+
+    '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">🔴 Red-tagged devices (in maintenance)</div>'+
+    '<div id="rtRedList"><div style="color:var(--muted);font-family:Rajdhani,sans-serif;">Loading…</div></div>'+
+  '</div>';
+  redTagLoad();
+}
+function redTagLoad(){
+  if(typeof supa==='undefined'||!supa)return;
+  supa.from('warehouse_devices').select('*').order('updated_at',{ascending:false}).then(function(r){
+    var rows=(r&&r.data)||[];
+    var g=rows.filter(function(d){return d.status==='green';}).length;
+    var red=rows.filter(function(d){return d.status==='red';});
+    var byProd={};rows.forEach(function(d){if(!d.product)return;byProd[d.product]=byProd[d.product]||{green:0,red:0};if(d.status==='green')byProd[d.product].green++;else if(d.status==='red')byProd[d.product].red++;});
+    var tEl=document.getElementById('rtTotals');
+    if(tEl)tEl.innerHTML='<div style="display:flex;gap:18px;flex-wrap:wrap;"><div><span style="font-family:Oswald,sans-serif;font-size:30px;font-weight:700;color:#2ecc71;">'+g+'</span> green</div><div><span style="font-family:Oswald,sans-serif;font-size:30px;font-weight:700;color:#ED1C24;">'+red.length+'</span> red</div></div>'+
+      '<div style="margin-top:8px;font-size:13px;">'+US3_DEV_PRODUCTS.map(function(p){var b=byProd[p[0]]||{green:0,red:0};return us3esc(p[1])+': <b style="color:#2ecc71;">'+b.green+'</b> / <b style="color:#ED1C24;">'+b.red+'</b>';}).join(' · ')+'</div>';
+    var listEl=document.getElementById('rtRedList');if(!listEl)return;
+    if(!red.length){listEl.innerHTML='<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No red-tagged devices. Scan the red shelf to populate.</div>';return;}
+    listEl.innerHTML='<table class="us3b2-tbl" style="width:100%;"><thead><tr><th>Device</th><th>Product</th><th>Office</th><th>Note</th><th></th></tr></thead><tbody>'+
+      red.map(function(d){var id=us3esc(d.device_id).replace(/'/g,'');
+        return '<tr><td><b>'+us3esc(d.device_id)+'</b></td><td>'+us3esc(d.product||'—')+'</td><td>'+us3esc(d.office||'—')+'</td><td>'+us3esc(d.note||'')+'</td>'+
+          '<td style="white-space:nowrap;text-align:right;"><button class="us3b2-btn green" style="padding:4px 10px;" onclick="redTagSetStatus(\''+id+'\',\'green\')">Green-tag</button> '+
+          '<button class="us3b2-btn alt" style="padding:4px 10px;" onclick="redTagSetStatus(\''+id+'\',\'decommissioned\')">Decommission</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  });
+}
+function redTagApply(tag){
+  var ta=document.getElementById('rtScanIds');if(!ta)return;
+  var ids=(ta.value||'').split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
+  var msg=document.getElementById('rtScanMsg');
+  if(!ids.length){if(msg)msg.textContent='Enter at least one device ID.';return;}
+  var prod=us3v('rtProd')||null,office=us3v('rtOffice')||null;
+  var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
+  var now=new Date().toISOString();
+  // de-dupe within the batch
+  var seen={},rows=[];ids.forEach(function(id){if(seen[id])return;seen[id]=1;rows.push({device_id:id,status:tag,product:prod,office:office,updated_by:by,updated_at:now});});
+  supa.from('warehouse_devices').upsert(rows).then(function(r){
+    if(r.error){if(msg)msg.textContent='Save failed: '+r.error.message;return;}
+    if(msg)msg.textContent='✓ '+rows.length+' device'+(rows.length===1?'':'s')+' '+tag+'-tagged.';
+    ta.value='';redTagLoad();
+  });
+}
+function redTagSetStatus(deviceId,status){
+  if(typeof supa==='undefined'||!supa)return;
+  var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
+  supa.from('warehouse_devices').update({status:status,updated_by:by,updated_at:new Date().toISOString()}).eq('device_id',deviceId).then(function(r){
+    if(r.error){alert('Update failed: '+r.error.message);return;}
+    redTagLoad();
+  });
+}
 function renderParts(){
+  redTagRender();
   var returns=getReturns();
   // Repair recovery Pareto (above the form)
   var rrDiv=document.getElementById('repairRecoveryChart');
