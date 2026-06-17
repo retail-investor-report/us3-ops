@@ -4725,9 +4725,12 @@ var scanState={recent:[],lastCode:'',lastTs:0,camera:null,running:false};
 function scanGetStation(){return localStorage.getItem('us3_scan_station')||'';}
 function scanGetTech(){return localStorage.getItem('us3_scan_tech')||'';}
 function scanSaveTechStation(){
-  var s=us3v('scanStationInput'),t=us3v('scanTechInput');
-  if(s!==undefined)localStorage.setItem('us3_scan_station',us3ApplyAliases(s));
-  if(t!==undefined)localStorage.setItem('us3_scan_tech',t);
+  // Only persist when the setup inputs are actually on screen. (Previously this read
+  // us3v() which returns '' for a missing element, so every scan wiped the saved
+  // bench/tech to empty — that's why the station "forgot" itself after a lookup.)
+  var sEl=document.getElementById('scanStationInput'),tEl=document.getElementById('scanTechInput');
+  if(sEl)localStorage.setItem('us3_scan_station',us3ApplyAliases(sEl.value.trim()));
+  if(tEl)localStorage.setItem('us3_scan_tech',tEl.value.trim());
 }
 var scanForceSetup=false;
 function scanSetupSave(){
@@ -4923,8 +4926,9 @@ function scanShowModal(code,events,loc,site,job,scans){
       '<div><label class="us3b2-label">Station</label><input id="scanFStation" class="us3b2-input" value="'+us3esc(scanGetStation())+'"></div>'+
     '</div>'+
     '<div style="margin-top:12px;"><label class="us3b2-label">Notes</label><textarea id="scanFNotes" class="us3b2-ta" rows="2" placeholder="Optional"></textarea></div>'+
-    '<div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">'+
+    '<div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">'+
       '<button class="us3b2-btn alt" onclick="us3b2CloseModal()">Close</button>'+
+      '<button class="us3b2-btn alt" onclick="us3b2CloseModal();if(window.US3)US3.openDevice(\''+us3esc(code).replace(/'/g,"")+'\')">Open full page ↗</button>'+
       '<button class="us3b2-btn green" onclick="scanSubmitEvent(\''+us3esc(code).replace(/'/g,"")+'\')">Log Event</button>'+
     '</div>'+
   '</div>';
