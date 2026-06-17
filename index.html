@@ -4621,6 +4621,20 @@ window.addEventListener('hashchange',function(){
 
 // ---- shared tokens / helpers ----
 var US3_STATUS_COLORS={available:'#2ecc71',reserved:'#A7A9AC',deployed:'#0071BC',maintenance:'#e8a020','in production':'#9b59b6',decommissioned:'#7a2520'};
+// ---- device-type (product) color tokens — single source of truth for type-colored views (map, schedule) ----
+var US3_PROD_COLORS={ff:'#0071BC',cric:'#e8a020',hach:'#9aa3b2',rg:'#44bb88',unknown:'#5a6472'};
+var US3_PROD_LABELS={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge',unknown:'Other / Unknown'};
+// Fulcrum sensor_type string -> product id. Shared by computeDeployed() and the map/schedule colorers.
+function US3_SENSOR_PRODUCT(stype){
+  var s=(stype||'').toLowerCase();
+  if(!s)return null;
+  if(s.indexOf('flexflow')>=0||s.indexOf('flex flow')>=0)return 'ff';
+  if(s.indexOf('hach')>=0||s.indexOf('flodar')>=0||s.indexOf('flo-dar')>=0)return 'hach';
+  if(s.indexOf('rain')>=0)return 'rg';
+  if(s.indexOf('radar')>=0||s.indexOf('level')>=0||s.indexOf('pressure')>=0||s.indexOf('cricket')>=0)return 'cric';
+  return null;
+}
+function US3_SENSOR_COLOR(stype){return US3_PROD_COLORS[US3_SENSOR_PRODUCT(stype)||'unknown'];}
 // Scanner status options — NO "Decommissioned": decommission is the sacred deliberate flow.
 var US3_SCAN_STATUSES=['Available','Reserved','Deployed','Maintenance','In Production'];
 var US3_KIT_PRODUCTS=[{id:'FF',label:'FlexFlow (FF)'},{id:'Cricket',label:'Cricket'},{id:'Hach',label:'Hach'},{id:'RG',label:'Rain Gauge (RG)'}];
@@ -5180,7 +5194,7 @@ function countSaveSnapshot(){
 
 // ═══ PHASE 4 — DEVICE MAP ═══
 // Data layer auto-switches: device_locations when populated (Fulcrum), else sites fallback.
-var devmapMap=null;
+var devmapMap=null,devmapColorBy='type',devmapActiveOnly=true,devmapData=null;
 function devMapLoad(cb){
   if(typeof supa==='undefined'||!supa){cb(null);return;}
   supa.from('device_locations').select('device_id,site_name,city,sensor_type,project_no,status,latitude,longitude').then(function(r){
@@ -5195,22 +5209,51 @@ function devMapLoad(cb){
     });
   });
 }
+// Active = device's project_no maps to a job that isn't Completed/Removal-Complete.
+// Used to hide the long tail of historical Fulcrum installs whose deinstall fields were never filled.
+function devMapActiveInfo(){
+  var jb=(window.US3Live&&window.US3Live.jobByNum)||{};
+  var keys=Object.keys(jb);
+  var set={};keys.forEach(function(n){var j=jb[n];if(j&&j.project_status!=='Project Completed'&&j.project_status!=='Removal Complete')set[n]=1;});
+  return {set:set,ready:keys.length>0};
+}
+function devMapLegendHtml(){
+  if(devmapColorBy==='type'){
+    return ['ff','cric','hach','rg','unknown'].map(function(p){return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:'+US3_PROD_COLORS[p]+';border:1px solid #0a0e16;"></span>'+us3esc(US3_PROD_LABELS[p])+'</span>';}).join('');
+  }
+  return Object.keys(US3_STATUS_COLORS).map(function(k){return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:'+US3_STATUS_COLORS[k]+';border:1px solid #0a0e16;"></span>'+us3esc(k)+'</span>';}).join('')+'<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:#0071BC;border:1px solid #0a0e16;"></span>no status</span>';
+}
+function devMapBtn(label,on,onclick){return '<button onclick="'+onclick+'" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:6px 12px;border-radius:7px;cursor:pointer;border:1px solid '+(on?'#0071BC':'var(--borderb,#243044)')+';background:'+(on?'#0071BC':'none')+';color:'+(on?'#fff':'var(--muted)')+';">'+label+'</button>';}
+function devMapControls(){
+  return '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">'+
+    '<span style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">Color by</span>'+
+    '<span style="display:inline-flex;gap:6px;">'+devMapBtn('Device type',devmapColorBy==='type','devMapSetColor(\'type\')')+devMapBtn('Status',devmapColorBy==='status','devMapSetColor(\'status\')')+'</span>'+
+    '<label style="display:inline-flex;align-items:center;gap:6px;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--muted);cursor:pointer;"><input type="checkbox" '+(devmapActiveOnly?'checked':'')+' onchange="devMapToggleActive(this)" style="width:16px;height:16px;"> Active jobs only</label>'+
+  '</div>';
+}
+function devMapSetColor(m){devmapColorBy=m;var c=document.getElementById('devmapControls');if(c)c.innerHTML=devMapControls();var lg=document.getElementById('devmapLegend');if(lg)lg.innerHTML=devMapLegendHtml();if(devmapData)devMapBuild(devmapData);}
+function devMapToggleActive(cb){devmapActiveOnly=!!cb.checked;if(devmapData)devMapBuild(devmapData);}
 function renderDevMap(){
   us3b2InjectCSS();
   var inner=document.getElementById('devmapInner');if(!inner)return;
-  var legend=Object.keys(US3_STATUS_COLORS).map(function(k){return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:'+US3_STATUS_COLORS[k]+';border:1px solid #0a0e16;"></span>'+us3esc(k)+'</span>';}).join('');
   inner.innerHTML=
   '<div style="padding:14px 18px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'+
       '<div class="us3b2-h" style="font-size:26px;">📍 Device Map</div>'+
       '<div id="devmapInfo" style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Loading…</div>'+
     '</div>'+
-    '<div style="margin-bottom:8px;">'+legend+'<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;"><span style="width:12px;height:12px;border-radius:50%;background:#0071BC;border:1px solid #0a0e16;"></span>no status</span></div>'+
-    '<div id="devmapBox" style="height:calc(100vh - 190px);min-height:420px;width:100%;border:1px solid var(--borderb);border-radius:12px;overflow:hidden;background:var(--panel-bg);"></div>'+
+    '<div id="devmapControls">'+devMapControls()+'</div>'+
+    '<div id="devmapLegend" style="margin-bottom:8px;">'+devMapLegendHtml()+'</div>'+
+    '<div id="devmapBox" style="height:calc(100vh - 230px);min-height:420px;width:100%;border:1px solid var(--borderb);border-radius:12px;overflow:hidden;background:var(--panel-bg);"></div>'+
   '</div>';
-  devMapLoad(devMapBuild);
+  // Need the live jobs loaded to classify active vs historical; load first if not ready.
+  if(window.US3Live&&!window.US3Live.loaded&&window.US3&&typeof US3.live==='function'){
+    US3.live().then(function(){devMapLoad(devMapBuild);},function(){devMapLoad(devMapBuild);});
+  }else{
+    devMapLoad(devMapBuild);
+  }
 }
-function devMapPopup(d){
+function devMapPopup(d,hist){
   return '<div style="font-family:Rajdhani,sans-serif;min-width:180px;">'+
     '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;color:#0071BC;">'+us3esc(d.id||'—')+'</div>'+
     (d.label?('<div style="font-size:13px;margin-top:3px;">'+us3esc(d.label)+'</div>'):'')+
@@ -5218,20 +5261,28 @@ function devMapPopup(d){
     '<div style="margin-top:6px;font-size:12px;">'+(d.status?('Status: <b>'+us3esc(d.status)+'</b>'):'<i>no field status</i>')+'</div>'+
     (d.type?('<div style="font-size:12px;">Type: '+us3esc(d.type)+'</div>'):'')+
     (d.job?('<div style="font-size:12px;">Job: '+us3esc(d.job)+'</div>'):'')+
+    (hist?'<div style="font-size:11px;color:#e8a020;margin-top:3px;">⚠ Historical — no active job (likely removed; Fulcrum deinstall not recorded)</div>':'')+
     '<div style="font-size:11px;color:#999;margin-top:4px;">'+(d.lat).toFixed(5)+', '+(d.lng).toFixed(5)+'</div>'+
   '</div>';
 }
 function devMapBuild(data){
+  if(data)devmapData=data;
   var box=document.getElementById('devmapBox');if(!box)return;
   var info=document.getElementById('devmapInfo');
   if(typeof L==='undefined'){box.innerHTML='<div class="us3b2-empty">Map library not loaded (offline?).</div>';if(info)info.textContent='offline';return;}
   if(!data||!data.rows){box.innerHTML='<div class="us3b2-warn" style="margin:18px;">Offline — Supabase not connected; cannot load devices.</div>';if(info)info.textContent='offline';return;}
   if(devmapMap){try{devmapMap.remove();}catch(e){}devmapMap=null;}
   box.innerHTML='';
+  var act=devMapActiveInfo();
+  function isHist(d){return act.ready&&!act.set[d.job];}
+  // Active-jobs-only filter (data-safe: hides, never deletes). Only applies once jobs are loaded.
+  var rows=data.rows,histTotal=0;
+  if(act.ready){histTotal=rows.filter(isHist).length;}
+  var shown=(devmapActiveOnly&&act.ready)?rows.filter(function(d){return !isHist(d);}):rows;
   // Clamp to North America + PR — some Fulcrum rows have garbage coords (missing
   // decimal / flipped sign) that otherwise blow the bounds out to world zoom.
-  var withCoords=data.rows.filter(function(d){return typeof d.lat==='number'&&typeof d.lng==='number'&&!isNaN(d.lat)&&!isNaN(d.lng)&&d.lat>=17&&d.lat<=50&&d.lng>=-160&&d.lng<=-64;});
-  var missing=data.rows.length-withCoords.length;
+  var withCoords=shown.filter(function(d){return typeof d.lat==='number'&&typeof d.lng==='number'&&!isNaN(d.lat)&&!isNaN(d.lng)&&d.lat>=17&&d.lat<=50&&d.lng>=-160&&d.lng<=-64;});
+  var missing=shown.length-withCoords.length;
   devmapMap=L.map('devmapBox',{scrollWheelZoom:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(devmapMap);
   var pts=[];
@@ -5239,9 +5290,10 @@ function devMapBuild(data){
     devmapMap.setView([39.5,-98.35],4);
   }else{
     withCoords.forEach(function(d){
-      var col=d.status?(US3_STATUS_COLORS[String(d.status).toLowerCase()]||'#0071BC'):'#0071BC';
-      var m=L.circleMarker([d.lat,d.lng],{radius:7,weight:1,color:'#0a0e16',fillColor:col,fillOpacity:.9});
-      m.bindPopup(devMapPopup(d));m.addTo(devmapMap);pts.push([d.lat,d.lng]);
+      var hist=isHist(d);
+      var col=devmapColorBy==='type'?US3_SENSOR_COLOR(d.type):(d.status?(US3_STATUS_COLORS[String(d.status).toLowerCase()]||'#0071BC'):'#0071BC');
+      var m=L.circleMarker([d.lat,d.lng],{radius:hist?5:7,weight:hist?1:1.2,color:hist?'#5a6472':'#0a0e16',fillColor:col,fillOpacity:hist?.4:.9,dashArray:hist?'2,3':null});
+      m.bindPopup(devMapPopup(d,hist));m.addTo(devmapMap);pts.push([d.lat,d.lng]);
     });
     devmapMap.setView(pts[0],10); // provisional, refit below once sized
   }
@@ -5252,7 +5304,12 @@ function devMapBuild(data){
     devmapMap.invalidateSize();
     if(pts.length){try{devmapMap.fitBounds(pts,{padding:[30,30],maxZoom:12});}catch(e){devmapMap.setView(pts[0],10);}}
   },220);
-  if(info)info.innerHTML='Source: <b>'+us3esc(data.source)+'</b> · '+withCoords.length+' mapped'+(missing?(' · <span style="color:#e8a020;">'+missing+' missing coords</span>'):'');
+  if(info){
+    var bits='Source: <b>'+us3esc(data.source)+'</b> · '+withCoords.length+' mapped';
+    if(missing)bits+=' · <span style="color:#e8a020;">'+missing+' missing coords</span>';
+    if(act.ready&&histTotal)bits+=' · <span style="color:#8a97a8;">'+histTotal+' historical'+(devmapActiveOnly?' hidden':' shown faded')+'</span>';
+    info.innerHTML=bits;
+  }
 }
 
 // ═══ PHASE 5 — FAILURE ANALYTICS (Pareto + Fishbone on device_events) ═══
@@ -5441,6 +5498,15 @@ function inGround(j){
 function ongoing(j){return j&&j.project_status!=='Project Completed'&&j.project_status!=='Removal Complete';}
 function jobWho(j){return j.company_name||j.customer_name||'—';}
 function jobSites(n){return (window.US3Live.sitesByJob[n])||[];}
+// Colored device-type dots for a job, from live deployed devices (Fulcrum sensor_type).
+function typeDots(n){
+  var t=(window.US3Live.typesByJob||{})[n];
+  if(!t||!t.total)return '<span style="color:#3a4456;">—</span>';
+  var order=['ff','cric','hach','rg','unknown'];
+  return '<span style="display:inline-flex;gap:5px;flex-wrap:wrap;align-items:center;">'+order.filter(function(p){return t[p];}).map(function(p){
+    return '<span title="'+esc(US3_PROD_LABELS[p])+': '+t[p]+'" style="display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;"><span style="width:10px;height:10px;border-radius:50%;background:'+US3_PROD_COLORS[p]+';border:1px solid #0a0e16;"></span>'+t[p]+'</span>';
+  }).join('')+'</span>';
+}
 
 /* ---- data layer ---- */
 window.US3Live={jobs:[],sites:[],jobByNum:{},sitesByJob:{},loaded:false,loading:null,err:null,mapFilterJob:null};
@@ -5463,30 +5529,25 @@ function load(force){
   },function(e){LV.err=e;LV.loading=null;throw e;});
   return LV.loading;
 }
-// sensor_type (Fulcrum) -> app product id
-function mapProduct(stype){
-  var s=(stype||'').toLowerCase();
-  if(!s)return null;
-  if(s.indexOf('flexflow')>=0||s.indexOf('flex flow')>=0)return 'ff';
-  if(s.indexOf('hach')>=0||s.indexOf('flodar')>=0||s.indexOf('flo-dar')>=0)return 'hach';
-  if(s.indexOf('rain')>=0)return 'rg';
-  if(s.indexOf('radar')>=0||s.indexOf('level')>=0||s.indexOf('pressure')>=0||s.indexOf('cricket')>=0)return 'cric';
-  return null;
-}
+// sensor_type (Fulcrum) -> app product id. Delegates to the shared global helper
+// (US3_SENSOR_PRODUCT) so the map, schedule and deployed-count all agree.
+function mapProduct(stype){return (typeof US3_SENSOR_PRODUCT==='function')?US3_SENSOR_PRODUCT(stype):null;}
 // Live Deployed = distinct devices currently deployed on an ONGOING job, by product.
 function computeDeployed(){
   var LV=window.US3Live;
-  var seen={},by={ff:0,hach:0,rg:0,cric:0},total=0,unknown=0,projs={};
+  var seen={},by={ff:0,hach:0,rg:0,cric:0},total=0,unknown=0,projs={},typesByJob={};
   (LV.deployedDevices||[]).forEach(function(d){
     var job=LV.jobByNum[d.project_no];
     if(!job||!ongoing(job))return;           // only count devices on real, active jobs
     projs[d.project_no]=1;                    // this job has at least one deployed device
     var key=(d.device_id||'')+'|'+(d.project_no||'');
     if(seen[key])return;seen[key]=1;
-    var p=mapProduct(d.sensor_type);
-    if(p){by[p]++;total++;}else{unknown++;}
+    var p=mapProduct(d.sensor_type)||'unknown';
+    if(p!=='unknown'){by[p]++;total++;}else{unknown++;}
+    var t=typesByJob[d.project_no]||(typesByJob[d.project_no]={ff:0,cric:0,hach:0,rg:0,unknown:0,total:0});
+    t[p]++;t.total++;
   });
-  LV.deployedByProduct=by;LV.deployedTotal=total;LV.deployedUnknown=unknown;LV.deployedProjects=projs;LV.deployedReady=true;
+  LV.deployedByProduct=by;LV.deployedTotal=total;LV.deployedUnknown=unknown;LV.deployedProjects=projs;LV.typesByJob=typesByJob;LV.deployedReady=true;
 }
 function sortJobs(list){
   return list.slice().sort(function(a,b){
@@ -5655,9 +5716,10 @@ function renderDevicePage(id){
     supa.from('device_locations').select('*').eq('device_id',id),
     supa.from('kit_devices').select('*').eq('device_id',id),
     supa.from('device_scans').select('*').eq('device_id',id).order('scanned_at',{ascending:false}),
-    supa.from('device_notes').select('*').eq('device_id',id).order('created_at',{ascending:false})
+    supa.from('device_notes').select('*').eq('device_id',id).order('created_at',{ascending:false}),
+    supa.from('site_maintenance').select('*').eq('device_id',id).order('visit_date',{ascending:false})
   ]).then(function(r){
-    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[];
+    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[],maint=(r[5]&&r[5].data)||[];
     var loc=locs[0];
     function dirColor(d){var s=(d||'').toLowerCase();return s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';}
     function dirChip(d){return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff;background:'+dirColor(d)+';">'+esc(d||'—')+'</span>';}
@@ -5678,6 +5740,27 @@ function renderDevicePage(id){
       events.map(function(e){return '<tr><td>'+fmtDate(e.created_at)+'</td><td>'+esc(e.event_type||'—')+'</td><td>'+esc(e.status||'—')+'</td><td>'+esc(e.failure_reason||'—')+'</td><td>'+esc(e.station||'—')+'</td><td>'+esc(e.tech||'—')+'</td><td>'+esc(e.notes||'')+'</td></tr>';}).join('')+'</tbody></table>')
       :'<div class="us3w-empty">No warehouse scan events yet — Station Scanner logs append here.</div>';
     var kitHtml=kits.length?kits.map(function(k){return '<div>Kit <b>'+esc(k.kit_id)+'</b> · '+esc(k.device_type||'')+'</div>';}).join(''):'<div class="us3w-empty">Not part of any kit.</div>';
+    function ynChip(v,goodIsYes){if(v===null||v===undefined)return '<span style="color:#5a6472;">—</span>';var good=goodIsYes?v:!v;var c=good?'#2ecc71':'#ED1C24';return '<span style="color:'+c+';font-weight:600;">'+(v?'Yes':'No')+'</span>';}
+    var maintHtml=maint.length?maint.map(function(mr){
+      var checks=[
+        ['Operational after',ynChip(mr.operational_after,true)],['Still in place',ynChip(mr.still_in_place,true)],
+        ['Replaced',ynChip(mr.device_replaced,false)],['Water inside',ynChip(mr.water_inside,false)],
+        ['Bluetooth',ynChip(mr.bluetooth_connects,true)],['Vandalism',ynChip(mr.signs_of_vandalism,false)]
+      ].map(function(c){return '<div><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>';}).join('');
+      var parts=[];
+      if(mr.root_cause)parts.push('<b>Root cause:</b> '+esc(mr.root_cause));
+      if(mr.maintenance_action)parts.push('<b>Action:</b> '+esc(mr.maintenance_action));
+      if(mr.antenna)parts.push('Antenna: '+esc(mr.antenna));
+      if(mr.sensor)parts.push('Sensor: '+esc(mr.sensor));
+      if(mr.battery)parts.push('Battery: '+esc(mr.battery));
+      if(mr.new_device_id)parts.push('Replaced with: <span class="us3w-link" onclick="US3.openDevice(\''+js(mr.new_device_id)+'\')">'+esc(mr.new_device_id)+'</span>');
+      return '<div style="border-top:1px solid var(--borderb,#243044);padding-top:10px;margin-top:10px;">'+
+        '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;"><b style="color:#e8edf4;">'+fmtDate(mr.visit_date)+'</b><span style="color:#8a97a8;font-size:13px;">'+esc(mr.installer_name||'—')+(mr.site_name?(' · '+esc(mr.site_name)):'')+'</span></div>'+
+        '<div class="us3w-meta" style="margin-top:8px;">'+checks+'</div>'+
+        (parts.length?('<div style="margin-top:8px;font-size:14px;line-height:1.5;">'+parts.join(' · ')+'</div>'):'')+
+        (mr.additional_notes?('<div style="margin-top:6px;font-size:13px;color:#cdd6e2;white-space:pre-wrap;">'+esc(mr.additional_notes)+'</div>'):'')+
+      '</div>';
+    }).join(''):'<div class="us3w-empty">No field maintenance visits logged. Submissions to the Fulcrum “Site Maintenance” form sync here automatically.</div>';
     var notesHtml=(notes.length?notes.map(function(nn){return '<div class="us3prow" style="cursor:default;align-items:flex-start;"><div><div style="font-size:15px;color:#e8edf4;">'+esc(nn.note)+'</div><div style="font-size:11px;color:#8a97a8;">'+esc(nn.author||'—')+' · '+fmtDate(nn.created_at)+'</div></div></div>';}).join(''):'<div class="us3w-empty">No notes yet — add one to flag this device (e.g. faulty antenna).</div>')+
       '<div style="display:flex;gap:8px;margin-top:10px;"><input id="devNoteInput" class="us3b2-input" style="flex:1;" placeholder="Add a note…" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();US3.addNote(\''+js(id)+'\');}"><button class="us3b2-btn" onclick="US3.addNote(\''+js(id)+'\')">Add</button></div>';
     showOverlay(
@@ -5687,6 +5770,7 @@ function renderDevicePage(id){
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location</div>'+locHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📝 Notes ('+notes.length+')</div>'+notesHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔧 Field maintenance ('+maint.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">Fulcrum Site Maintenance visits</span></div>'+maintHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')</div>'+ev+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Kit membership</div>'+kitHtml+'</div>'
     );
@@ -5768,10 +5852,11 @@ function paintSched(){
       '<td>'+pill(j.project_status)+'</td>'+
       '<td style="white-space:nowrap;">'+fmtDate(j.install_date)+' → '+fmtDate(j.deinstall_date)+'</td>'+
       '<td style="text-align:center;">'+sites.length+'</td>'+
+      '<td>'+typeDots(j.job_number)+'</td>'+
       '<td style="text-align:center;">'+(ig?'<span title="In the ground" style="color:#0071BC;">●</span>':'<span style="color:#3a4456;">○</span>')+'</td>'+
     '</tr>';
-  }).join(''):'<tr><td colspan="8" class="us3w-empty">No jobs match this filter.</td></tr>';
-  tbl.innerHTML='<thead><tr><th style="padding-left:10px;">Job #</th><th>Customer</th><th>Location</th><th>Type</th><th>Status</th><th>Install → De-install</th><th style="text-align:center;">Sites</th><th style="text-align:center;">In&nbsp;ground</th></tr></thead><tbody>'+rows+'</tbody>';
+  }).join(''):'<tr><td colspan="9" class="us3w-empty">No jobs match this filter.</td></tr>';
+  tbl.innerHTML='<thead><tr><th style="padding-left:10px;">Job #</th><th>Customer</th><th>Location</th><th>Type</th><th>Status</th><th>Install → De-install</th><th style="text-align:center;">Sites</th><th>Devices</th><th style="text-align:center;">In&nbsp;ground</th></tr></thead><tbody>'+rows+'</tbody>';
   // filter bar above the table
   var body=tbl.parentNode;
   if(body&&!document.getElementById('us3schFbar')){var d=document.createElement('div');d.id='us3schFbar';d.innerHTML=fbar;body.insertBefore(d,tbl);}
