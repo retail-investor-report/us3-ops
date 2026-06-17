@@ -5176,6 +5176,83 @@ function countLoad(){try{countState=JSON.parse(localStorage.getItem('us3_count_s
 function countSave(){try{localStorage.setItem('us3_count_state',JSON.stringify(countState));}catch(e){}}
 function countOffices(){return (typeof OFFICES!=='undefined'?OFFICES:[]).filter(function(o){return o.products&&o.products.length;});}
 function countExpected(office,prod){return (typeof gc!=='undefined')?(gc(office,prod,'available')+gc(office,prod,'reserved')+gc(office,prod,'maintenance')):0;}
+// ═══ INVENTORY MODEL (Phase 1) — components are counted, kits are COMPUTED ═══
+// A kit is only as available as its scarcest part. Source of truth for company-wide kit availability.
+var US3_COMPONENTS=[
+  {key:'ff_rtu',product:'ff',label:'FlexFlow RTU',serial:true},
+  {key:'ff_sensor',product:'ff',label:'FlexFlow sensor',serial:false},
+  {key:'cric_rtu',product:'cric',label:'Cricket RTU',serial:true},
+  {key:'cric_sensor',product:'cric',label:'Cricket radar sensor',serial:false},
+  {key:'hach_logger',product:'hach',label:'Hach logger',serial:false},
+  {key:'hach_flodar',product:'hach',label:'Hach FloDar',serial:false},
+  {key:'rg_rtu',product:'rg',label:'Rain Gauge RTU',serial:true},
+  {key:'rg_bucket',product:'rg',label:'Rain Gauge bucket',serial:false},
+  {key:'rg_tripod',product:'rg',label:'Rain Gauge tripod',serial:false}
+];
+var US3_KIT_RECIPES={ff:[['ff_rtu',1],['ff_sensor',1]],cric:[['cric_rtu',1],['cric_sensor',1]],hach:[['hach_logger',1],['hach_flodar',1]],rg:[['rg_rtu',1],['rg_bucket',1],['rg_tripod',1]]};
+var US3_KIT_LABELS={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
+var invState={}; // office -> {component_key: qty}
+function invLoadAndRender(office){
+  var card=document.getElementById('invCard');if(!card||!office)return;
+  if(typeof supa==='undefined'||!supa){card.innerHTML='<div class="us3b2-warn">Offline — inventory needs Supabase.</div>';return;}
+  supa.from('inventory_components').select('component_key,qty').eq('office',office).then(function(r){
+    var map={};((r&&r.data)||[]).forEach(function(row){map[row.component_key]=Number(row.qty)||0;});
+    invState[office]=map;invRender(office);
+  },function(){card.innerHTML='<div class="us3b2-warn">Could not load inventory.</div>';});
+}
+function invQty(office,key){var m=invState[office]||{};return m[key]==null?0:m[key];}
+function invComputeKits(office){
+  var out={};
+  Object.keys(US3_KIT_RECIPES).forEach(function(p){
+    var min=Infinity;
+    US3_KIT_RECIPES[p].forEach(function(rec){var a=Math.floor(invQty(office,rec[0])/rec[1]);if(a<min)min=a;});
+    out[p]=isFinite(min)?min:0;
+  });
+  return out;
+}
+function invKitSummaryHtml(office){
+  var k=invComputeKits(office);
+  return Object.keys(US3_KIT_LABELS).map(function(p){
+    return '<div style="flex:1;min-width:120px;background:var(--panel-bg,#121826);border:1px solid '+US3_PROD_COLORS[p]+';border-radius:12px;padding:12px 14px;">'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:34px;line-height:1;color:'+US3_PROD_COLORS[p]+';">'+k[p]+'</div>'+
+      '<div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted);margin-top:4px;">'+US3_KIT_LABELS[p]+' kits</div>'+
+    '</div>';
+  }).join('');
+}
+function invRender(office){
+  var card=document.getElementById('invCard');if(!card)return;
+  var byProd={};US3_COMPONENTS.forEach(function(c){(byProd[c.product]=byProd[c.product]||[]).push(c);});
+  var groups=Object.keys(US3_KIT_LABELS).map(function(p){
+    var rows=byProd[p].map(function(c){
+      var flag=c.serial&&invQty(office,c.key)>0?' <span title="Serial device — scan/enter its serial numbers in the Build Kit / Red Tag step" style="color:#e8a020;cursor:help;">⚠ serials</span>':'';
+      return '<tr><td><b>'+us3esc(c.label)+'</b>'+(c.serial?' <span style="font-size:11px;color:#8a97a8;">(serial)</span>':'')+flag+'</td>'+
+        '<td style="text-align:right;"><input class="us3b2-input" style="width:90px;text-align:center;" inputmode="numeric" value="'+invQty(office,c.key)+'" onchange="invSetQty(\''+office+'\',\''+c.key+'\',this.value)"></td></tr>';
+    }).join('');
+    return '<div style="margin-bottom:10px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;color:'+US3_PROD_COLORS[p]+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">'+US3_KIT_LABELS[p]+'</div>'+
+      '<table class="us3b2-tbl" style="width:100%;"><tbody>'+rows+'</tbody></table></div>';
+  }).join('');
+  card.innerHTML=
+    '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;">Available kits <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">computed — limited by the scarcest part</span></div>'+
+    '<div id="invKitSummary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+invKitSummaryHtml(office)+'</div>'+
+    '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;">Component counts <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">count one type at a time — blanks left alone</span></div>'+
+    groups+
+    '<div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="us3b2-btn green" onclick="invSave(\''+office+'\',this)">Save inventory</button></div>';
+}
+function invSetQty(office,key,val){
+  var n=parseInt(val,10);if(isNaN(n)||n<0)n=0;
+  (invState[office]=invState[office]||{})[key]=n;
+  var sum=document.getElementById('invKitSummary');if(sum)sum.innerHTML=invKitSummaryHtml(office);
+}
+function invSave(office,btn){
+  if(typeof supa==='undefined'||!supa){alert('Offline.');return;}
+  var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
+  var m=invState[office]||{};
+  var rows=US3_COMPONENTS.map(function(c){return {id:office+'__'+c.key,office:office,component_key:c.key,qty:(m[c.key]==null?0:m[c.key]),updated_by:by,updated_at:new Date().toISOString()};});
+  supa.from('inventory_components').upsert(rows).then(function(r){
+    if(r.error){alert('Save failed: '+r.error.message);return;}
+    if(btn){btn.textContent='✓ Saved';setTimeout(function(){btn.textContent='Save inventory';},1500);}
+  });
+}
 function renderCount(){
   us3b2InjectCSS();countLoad();
   var offices=countOffices();
@@ -5184,21 +5261,25 @@ function renderCount(){
   var inner=document.getElementById('countInner');if(!inner)return;
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
-    '<div class="us3b2-h" style="font-size:30px;margin-bottom:4px;">🧮 Warehouse Kit Count'+
-      '<span title="A physical-count reconciliation check. Pick an office, enter how many kits you physically count of each type, and it compares your count against the EXPECTED on-hand (available + reserved + maintenance) and flags any variance. Save Snapshot stores the count for the record. NOTE: the numbers you type here do NOT update Availability, the Fleet Map, or the Asset Map — it is a one-way audit tool for now." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
+    '<div class="us3b2-h" style="font-size:30px;margin-bottom:4px;">📦 Inventory &amp; Kit Availability'+
+      '<span title="Count components (RTUs + sensors + parts) per office. AVAILABLE KITS are computed automatically — a kit is only as available as its scarcest part (e.g. 10 FlexFlow RTUs + 5 sensors = 5 kits). This feeds company-wide kit availability. Count one type at a time; blanks are left alone. RTUs are serial devices — a ⚠ flag shows until their serial numbers are scanned/entered (coming in the Build Kit + Red Tag scanning step)." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
     '</div>'+
-    '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;margin-bottom:14px;">Physical-count check: your count vs expected on-hand, per office. Audit only — it doesn’t change inventory elsewhere (yet).</div>'+
+    '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;margin-bottom:14px;">Count components per office → <b>available kits are computed from the scarcest part</b>. This is the source of truth for company-wide kit availability.</div>'+
     '<div class="us3b2-card">'+
       '<label class="us3b2-label">Office</label>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+offBtns+'</div>'+
     '</div>'+
-    '<div class="us3b2-card"><div id="countBody"></div></div>'+
-    '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">'+
-      '<button class="us3b2-btn alt" onclick="countReset()">Reset Office Count</button>'+
-      '<button class="us3b2-btn green" onclick="countSaveSnapshot()">Save Count Snapshot</button>'+
-    '</div>'+
+    '<div class="us3b2-card" id="invCard"><div class="us3b2-empty">Loading inventory…</div></div>'+
+    '<details style="margin-top:6px;"><summary style="cursor:pointer;font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 0;">▸ Legacy physical-count audit (old kit reconciliation)</summary>'+
+      '<div class="us3b2-card"><div id="countBody"></div></div>'+
+      '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">'+
+        '<button class="us3b2-btn alt" onclick="countReset()">Reset Office Count</button>'+
+        '<button class="us3b2-btn green" onclick="countSaveSnapshot()">Save Count Snapshot</button>'+
+      '</div>'+
+    '</details>'+
   '</div>';
   countRenderBody();
+  invLoadAndRender(countState.office);
 }
 function countSetOffice(id){countState.office=id;countSave();renderCount();}
 function countRenderBody(){
