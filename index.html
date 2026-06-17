@@ -2235,6 +2235,7 @@ function saveEditPanel(){
 // ═══ AVAILABILITY PAGE ═══
 function renderAvail(){
   renderStats();
+  if(!liveStock.tried){liveStock.tried=true;loadLiveStock(function(){renderAvail();});}
   var avAdminBtn=document.getElementById('availAdminBtn');
   if(avAdminBtn){avAdminBtn.classList.toggle('active',adminMode);avAdminBtn.textContent=adminMode?'\u2B21 Admin On':'\u2B21 Admin Off';}
   var avBanner=document.getElementById('availAdminBanner');
@@ -2247,7 +2248,7 @@ function renderAvail(){
     var heads=['Product'].concat(LOC_STATUS).map(function(h){return '<th>'+h+'</th>';}).join('');
     var rows=(off.products||[]).map(function(pid){
       var p=PRODUCTS.find(function(x){return x.id===pid;});
-      var cells=LOC_STATUS.map(function(st){return '<td class="'+st+'">'+gc(off.id,pid,st)+'</td>';}).join('');
+      var cells=LOC_STATUS.map(function(st){return '<td class="'+st+'">'+liveCount(off.id,pid,st)+'</td>';}).join('');
       return '<tr><td>'+p.label+'</td>'+cells+'</tr>';
     }).join('');
     card.innerHTML='<div class="av-card-head"><div class="av-card-icon">'+off.icon+'</div><div class="av-card-name">'+off.label+'</div><button class="av-edit-btn" onclick="openEditOffice(\''+off.id+'\')">✎ Edit</button></div><table class="av-table"><thead><tr>'+heads+'</tr></thead><tbody>'+rows+'</tbody></table>';
@@ -3302,8 +3303,20 @@ function decommSyncFailureLog(){
   });
   supa.from('failure_log').upsert(rows,{onConflict:'source_ref',ignoreDuplicates:true}).then(function(){},function(){});
 }
+// Pull decommissions back FROM Supabase failure_log (incl. ones fed by the Station Scanner /
+// Red Tag "Decommission") so the tab reflects the database we control, not just localStorage.
+var decommSupaLoaded=false;
+function decommLoadFromSupa(cb){
+  if(typeof supa==='undefined'||!supa){if(cb)cb();return;}
+  supa.from('failure_log').select('device_id,product,occurred_at,notes,failure_mode').eq('event_kind','decommission').then(function(r){
+    var rows=(r&&r.data)||[];var byId={};decommLog.forEach(function(d){if(d.id)byId[String(d.id)]=1;});
+    rows.forEach(function(x){var id=x.device_id||'';if(!id||byId[id])return;byId[id]=1;decommLog.push({id:id,type:x.product||'',date:x.occurred_at?String(x.occurred_at).slice(0,10):'',notes:x.notes||'',failureMode:x.failure_mode||'',_supa:true});});
+    if(cb)cb();
+  },function(){if(cb)cb();});
+}
 function renderDecomm(){
   decommSyncFailureLog();
+  if(!decommSupaLoaded){decommSupaLoaded=true;decommLoadFromSupa(function(){renderDecomm();});}
   var now=new Date(),cQ=Math.floor(now.getMonth()/3)+1,cY=now.getFullYear();
   var qs=new Set(['all']);
   decommLog.forEach(function(d){if(d.date){var dt=new Date(d.date);qs.add('Q'+((Math.floor(dt.getMonth()/3)+1))+' '+dt.getFullYear());}});
@@ -3907,6 +3920,7 @@ function houstonUpsertWeekly(rows,today,cb){
     out.push({week:wk,week_date:houstonExcelDate(r[1]),new_installs:houstonNum(r[2]),replacements:houstonNum(r[3]),maintained:houstonNum(r[4]),need_maintenance:houstonNum(r[5]),total_installed:houstonNum(r[6]),report_date:today});}
   houstonChunkUpsert('houston_weekly_stats','week',out,cb,out.length+' weeks');
 }
+function houstonUploadRender(){var h=document.getElementById('houstonUploadPanel');if(h)h.innerHTML=houstonUploadBar();}
 function houstonLiveLoad(){
   var host=document.getElementById('houstonLivePanel');if(!host)return;
   if(typeof supa==='undefined'||!supa){host.innerHTML='';return;}
@@ -3919,7 +3933,7 @@ function houstonLiveLoad(){
     var total=(r[0]&&r[0].count)||devs.length;
     var alertCount=(r[1]&&r[1].count)||0;
     var wk=((r[2]&&r[2].data)||[])[0]||null;
-    if(!total){host.innerHTML=houstonUploadBar()+'<div class="us3w-card" style="background:var(--panel-bg);border:1px solid var(--borderb);border-radius:12px;padding:14px 16px;color:var(--muted);font-family:Rajdhani,sans-serif;">No Houston device data loaded yet — upload this week\'s files above.</div>';return;}
+    if(!total){host.innerHTML='<div class="us3w-card" style="background:var(--panel-bg);border:1px solid var(--borderb);border-radius:12px;padding:14px 16px;color:var(--muted);font-family:Rajdhani,sans-serif;">No Houston device data loaded yet — upload this week\'s files at the top.</div>';return;}
     var silent=devs.filter(function(d){return (d.total_messages===0||d.total_messages===null)||d.pct_total===0;}).length;
     var reporting=total-silent;
     function kpi(n,l,c){return '<div style="flex:1;min-width:150px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:14px 16px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:38px;line-height:1;color:'+c+';">'+n+'</div><div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em;font-size:12px;color:var(--muted);margin-top:6px;">'+l+'</div></div>';}
@@ -3927,7 +3941,6 @@ function houstonLiveLoad(){
       .sort(function(a,b){return String(a.last_sample||'').localeCompare(String(b.last_sample||''));}).slice(0,150);
     var rowsHtml=down.map(function(d){return '<tr><td><b>'+houstonEsc(d.site_name||d.site_id)+'</b></td><td>'+houstonEsc(d.device_id||'—')+'</td><td>'+houstonEsc(d.description||'—')+'</td><td>'+houstonEsc(d.last_sample||'—')+'</td><td style="text-align:right;">'+(d.total_messages==null?'—':d.total_messages)+'</td></tr>';}).join('');
     host.innerHTML=
-      houstonUploadBar()+
       '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Status</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest upload · '+total+' devices</div></div>'+
       '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;">'+
         kpi(total,'Total devices','var(--text,#e8edf4)')+
@@ -3946,14 +3959,15 @@ function houstonLiveLoad(){
 function renderHouston(){
   var inner=document.getElementById('houstonInner');
   if(!inner)return;
-  setTimeout(houstonLiveLoad,0);
+  setTimeout(function(){houstonUploadRender();houstonLiveLoad();},0);
   var reports=getHoustonReports();
   var latest=getLatestHoustonReport();
-  var titleHtml='<div id="houstonLivePanel"></div><div class="dc-title">Houston Fleet Health</div><div class="dc-sub">Cricket project · Monthly device-health snapshots from Osama</div>';
+  var titleHtml='<div id="houstonUploadPanel"></div><div class="dc-title">Houston Fleet Health</div><div class="dc-sub">Cricket project · Monthly device-health snapshots from Osama</div>';
   if(!latest){
     inner.innerHTML=titleHtml+
       '<div style="padding:32px;text-align:center;color:var(--muted);font-family:Rajdhani,sans-serif;font-size:15px;border:1px dashed var(--borderb);border-radius:8px;margin:24px 0;">No Houston report imported yet. Click "Import Report" to get started.</div>'+
-      (adminMode?renderHoustonImportPanel():'');
+      (adminMode?renderHoustonImportPanel():'')+
+      '<div id="houstonLivePanel" style="margin-top:24px;"></div>';
     return;
   }
   var s=latest.summary;
@@ -4039,7 +4053,8 @@ function renderHouston(){
     houstonTrendChart(reports)+
     crossHtml+
     '<div id="houstonTableWrap" style="margin-top:18px;"></div>'+
-    historyHtml;
+    historyHtml+
+    '<div id="houstonLivePanel" style="margin-top:24px;"></div>';
   renderHoustonTable();
 }
 
@@ -4201,92 +4216,10 @@ function renderFleet(){
     weeks.push(ws);
   }
 
-  // STEP 4 — Stamp confirmed reservations onto available-base rows
-  var confirmedRes=reservations.filter(function(r){return r.status==='confirmed';});
-
-  // First, identify which active job corresponds to deployed units, so we can
-  // subtract deployed count from its stamp qty (those units are blue rows, not green)
-  var nowMs=Date.now();
-
-  confirmedRes.forEach(function(res){
-    // Check if this reservation involves the current product
-    var qtyForProduct=0;
-    if(res.devices&&res.devices[fleetProduct]){
-      qtyForProduct=res.devices[fleetProduct];
-    } else if(res.type===fleetProduct){
-      qtyForProduct=res.qty||0;
-    }
-    if(qtyForProduct<=0)return;
-
-    var startMs=new Date(res.start).getTime();
-    var endMs=new Date(res.end).getTime();
-    var isActive=(nowMs>=startMs&&nowMs<=endMs);
-
-    // If this reservation is active TODAY, its units are expressed as deployed
-    // (blue) rows tagged with the jobNum in the next pass. Don't also stamp
-    // green/reserved rows for the same job — that double-counts and produces
-    // phantom gray bands alongside the blue deployed rows.
-    if(isActive)return;
-
-    var stampQty=qtyForProduct;
-
-    var startCol=Math.max(0,Math.floor((startMs-week0ms)/msPerWeek));
-    var endCol=Math.min(numCols-1,Math.floor((endMs-week0ms)/msPerWeek));
-    if(startCol>numCols-1||endCol<0)return;
-
-    var jobInfo={job:res.job||res.jobNum,jobNum:res.jobNum,start:res.start,end:res.end};
-    // Stamp onto available-base rows
-    var stamped=0;
-    for(var r=0;r<numRows&&stamped<stampQty;r++){
-      if(assets[r].baseStatus!=='available')continue;
-      var rowFree=true;
-      for(var c=startCol;c<=endCol;c++){
-        if(assetWeekStatus[r][c]!=='available'){rowFree=false;break;}
-      }
-      if(!rowFree)continue;
-      for(var c=startCol;c<=endCol;c++){
-        assetWeekStatus[r][c]='reserved';
-        assetWeekJobInfo[r][c]=jobInfo;
-      }
-      stamped++;
-    }
-  });
-
-  // Tag deployed rows with matching active job info
-  confirmedRes.forEach(function(res){
-    var startMs=new Date(res.start).getTime();
-    var endMs=new Date(res.end).getTime();
-    if(nowMs<startMs||nowMs>endMs)return;
-    var qtyForProduct=0;
-    if(res.devices&&res.devices[fleetProduct]) qtyForProduct=res.devices[fleetProduct];
-    else if(res.type===fleetProduct) qtyForProduct=res.qty||0;
-    if(qtyForProduct<=0)return;
-    var jobInfo={job:res.job||res.jobNum,jobNum:res.jobNum,start:res.start,end:res.end};
-    var tagged=0;
-    for(var r=0;r<numRows&&tagged<qtyForProduct;r++){
-      if(assets[r].baseStatus!=='deployed')continue;
-      if(assetWeekJobInfo[r][0]!==null)continue;
-      for(var c=0;c<numCols;c++){
-        assetWeekJobInfo[r][c]=jobInfo;
-      }
-      tagged++;
-    }
-  });
-
-  // Deployed→maintenance transition for jobs ending within view
-  confirmedRes.forEach(function(res){
-    var endMs=new Date(res.end).getTime();
-    var endCol=Math.floor((endMs-week0ms)/msPerWeek);
-    if(endCol<0||endCol>=numCols-1)return;
-    for(var r=0;r<numRows;r++){
-      if(assets[r].baseStatus!=='deployed')continue;
-      if(assetWeekJobInfo[r][0]&&assetWeekJobInfo[r][0].jobNum===res.jobNum){
-        for(var c=endCol+1;c<numCols;c++){
-          assetWeekStatus[r][c]='maintenance';
-        }
-      }
-    }
-  });
+  // STEP 4 — (removed) Legacy demo-reservation projection that painted phantom
+  // reserved/maintenance bands across future weeks. The new model has no per-unit
+  // weekly schedule, so each row stays solid at its real current state (deployed
+  // rows already carry their Fulcrum job/site from the grid init above).
 
   // STEP 5 — Store globals
   _fleetAssets=assets;
