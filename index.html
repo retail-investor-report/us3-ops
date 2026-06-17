@@ -696,6 +696,7 @@ window.addEventListener('DOMContentLoaded',function(){
       <div style="display:flex;gap:8px;"></div>
     </div>
     <div id="redTagSection" style="margin-bottom:22px;"></div>
+    <div id="failureAnalysis" style="margin-bottom:22px;"></div>
     <div id="repairRecoveryChart" style="margin-bottom:20px;"></div>
     <div id="partsAdminForm" style="display:none;margin-bottom:20px;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);"></div>
     <div id="paretoChart" style="margin-bottom:20px;"></div>
@@ -1720,13 +1721,15 @@ function loadLiveStock(cb){
   if(typeof supa==='undefined'||!supa){if(cb)cb();return;}
   Promise.all([
     supa.from('inventory_components').select('office,component_key,qty'),
-    supa.from('warehouse_devices').select('product,status,office')
+    supa.from('warehouse_devices').select('product,status,office'),
+    supa.from('device_locations').select('project_no,sensor_type').eq('status','deployed')
   ]).then(function(r){
     var comp={};((r[0]&&r[0].data)||[]).forEach(function(row){(comp[row.office]=comp[row.office]||{})[row.component_key]=Number(row.qty)||0;});
     var recipes=(typeof US3_KIT_RECIPES!=='undefined')?US3_KIT_RECIPES:{};
     var kits={};Object.keys(comp).forEach(function(off){kits[off]={};Object.keys(recipes).forEach(function(p){var min=Infinity;recipes[p].forEach(function(rec){var a=Math.floor((comp[off][rec[0]]||0)/rec[1]);if(a<min)min=a;});kits[off][p]=isFinite(min)?min:0;});});
     var resv={},maint={};((r[1]&&r[1].data)||[]).forEach(function(d){if(!d.product)return;var o=d.office||'_';if(d.status==='reserved'){(resv[o]=resv[o]||{})[d.product]=((resv[o]||{})[d.product]||0)+1;}else if(d.status==='red'){(maint[o]=maint[o]||{})[d.product]=((maint[o]||{})[d.product]||0)+1;}});
-    liveStock={ready:true,tried:true,kits:kits,reserved:resv,maint:maint};
+    var dbj={};((r[2]&&r[2].data)||[]).forEach(function(d){if(!d.project_no)return;var p=(typeof US3_SENSOR_PRODUCT==='function')?(US3_SENSOR_PRODUCT(d.sensor_type)||'unknown'):'unknown';(dbj[d.project_no]=dbj[d.project_no]||{})[p]=((dbj[d.project_no]||{})[p]||0)+1;});
+    liveStock={ready:true,tried:true,kits:kits,reserved:resv,maint:maint,deployedByJob:dbj};
     if(cb)cb();
   },function(){if(cb)cb();});
 }
@@ -2304,6 +2307,7 @@ function amFilter(state,el){
 function renderAssetMap(){
   var canvas=document.getElementById('amCanvas');canvas.innerHTML='';
   if(!liveStock.tried){liveStock.tried=true;loadLiveStock(function(){renderAssetMap();});}
+  if(window.US3&&typeof US3.live==='function'&&window.US3Live&&!US3Live.loaded&&!US3Live.loading){US3.live().then(function(){renderAssetMap();},function(){});}
   canvas.style.setProperty('--am-dot-size',amDotSize+'px');
   var label=document.getElementById('amSizeLabel');if(label)label.textContent=amDotSize+'px';
   var tip=document.getElementById('dotTip');
@@ -2357,31 +2361,34 @@ function renderAssetMap(){
   }
 
   if(showJobs){
-    // Collect active jobs (by jobNum, union across products)
-    var today=new Date();today.setHours(0,0,0,0);
-    var t=today.getTime();
-    var activeMap={};
-    reservations.forEach(function(r){
-      if(r.status!=='confirmed')return;
-      var startMs=Date.parse(r.start),endMs=Date.parse(r.end);
-      if(t<startMs||t>endMs)return;
-      if(!activeMap[r.jobNum])activeMap[r.jobNum]=r;
-    });
-    var activeJobs=Object.keys(activeMap).map(function(k){return activeMap[k];});
-    if(activeJobs.length){
-      var divider=document.createElement('div');
-      divider.className='am-section';
-      divider.innerHTML='<div class="am-section-title" style="margin-top:18px;"><span style="color:var(--deployed);">\u25C6 Active Jobs</span><div class="am-section-line" style="background:var(--deployed);"></div></div>';
+    // Deployed = real Fulcrum installs (device_locations) grouped by job. Falls back to
+    // legacy reservations only until live data has loaded.
+    var jobSections=[];
+    var jb=(window.US3Live&&US3Live.jobByNum)?US3Live.jobByNum:null;
+    var haveJobs=jb&&Object.keys(jb).length>0;
+    if(liveStock.ready&&liveStock.deployedByJob){
+      Object.keys(liveStock.deployedByJob).sort().forEach(function(jn){
+        var job=jb?jb[jn]:null;
+        // when job data is loaded, show only active jobs (drop historical/completed)
+        if(haveJobs&&(!job||job.project_status==='Project Completed'||job.project_status==='Removal Complete'))return;
+        jobSections.push({key:jn,header:jn,location:(job&&job.location)||'',devs:liveStock.deployedByJob[jn]});
+      });
+    }else{
+      var today=new Date();today.setHours(0,0,0,0);var t=today.getTime();var activeMap={};
+      reservations.forEach(function(r){if(r.status!=='confirmed')return;var s=Date.parse(r.start),e=Date.parse(r.end);if(t<s||t>e)return;if(!activeMap[r.jobNum])activeMap[r.jobNum]=r;});
+      Object.keys(activeMap).forEach(function(k){var res=activeMap[k];var devs=res.devices||{};if(!res.devices&&res.type){devs={};devs[res.type]=res.qty||0;}jobSections.push({key:k,header:res.job||res.jobNum,location:res.location||'',devs:devs});});
+    }
+    if(jobSections.length){
+      var divider=document.createElement('div');divider.className='am-section';
+      divider.innerHTML='<div class="am-section-title" style="margin-top:18px;"><span style="color:var(--deployed);">\u25C6 Deployed \u2014 Active Jobs (Fulcrum)</span><div class="am-section-line" style="background:var(--deployed);"></div></div>';
       canvas.appendChild(divider);
     }
-    activeJobs.forEach(function(res){
+    jobSections.forEach(function(jsx){
       var sec=document.createElement('div');sec.className='am-section';
-      var header=(res.job||res.jobNum)+(res.location?' \u2014 '+res.location:'');
+      var header=jsx.header+(jsx.location?' \u2014 '+jsx.location:'');
       sec.innerHTML='<div class="am-section-title"><span style="color:var(--deployed);">'+header+'</span><div class="am-section-line"></div></div>';
-      var devs=res.devices||{};
-      if(!res.devices&&res.type){devs={};devs[res.type]=res.qty||0;}
-      Object.keys(devs).forEach(function(pid){
-        var qty=devs[pid]||0;if(qty<=0)return;
+      Object.keys(jsx.devs).forEach(function(pid){
+        var qty=jsx.devs[pid]||0;if(qty<=0)return;
         var p=PRODUCTS.find(function(x){return x.id===pid;});if(!p)return;
         var dotsWrap=document.createElement('div');dotsWrap.style.marginBottom='10px';
         var prodLabel=document.createElement('div');
@@ -2392,22 +2399,22 @@ function renderAssetMap(){
         for(var i=0;i<qty;i++){
           var dot=document.createElement('div');
           dot.className='am-dot deployed';
-          dot.title=p.label+' \u2014 deployed \u2014 '+(res.job||res.jobNum);
+          dot.title=p.label+' \u2014 deployed \u2014 '+jsx.header;
           dot.innerHTML='<span>'+p.icon+'</span>';
-          (function(p2,res2,i2){
+          (function(p2,jsx2,i2){
             dot.addEventListener('mouseenter',function(e){
               tip.classList.add('show');
               document.getElementById('dtName').textContent=p2.label+' #'+(i2+1);
               document.getElementById('dtName').style.color=p2.color;
               document.getElementById('dtRows').innerHTML=
-                '<div class="dot-tip-row"><span>Job</span><span>'+(res2.job||res2.jobNum)+'</span></div>'+
-                '<div class="dot-tip-row"><span>Location</span><span>'+(res2.location||'')+'</span></div>'+
+                '<div class="dot-tip-row"><span>Job</span><span>'+jsx2.header+'</span></div>'+
+                '<div class="dot-tip-row"><span>Location</span><span>'+(jsx2.location||'')+'</span></div>'+
                 '<div class="dot-tip-row"><span>Status</span><span style="color:var(--deployed)">deployed</span></div>';
               tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-40)+'px';
             });
             dot.addEventListener('mousemove',function(e){tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-40)+'px';});
             dot.addEventListener('mouseleave',function(){tip.classList.remove('show');});
-          })(p,res,i);
+          })(p,jsx,i);
           dots.appendChild(dot);
         }
         dotsWrap.appendChild(dots);sec.appendChild(dotsWrap);
@@ -2842,8 +2849,38 @@ function redTagSetStatus(deviceId,status){
     redTagLoad();
   });
 }
+// ═══ FAILURE DATABASE ANALYSIS (Phase 4) — Pareto + meta over failure_log ═══
+function failureAnalysisRender(){
+  var host=document.getElementById('failureAnalysis');if(!host)return;
+  if(typeof supa==='undefined'||!supa){host.innerHTML='';return;}
+  supa.from('failure_log').select('device_id,product,event_kind,failure_mode').then(function(r){
+    var rows=(r&&r.data)||[];
+    if(!rows.length){host.innerHTML='';return;}
+    var total=rows.length,dec=0,maint=0,devs={},modeCounts={};
+    rows.forEach(function(x){
+      if(x.event_kind==='decommission')dec++;else if(x.event_kind==='maintenance')maint++;
+      if(x.device_id)devs[x.device_id]=1;
+      var m=x.failure_mode||'(unspecified)';modeCounts[m]=(modeCounts[m]||0)+1;
+    });
+    var modes=Object.keys(modeCounts).sort(function(a,b){return modeCounts[b]-modeCounts[a];});
+    var max=modeCounts[modes[0]]||1;
+    var bars=modes.slice(0,12).map(function(m){var c=modeCounts[m],pct=Math.round(c/total*100);
+      return '<div style="margin:6px 0;"><div style="display:flex;justify-content:space-between;font-family:Rajdhani,sans-serif;font-size:13px;"><span>'+us3esc(m)+'</span><span style="color:var(--muted);">'+c+' · '+pct+'%</span></div>'+
+        '<div style="height:14px;background:var(--borderb,#243044);border-radius:7px;overflow:hidden;"><div style="height:100%;width:'+Math.round(c/max*100)+'%;background:#ED1C24;"></div></div></div>';
+    }).join('');
+    function kpi(n,l,c){return '<div style="flex:1;min-width:120px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:30px;line-height:1;color:'+c+';">'+n+'</div><div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted);margin-top:4px;">'+l+'</div></div>';}
+    host.innerHTML=
+      '<div style="border:1px solid var(--borderb);border-radius:10px;padding:14px 16px;background:var(--panel-bg);">'+
+        '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">📊 Failure Database <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">maintenance + decommission · all products · auto-fed from Fulcrum + decommissions</span></div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 14px;">'+kpi(total,'Total events','var(--text,#e8edf4)')+kpi(maint,'Maintenance','#e8a020')+kpi(dec,'Decommissioned','#ED1C24')+kpi(Object.keys(devs).length,'Distinct devices','#0071BC')+'</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Pareto — top failure / decommission reasons</div>'+
+        (bars||'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No failure modes recorded yet.</div>')+
+      '</div>';
+  },function(){host.innerHTML='';});
+}
 function renderParts(){
   redTagRender();
+  failureAnalysisRender();
   var returns=getReturns();
   // Repair recovery Pareto (above the form)
   var rrDiv=document.getElementById('repairRecoveryChart');
@@ -3802,6 +3839,74 @@ function renderHoustonTable(){
     '</div>';
 }
 
+// ═══ HOUSTON IN-APP UPLOADER — drop the weekly files, they parse + upsert to Supabase ═══
+function houstonExcelDate(v){if(v==null||v==='')return null;if(typeof v==='number'){var d=new Date(Date.UTC(1899,11,30)+v*86400000);return isNaN(d)?null:d.toISOString().slice(0,10);}var dd=new Date(v);return isNaN(dd)?null:dd.toISOString().slice(0,10);}
+function houstonUSDateTime(s){if(!s)return null;var d=new Date(String(s).trim());return isNaN(d)?null:d.toISOString();}
+function houstonNum(v){if(v==null||v==='')return null;var n=Number(v);return isNaN(n)?null:n;}
+function houstonTxt(v){if(v==null)return null;var s=String(v).trim();return s||null;}
+function houstonParseCsv(text){var rows=[];var lines=String(text).replace(/^﻿/,'').split(/\r?\n/).filter(function(l){return l.length;});lines.forEach(function(line){var out=[],cur='',q=false;for(var i=0;i<line.length;i++){var c=line[i];if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else{if(c==='"')q=true;else if(c===','){out.push(cur);cur='';}else cur+=c;}}out.push(cur);rows.push(out);});return rows;}
+function houstonUploadMsg(t){var m=document.getElementById('houstonUploadMsg');if(m)m.innerHTML=t;}
+function houstonUploadClick(){var inp=document.getElementById('houstonFileInput');if(inp)inp.click();}
+function houstonLoadXLSX(cb){if(window.XLSX){cb();return;}var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=function(){cb();};s.onerror=function(){houstonUploadMsg('⚠ Could not load the spreadsheet reader (need internet).');};document.head.appendChild(s);}
+function houstonUploadBar(){
+  return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;background:var(--panel-bg,#121826);border:1px dashed #2b3a52;border-radius:12px;padding:12px 16px;">'+
+    '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Weekly drop — Osama device report, Sensus alert CSV, Robert stats. Select all three at once; they auto-route.</div>'+
+    '<div><button onclick="houstonUploadClick()" style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:9px 16px;border-radius:8px;border:1px solid #0071BC;background:#0071BC;color:#fff;cursor:pointer;">⬆ Upload weekly files</button>'+
+      '<input type="file" id="houstonFileInput" multiple accept=".xlsx,.xls,.csv" style="display:none;" onchange="houstonFilesChosen(this)"></div>'+
+    '<div id="houstonUploadMsg" style="flex-basis:100%;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--muted);"></div>'+
+  '</div>';
+}
+function houstonFilesChosen(input){
+  var files=input.files;if(!files||!files.length)return;
+  houstonUploadMsg('Reading '+files.length+' file(s)…');
+  houstonLoadXLSX(function(){
+    var done=0,results=[],n=files.length;
+    Array.prototype.forEach.call(files,function(file){
+      var reader=new FileReader();
+      reader.onload=function(e){
+        try{houstonRouteFile(file.name,e.target.result,function(res){results.push(houstonEsc(file.name)+' → '+res);if(++done===n)houstonUploadDone(results);});}
+        catch(err){results.push(houstonEsc(file.name)+' → ERROR '+err.message);if(++done===n)houstonUploadDone(results);}
+      };
+      reader.onerror=function(){results.push(houstonEsc(file.name)+' → read error');if(++done===n)houstonUploadDone(results);};
+      if(/\.csv$/i.test(file.name))reader.readAsText(file);else reader.readAsArrayBuffer(file);
+    });
+  });
+  input.value='';
+}
+function houstonUploadDone(results){houstonUploadMsg('Done.<br>'+results.join('<br>'));setTimeout(function(){if(typeof houstonLiveLoad==='function')houstonLiveLoad();},600);}
+function houstonRouteFile(name,data,cb){
+  var today=new Date().toISOString().slice(0,10);
+  if(/\.csv$/i.test(name)||typeof data==='string'){houstonUpsertAlerts(houstonParseCsv(data),today,cb);return;}
+  var wb=XLSX.read(data,{type:'array'});
+  var ds=null;
+  wb.SheetNames.forEach(function(sn){var r=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,blankrows:false});if(r[0]&&r[0].indexOf&&r[0].indexOf('SiteID')>=0&&!ds)ds=r;});
+  if(ds){houstonUpsertDeviceStatus(ds,today,cb);return;}
+  if(wb.Sheets['Formulas']){houstonUpsertWeekly(XLSX.utils.sheet_to_json(wb.Sheets['Formulas'],{header:1,blankrows:false}),today,cb);return;}
+  cb('unrecognized format (no SiteID sheet, no Formulas sheet)');
+}
+function houstonChunkUpsert(table,conflict,rows,cb,label){
+  if(!rows.length){cb('0 rows');return;}
+  var i=0;(function next(){if(i>=rows.length){cb('✓ '+label);return;}var chunk=rows.slice(i,i+500);i+=500;supa.from(table).upsert(chunk,{onConflict:conflict}).then(function(r){if(r.error){cb('ERROR '+r.error.message);return;}next();});})();
+}
+function houstonUpsertDeviceStatus(rows,today,cb){
+  var seen={},out=[];
+  for(var i=1;i<rows.length;i++){var r=rows[i];if(!r||r[0]==null)continue;var sid=houstonTxt(r[0]);if(!sid||seen[sid])continue;seen[sid]=1;
+    out.push({site_id:sid,site_name:houstonTxt(r[1]),last_sample:houstonExcelDate(r[2]),device_id:houstonTxt(r[3]),expected:houstonNum(r[4]),total_messages:houstonNum(r[5]),install_date:houstonExcelDate(r[6]),description:houstonTxt(r[7]),pct_total:houstonNum(r[8]),sensus_meter_id:houstonTxt(r[9]),report_date:today});}
+  houstonChunkUpsert('houston_device_status','site_id',out,cb,out.length+' devices');
+}
+function houstonUpsertAlerts(rows,today,cb){
+  var seen={},out=[];
+  for(var i=1;i<rows.length;i++){var c=rows[i];if(!c||!c[1])continue;var dev=houstonTxt(c[1]),start=houstonTxt(c[6]),source=houstonTxt(c[5]);var uid=dev+'|'+(start||'')+'|'+(source||'');if(seen[uid])continue;seen[uid]=1;
+    out.push({alert_uid:uid,alert:houstonTxt(c[0]),device_id:dev,flexnet_id:houstonTxt(c[2]),device_type:houstonTxt(c[3]),alert_status:houstonTxt(c[4]),alert_source:source,start_time:houstonUSDateTime(c[6]),end_time:houstonUSDateTime(c[8]),duration:houstonTxt(c[10]),report_date:today});}
+  // alerts are a current snapshot → replace the whole set
+  supa.from('houston_alerts').delete().neq('alert_uid','___never___').then(function(){houstonChunkUpsert('houston_alerts','alert_uid',out,cb,out.length+' alerts (replaced)');});
+}
+function houstonUpsertWeekly(rows,today,cb){
+  var seen={},out=[];
+  for(var i=1;i<rows.length;i++){var r=rows[i];var wk=houstonTxt(r[0]);if(!wk||seen[wk])continue;seen[wk]=1;
+    out.push({week:wk,week_date:houstonExcelDate(r[1]),new_installs:houstonNum(r[2]),replacements:houstonNum(r[3]),maintained:houstonNum(r[4]),need_maintenance:houstonNum(r[5]),total_installed:houstonNum(r[6]),report_date:today});}
+  houstonChunkUpsert('houston_weekly_stats','week',out,cb,out.length+' weeks');
+}
 function houstonLiveLoad(){
   var host=document.getElementById('houstonLivePanel');if(!host)return;
   if(typeof supa==='undefined'||!supa){host.innerHTML='';return;}
@@ -3814,7 +3919,7 @@ function houstonLiveLoad(){
     var total=(r[0]&&r[0].count)||devs.length;
     var alertCount=(r[1]&&r[1].count)||0;
     var wk=((r[2]&&r[2].data)||[])[0]||null;
-    if(!total){host.innerHTML='<div class="us3w-card" style="background:var(--panel-bg);border:1px solid var(--borderb);border-radius:12px;padding:14px 16px;color:var(--muted);font-family:Rajdhani,sans-serif;">No Houston device data loaded yet.</div>';return;}
+    if(!total){host.innerHTML=houstonUploadBar()+'<div class="us3w-card" style="background:var(--panel-bg);border:1px solid var(--borderb);border-radius:12px;padding:14px 16px;color:var(--muted);font-family:Rajdhani,sans-serif;">No Houston device data loaded yet — upload this week\'s files above.</div>';return;}
     var silent=devs.filter(function(d){return (d.total_messages===0||d.total_messages===null)||d.pct_total===0;}).length;
     var reporting=total-silent;
     function kpi(n,l,c){return '<div style="flex:1;min-width:150px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:14px 16px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:38px;line-height:1;color:'+c+';">'+n+'</div><div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em;font-size:12px;color:var(--muted);margin-top:6px;">'+l+'</div></div>';}
@@ -3822,6 +3927,7 @@ function houstonLiveLoad(){
       .sort(function(a,b){return String(a.last_sample||'').localeCompare(String(b.last_sample||''));}).slice(0,150);
     var rowsHtml=down.map(function(d){return '<tr><td><b>'+houstonEsc(d.site_name||d.site_id)+'</b></td><td>'+houstonEsc(d.device_id||'—')+'</td><td>'+houstonEsc(d.description||'—')+'</td><td>'+houstonEsc(d.last_sample||'—')+'</td><td style="text-align:right;">'+(d.total_messages==null?'—':d.total_messages)+'</td></tr>';}).join('');
     host.innerHTML=
+      houstonUploadBar()+
       '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Status</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest upload · '+total+' devices</div></div>'+
       '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;">'+
         kpi(total,'Total devices','var(--text,#e8edf4)')+
