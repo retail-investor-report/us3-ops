@@ -6414,6 +6414,7 @@ function paintDashboard(ops){
       '<div style="display:flex;align-items:center;gap:12px;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
         '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     kpis+
+    '<div id="dashAvail" style="margin-bottom:14px;"></div>'+
     '<div class="us3dash-grid">'+
       panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.')+
       panel('⚠ Overdue for return',overdueHtml,'study ended, devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Cross-check the scan log for a Receive.')+
@@ -6422,6 +6423,34 @@ function paintDashboard(ops){
       panel('🚚 Recent shipments',(ships.length?ships.map(scanRow).join(''):'<div class="us3w-empty">No recent ships.</div>'),'out the door','Most recent "Ship" scans from the warehouse door-scanner log.')+
       panel('📥 Recent returns',(recvs.length?recvs.map(scanRow).join(''):'<div class="us3w-empty">No recent receives.</div>'),'in the door','Most recent "Receive" scans from the warehouse door-scanner log.')+
     '</div>';
+  dashLoadAvail();
+}
+// Availability merged into the dashboard — company-wide kit availability (computed from
+// inventory_components) + reserved/maintenance (warehouse_devices) + live deployed (Fulcrum).
+function dashLoadAvail(){
+  var host=document.getElementById('dashAvail');if(!host||typeof supa==='undefined'||!supa)return;
+  Promise.all([
+    supa.from('inventory_components').select('component_key,qty'),
+    supa.from('warehouse_devices').select('product,status')
+  ]).then(function(r){
+    var comp={};((r[0]&&r[0].data)||[]).forEach(function(row){comp[row.component_key]=(comp[row.component_key]||0)+(Number(row.qty)||0);});
+    var recipes=(typeof US3_KIT_RECIPES!=='undefined')?US3_KIT_RECIPES:{};
+    var labels=(typeof US3_KIT_LABELS!=='undefined')?US3_KIT_LABELS:{ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
+    function kitsFor(p){var min=Infinity;(recipes[p]||[]).forEach(function(rec){var a=Math.floor((comp[rec[0]]||0)/rec[1]);if(a<min)min=a;});return isFinite(min)?min:0;}
+    var wd=(r[1]&&r[1].data)||[];var resv={},maint={};
+    wd.forEach(function(d){if(!d.product)return;if(d.status==='reserved')resv[d.product]=(resv[d.product]||0)+1;else if(d.status==='red')maint[d.product]=(maint[d.product]||0)+1;});
+    var th='<th style="padding:5px 10px;color:#8a97a8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-family:Oswald,sans-serif;">';
+    var rows=Object.keys(labels).map(function(p){
+      return '<tr><td style="padding:5px 10px;font-family:Rajdhani,sans-serif;">'+labels[p]+'</td>'+
+        '<td style="padding:5px 10px;text-align:center;color:#2ecc71;font-weight:700;font-family:Oswald,sans-serif;font-size:18px;">'+kitsFor(p)+'</td>'+
+        '<td style="padding:5px 10px;text-align:center;font-family:Oswald,sans-serif;color:#aebacb;">'+(resv[p]||0)+'</td>'+
+        '<td style="padding:5px 10px;text-align:center;font-family:Oswald,sans-serif;color:#e8a020;">'+(maint[p]||0)+'</td>'+
+        '<td style="padding:5px 10px;text-align:center;font-family:Oswald,sans-serif;color:#0071BC;">'+(typeof getDeployedCount==='function'?getDeployedCount(p):0)+'</td></tr>';
+    }).join('');
+    host.innerHTML=panel('📦 Availability',
+      '<table style="width:100%;border-collapse:collapse;font-size:14px;"><thead><tr>'+th+'text-align:left;">Product</th>'+th+'text-align:center;">Available<br><span style="font-weight:400;text-transform:none;">kits</span></th>'+th+'text-align:center;">Reserved<br><span style="font-weight:400;text-transform:none;">kits</span></th>'+th+'text-align:center;">Maint<br><span style="font-weight:400;text-transform:none;">devices</span></th>'+th+'text-align:center;">Deployed<br><span style="font-weight:400;text-transform:none;">devices</span></th></tr></thead><tbody>'+rows+'</tbody></table>',
+      'company-wide · kits computed from components','Available &amp; Reserved = whole kits (from your warehouse component counts). Maintenance &amp; Deployed = individual devices. Available is 0 until you do a warehouse count on the Inventory tab.');
+  },function(){});
 }
 
 /* ════ SHOP FLOOR cockpit ════ */
