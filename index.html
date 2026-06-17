@@ -645,7 +645,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <!-- ASSET MAP -->
 <div class="page" id="page-assetmap">
   <div class="am-toolbar">
-    <div class="am-title">Asset Map</div>
+    <div class="am-title">Asset Map <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Available = kits · Maintenance = red-tagged devices (live state-coloring coming)</span></div>
     <div class="am-filter active" onclick="amFilter('all',this)">All</div>
     <div class="am-filter" onclick="amFilter('available',this)">Available</div>
     <div class="am-filter" onclick="amFilter('reserved',this)">Reserved</div>
@@ -709,7 +709,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <div class="page" id="page-fleet">
   <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg);">
     <div style="display:flex;align-items:center;gap:12px;padding:8px 22px;border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;flex-wrap:wrap;">
-      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Fleet Map</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Fleet Map <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· kit availability lives on the Availability tab</span></div>
       <div id="fleetFilters" style="display:flex;gap:8px;margin-left:12px;"></div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
         <div onclick="fleetZoom(-2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
@@ -4946,6 +4946,45 @@ function scanStopCamera(){
     scanState.camera.stop().then(function(){try{scanState.camera.clear();}catch(e){}}).catch(function(){});
   }
 }
+// ═══ LABEL PRINTING (Phase 3) — QR + human-readable sticker for green tags / kits / reserves ═══
+function us3PrintLabel(opts){
+  opts=opts||{};
+  var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+  var qr=opts.qr?('<img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&qzone=1&data='+encodeURIComponent(opts.qr)+'" style="width:170px;height:170px;">'):'';
+  var lines=(opts.lines||[]).map(function(l){return '<div style="font-size:15px;margin:3px 0;">'+esc(l)+'</div>';}).join('');
+  var w=window.open('','us3label','width=440,height=560');
+  if(!w){alert('Pop-up blocked — allow pop-ups for this site to print labels.');return;}
+  w.document.write('<html><head><title>'+esc(opts.title||'Label')+'</title><style>body{font-family:Arial,Helvetica,sans-serif;text-align:center;padding:18px;color:#111;}h2{font-size:20px;margin:0 0 10px;letter-spacing:.04em;}@media print{button{display:none;}}</style></head><body>'+
+    '<h2>'+esc(opts.title||'')+'</h2>'+qr+
+    '<div style="font-family:monospace;font-size:22px;font-weight:bold;margin-top:8px;">'+esc(opts.big||'')+'</div>'+
+    '<div style="margin-top:8px;">'+lines+'</div>'+
+    '<button onclick="window.print()" style="margin-top:18px;padding:10px 20px;font-size:14px;">Print</button>'+
+    '<scr'+'ipt>setTimeout(function(){window.print();},350);</scr'+'ipt>'+
+  '</body></html>');
+  w.document.close();
+}
+// Green-tag a device at the station: warehouse_devices=green, log an event, print the sticker.
+function scanGreenTag(code,prod){
+  if(typeof supa==='undefined'||!supa){alert('Offline.');return;}
+  if(!confirm('Green-tag '+code+' as tested & available? A label will print to stick on its green tag.'))return;
+  var tech=scanGetTech()||null,station=scanGetStation()||null;
+  var now=new Date().toISOString();
+  supa.from('warehouse_devices').upsert([{device_id:code,status:'green',product:prod||null,updated_by:tech,updated_at:now}]).then(function(r){
+    if(r&&r.error){alert('Tag failed: '+r.error.message);return;}
+    supa.from('device_events').insert({device_id:code,event_type:'green-tag',status:'Available',tech:tech,station:station});
+    us3PrintLabel({title:'✅ GREEN TAG',big:code,qr:code,lines:[(prod?('Product: '+prod):''),'Tested by: '+(tech||'—'),'Station: '+(station||'—'),new Date().toLocaleString()].filter(Boolean)});
+    scanLookup(code,true);
+  });
+}
+function scanRedTag(code,prod){
+  if(typeof supa==='undefined'||!supa){alert('Offline.');return;}
+  var tech=scanGetTech()||null,now=new Date().toISOString();
+  supa.from('warehouse_devices').upsert([{device_id:code,status:'red',product:prod||null,updated_by:tech,updated_at:now}]).then(function(r){
+    if(r&&r.error){alert('Tag failed: '+r.error.message);return;}
+    supa.from('device_events').insert({device_id:code,event_type:'red-tag',status:'Maintenance',tech:tech,station:scanGetStation()||null});
+    scanLookup(code,true);
+  });
+}
 function scanLookup(code,skipRecent){
   code=(code||'').trim();if(!code)return;
   scanSaveTechStation();
@@ -4980,6 +5019,7 @@ function scanLookup(code,skipRecent){
 }
 function scanShowModal(code,events,loc,site,job,scans){
   scans=scans||[];
+  var prod=(loc&&typeof US3_SENSOR_PRODUCT==='function')?(US3_SENSOR_PRODUCT(loc.sensor_type)||''):'';
   var ctxHtml;
   if(loc||site){
     var siteName=loc?(loc.site_name||''):(site?(site.site_id||''):'');
@@ -5032,10 +5072,12 @@ function scanShowModal(code,events,loc,site,job,scans){
       '<div><label class="us3b2-label">Station</label><input id="scanFStation" class="us3b2-input" value="'+us3esc(scanGetStation())+'"></div>'+
     '</div>'+
     '<div style="margin-top:12px;"><label class="us3b2-label">Notes</label><textarea id="scanFNotes" class="us3b2-ta" rows="2" placeholder="Optional"></textarea></div>'+
-    '<div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">'+
+    '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">'+
       '<button class="us3b2-btn alt" onclick="us3b2CloseModal()">Close</button>'+
       '<button class="us3b2-btn alt" onclick="us3b2CloseModal();if(window.US3)US3.openDevice(\''+us3esc(code).replace(/'/g,"")+'\')">Open full page ↗</button>'+
-      '<button class="us3b2-btn green" onclick="scanSubmitEvent(\''+us3esc(code).replace(/'/g,"")+'\')">Log Event</button>'+
+      '<button class="us3b2-btn red" onclick="scanRedTag(\''+us3esc(code).replace(/'/g,"")+'\',\''+prod+'\')">🔴 Red-tag</button>'+
+      '<button class="us3b2-btn green" onclick="scanGreenTag(\''+us3esc(code).replace(/'/g,"")+'\',\''+prod+'\')">🟢 Green-tag + print</button>'+
+      '<button class="us3b2-btn" onclick="scanSubmitEvent(\''+us3esc(code).replace(/'/g,"")+'\')">Log Event</button>'+
     '</div>'+
   '</div>';
   us3b2OpenModal(html);
@@ -5063,6 +5105,45 @@ function kitNewId(){var d=new Date();var s=d.getFullYear()+('0'+(d.getMonth()+1)
 function kitStatusPill(st){var c=US3_KIT_STATUS_COLORS[String(st||'').toLowerCase()]||'#3a3f4a';return '<span class="us3b2-pill" style="background:'+c+';color:#0a0e16;">'+us3esc(st||'—')+'</span>';}
 function kitCricketCleared(kit){return (kit.notes||'').indexOf('[CRICKET-CLEARED]')>=0;}
 
+// ═══ KIT LIFECYCLE (Phase 3) — green device → reserve → ship, on warehouse_devices ═══
+var klLastBody='';
+function klMsg(t){var m=document.getElementById('klMsg');if(m)m.innerHTML=t;}
+function klCopy(){if(navigator.clipboard&&klLastBody){navigator.clipboard.writeText(klLastBody);klMsg('Copied to clipboard.');}return false;}
+function klReadIds(){var ta=document.getElementById('klIds');if(!ta)return[];var seen={},out=[];(ta.value||'').split(/[\s,]+/).forEach(function(s){s=s.trim();if(s&&!seen[s]){seen[s]=1;out.push(s);}});return out;}
+function klJobName(){var j=(us3v('klJob')||'').trim();if(!j)return null;var temp=document.getElementById('klTemp')&&document.getElementById('klTemp').checked;return (temp?'TEMP: ':'')+j;}
+function klBy(){return ((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;}
+function kitlifeLabels(){
+  var ids=klReadIds();if(!ids.length){klMsg('Scan at least one device ID.');return;}
+  ids.forEach(function(id){us3PrintLabel({title:'📦 KIT',big:id,qr:id,lines:['Kit (1 device)','Built '+new Date().toLocaleDateString()]});});
+  klMsg(ids.length+' kit label(s) sent to print.');
+}
+function kitlifeReserve(){
+  var ids=klReadIds();if(!ids.length){klMsg('Scan at least one device ID.');return;}
+  var job=klJobName();if(!job){klMsg('Enter a job number/name (or tick Temp job).');return;}
+  if(typeof supa==='undefined'||!supa){klMsg('Offline.');return;}
+  var loc=(us3v('klLoc')||'').trim(),now=new Date().toISOString();
+  var rows=ids.map(function(id){return {device_id:id,status:'reserved',job:job,note:loc||null,updated_by:klBy(),updated_at:now};});
+  supa.from('warehouse_devices').upsert(rows).then(function(r){
+    if(r.error){klMsg('Reserve failed: '+r.error.message);return;}
+    ids.forEach(function(id){us3PrintLabel({title:'📌 RESERVED',big:id,qr:id,lines:['Job: '+job,(loc?('Location: '+loc):''),'Reserved '+new Date().toLocaleDateString()].filter(Boolean)});});
+    klMsg('✓ '+ids.length+' device(s) reserved for '+us3esc(job)+'.');
+  });
+}
+function kitlifeShip(){
+  var ids=klReadIds();if(!ids.length){klMsg('Scan at least one device ID.');return;}
+  var job=klJobName()||'(unassigned)';
+  if(typeof supa==='undefined'||!supa){klMsg('Offline.');return;}
+  var loc=(us3v('klLoc')||'').trim(),now=new Date().toISOString();
+  var rows=ids.map(function(id){return {device_id:id,status:'deployed_pending',job:job,note:loc||null,updated_by:klBy(),updated_at:now};});
+  supa.from('warehouse_devices').upsert(rows).then(function(r){
+    if(r.error){klMsg('Ship failed: '+r.error.message);return;}
+    var subj='Devices shipped to '+job;
+    klLastBody='These devices are going to '+job+(loc?(' ('+loc+')'):'')+'. Please set up the sites in Fulcrum and assign these device IDs:\n\n'+ids.join('\n')+'\n\nThanks.';
+    var mail='mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(klLastBody);
+    klMsg('✓ '+ids.length+' shipped (deployed-pending). <a href="'+mail+'" style="color:#0071BC;">✉ Email Jonathan &amp; Chris</a> &middot; <a href="#" onclick="return klCopy()" style="color:#0071BC;">copy text</a>');
+    ids.forEach(function(id){us3PrintLabel({title:'🚚 SHIPPED',big:id,qr:id,lines:['Job: '+job,(loc?('Location: '+loc):''),'Shipped '+new Date().toLocaleDateString()].filter(Boolean)});});
+  });
+}
 function renderKit(){
   us3b2InjectCSS();
   var inner=document.getElementById('kitInner');if(!inner)return;
@@ -5070,8 +5151,24 @@ function renderKit(){
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
     '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">📦 Build / Ship Kit</div>'+
+    '<div class="us3b2-card" style="border:1px solid #2b3a52;">'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:4px;">🔄 Kit Lifecycle <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">scan green devices → print labels → reserve → ship</span></div>'+
+      '<div style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-bottom:8px;">Each device = 1 kit. Reserve/Ship update its status in the system and print a sticker for the tote.</div>'+
+      '<textarea id="klIds" rows="4" placeholder="Scan or paste device IDs — one per line" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:14px;padding:8px;border:1px solid var(--borderb);border-radius:6px;background:var(--input-bg,#0e1420);color:var(--text);"></textarea>'+
+      '<div class="us3b2-grid3" style="margin-top:8px;align-items:end;">'+
+        '<div><label class="us3b2-label">Job</label><input id="klJob" class="us3b2-input" placeholder="Job number or name"></div>'+
+        '<div><label class="us3b2-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="klTemp" style="width:16px;height:16px;"> Temp job (flag to fix later)</label></div>'+
+        '<div><label class="us3b2-label">Location / destination</label><input id="klLoc" class="us3b2-input" placeholder="Site / city"></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'+
+        '<button class="us3b2-btn" onclick="kitlifeLabels()">🏷 Print kit labels</button>'+
+        '<button class="us3b2-btn alt" onclick="kitlifeReserve()">📌 Reserve for job</button>'+
+        '<button class="us3b2-btn green" onclick="kitlifeShip()">🚚 Ship (out the door)</button>'+
+      '</div>'+
+      '<div id="klMsg" style="margin-top:8px;font-size:13px;font-family:Rajdhani,sans-serif;color:var(--muted);"></div>'+
+    '</div>'+
     '<div class="us3b2-card">'+
-      '<div class="us3b2-h" style="font-size:16px;margin-bottom:12px;">New Kit</div>'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:12px;">New Kit <span style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">(legacy kit records)</span></div>'+
       '<div class="us3b2-grid2">'+
         '<div><label class="us3b2-label">Kit ID</label><input id="kitNewIdInput" class="us3b2-input" value="'+kitNewId()+'"></div>'+
         '<div><label class="us3b2-label">Product type</label><select id="kitNewProd" class="us3b2-select">'+prodOpts+'</select></div>'+
@@ -5298,12 +5395,18 @@ var US3_COMPONENTS=[
 var US3_KIT_RECIPES={ff:[['ff_rtu',1],['ff_sensor',1]],cric:[['cric_rtu',1],['cric_sensor',1]],hach:[['hach_logger',1],['hach_flodar',1]],rg:[['rg_rtu',1],['rg_bucket',1],['rg_tripod',1]]};
 var US3_KIT_LABELS={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
 var invState={}; // office -> {component_key: qty}
+var invGreen={}; // product -> count of green-tagged serial devices (warehouse_devices)
 function invLoadAndRender(office){
   var card=document.getElementById('invCard');if(!card||!office)return;
   if(typeof supa==='undefined'||!supa){card.innerHTML='<div class="us3b2-warn">Offline — inventory needs Supabase.</div>';return;}
-  supa.from('inventory_components').select('component_key,qty').eq('office',office).then(function(r){
-    var map={};((r&&r.data)||[]).forEach(function(row){map[row.component_key]=Number(row.qty)||0;});
-    invState[office]=map;invRender(office);
+  Promise.all([
+    supa.from('inventory_components').select('component_key,qty').eq('office',office),
+    supa.from('warehouse_devices').select('product').eq('status','green')
+  ]).then(function(r){
+    var map={};((r[0]&&r[0].data)||[]).forEach(function(row){map[row.component_key]=Number(row.qty)||0;});
+    invState[office]=map;
+    var g={};((r[1]&&r[1].data)||[]).forEach(function(d){if(d.product)g[d.product]=(g[d.product]||0)+1;});
+    invGreen=g;invRender(office);
   },function(){card.innerHTML='<div class="us3b2-warn">Could not load inventory.</div>';});
 }
 function invQty(office,key){var m=invState[office]||{};return m[key]==null?0:m[key];}
@@ -5330,7 +5433,12 @@ function invRender(office){
   var byProd={};US3_COMPONENTS.forEach(function(c){(byProd[c.product]=byProd[c.product]||[]).push(c);});
   var groups=Object.keys(US3_KIT_LABELS).map(function(p){
     var rows=byProd[p].map(function(c){
-      var flag=c.serial&&invQty(office,c.key)>0?' <span title="Serial device — scan/enter its serial numbers in the Build Kit / Red Tag step" style="color:#e8a020;cursor:help;">⚠ serials</span>':'';
+      var flag='';
+      if(c.serial){
+        var q=invQty(office,c.key),gn=invGreen[c.product]||0;
+        if(q>0&&gn<q)flag=' <span title="Scanned green serials are fewer than the counted RTUs — scan the rest on the green shelf (Red Tag tab)." style="color:#e8a020;cursor:help;">⚠ '+gn+'/'+q+' serials scanned</span>';
+        else if(q>0)flag=' <span style="color:#2ecc71;">✓ '+gn+' serials</span>';
+      }
       return '<tr><td><b>'+us3esc(c.label)+'</b>'+(c.serial?' <span style="font-size:11px;color:#8a97a8;">(serial)</span>':'')+flag+'</td>'+
         '<td style="text-align:right;"><input class="us3b2-input" style="width:90px;text-align:center;" inputmode="numeric" value="'+invQty(office,c.key)+'" onchange="invSetQty(\''+office+'\',\''+c.key+'\',this.value)"></td></tr>';
     }).join('');
