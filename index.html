@@ -1722,14 +1722,14 @@ function loadLiveStock(cb){
   Promise.all([
     supa.from('inventory_components').select('office,component_key,qty'),
     supa.from('warehouse_devices').select('product,status,office'),
-    supa.from('device_locations').select('project_no,sensor_type').eq('status','deployed')
+    supa.from('device_locations').select('device_id,project_no,sensor_type,site_name').eq('status','deployed')
   ]).then(function(r){
     var comp={};((r[0]&&r[0].data)||[]).forEach(function(row){(comp[row.office]=comp[row.office]||{})[row.component_key]=Number(row.qty)||0;});
     var recipes=(typeof US3_KIT_RECIPES!=='undefined')?US3_KIT_RECIPES:{};
     var kits={};Object.keys(comp).forEach(function(off){kits[off]={};Object.keys(recipes).forEach(function(p){var min=Infinity;recipes[p].forEach(function(rec){var a=Math.floor((comp[off][rec[0]]||0)/rec[1]);if(a<min)min=a;});kits[off][p]=isFinite(min)?min:0;});});
     var resv={},maint={};((r[1]&&r[1].data)||[]).forEach(function(d){if(!d.product)return;var o=d.office||'_';if(d.status==='reserved'){(resv[o]=resv[o]||{})[d.product]=((resv[o]||{})[d.product]||0)+1;}else if(d.status==='red'){(maint[o]=maint[o]||{})[d.product]=((maint[o]||{})[d.product]||0)+1;}});
-    var dbj={};((r[2]&&r[2].data)||[]).forEach(function(d){if(!d.project_no)return;var p=(typeof US3_SENSOR_PRODUCT==='function')?(US3_SENSOR_PRODUCT(d.sensor_type)||'unknown'):'unknown';(dbj[d.project_no]=dbj[d.project_no]||{})[p]=((dbj[d.project_no]||{})[p]||0)+1;});
-    liveStock={ready:true,tried:true,kits:kits,reserved:resv,maint:maint,deployedByJob:dbj};
+    var dbj={},dlist=[];((r[2]&&r[2].data)||[]).forEach(function(d){if(!d.project_no)return;var p=(typeof US3_SENSOR_PRODUCT==='function')?(US3_SENSOR_PRODUCT(d.sensor_type)||'unknown'):'unknown';(dbj[d.project_no]=dbj[d.project_no]||{})[p]=((dbj[d.project_no]||{})[p]||0)+1;dlist.push({device_id:d.device_id,product:p,project_no:d.project_no,site_name:d.site_name});});
+    liveStock={ready:true,tried:true,kits:kits,reserved:resv,maint:maint,deployedByJob:dbj,deployedList:dlist};
     if(cb)cb();
   },function(){if(cb)cb();});
 }
@@ -4102,6 +4102,7 @@ function showFleetToast(msg){
 
 function renderFleet(){
   if(!liveStock.tried){liveStock.tried=true;loadLiveStock(function(){renderFleet();});}
+  if(window.US3&&typeof US3.live==='function'&&window.US3Live&&!US3Live.loaded&&!US3Live.loading){US3.live().then(function(){renderFleet();},function(){});}
   // Set default dates if empty
   var aqStart=document.getElementById('aq-start');
   var aqEnd=document.getElementById('aq-end');
@@ -4139,7 +4140,19 @@ function renderFleet(){
     totalRes+=liveCount(o.id,fleetProduct,'reserved');
     totalMaint+=liveCount(o.id,fleetProduct,'maintenance');
   });
-  var totalDeployed=getDeployedCount(fleetProduct);
+  // Deployed units come from real Fulcrum installs (device_locations), filtered to the
+  // current product + active jobs. Each row carries its real device ID, job and site.
+  var fjb=(window.US3Live&&US3Live.jobByNum)?US3Live.jobByNum:null;
+  var fHaveJobs=fjb&&Object.keys(fjb).length>0;
+  var deployedUnits=[];
+  if(liveStock.ready&&liveStock.deployedList){
+    deployedUnits=liveStock.deployedList.filter(function(d){
+      if(d.product!==fleetProduct)return false;
+      if(fHaveJobs){var j=fjb[d.project_no];if(!j||j.project_status==='Project Completed'||j.project_status==='Removal Complete')return false;}
+      return true;
+    });
+  }
+  var totalDeployed=(liveStock.ready&&liveStock.deployedList)?deployedUnits.length:getDeployedCount(fleetProduct);
   var totalUnits=totalAvail+totalRes+totalMaint+totalDeployed;
   if(totalUnits<1)totalUnits=1;
 
@@ -4157,8 +4170,8 @@ function renderFleet(){
     // Maintenance rows start ORANGE
     for(var i=0;i<maint;i++){assets.push({id:unitNum++,baseStatus:'maintenance',office:o.label,officeId:o.id});}
   });
-  // Company deployed rows start BLUE
-  for(var i=0;i<totalDeployed;i++){assets.push({id:unitNum++,baseStatus:'deployed',office:'Deployed',officeId:'company'});}
+  // Company deployed rows start BLUE — tagged with real Fulcrum device/job/site
+  for(var i=0;i<totalDeployed;i++){var du=deployedUnits[i];assets.push({id:unitNum++,baseStatus:'deployed',office:du&&du.project_no?du.project_no:'Deployed',officeId:'company',deviceId:du?du.device_id:null,fulcrumJob:du?du.project_no:null,site:du?du.site_name:null});}
 
   // STEP 2 — Initialize the 2D status grid
   var numRows=assets.length;
@@ -4168,9 +4181,10 @@ function renderFleet(){
   for(var r=0;r<numRows;r++){
     assetWeekStatus[r]=[];
     assetWeekJobInfo[r]=[];
+    var preJi=(assets[r].baseStatus==='deployed'&&assets[r].fulcrumJob)?{job:assets[r].fulcrumJob,jobNum:assets[r].fulcrumJob,site:assets[r].site,deviceId:assets[r].deviceId,fulcrum:true}:null;
     for(var c=0;c<numCols;c++){
       assetWeekStatus[r][c]=assets[r].baseStatus;
-      assetWeekJobInfo[r][c]=null;
+      assetWeekJobInfo[r][c]=preJi;
     }
   }
 
@@ -4324,8 +4338,8 @@ function renderFleet(){
   for(var r=0;r<numRows;r++){
     var lbl=document.createElement('div');
     lbl.style.cssText='height:'+cellSize+'px;line-height:'+cellSize+'px;font-family:"Rajdhani",sans-serif;font-size:'+lblFontSize+'px;color:var(--text);padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-    lbl.textContent=p.icon+' #'+assets[r].id;
-    lbl.title=p.label+' #'+assets[r].id+' ('+assets[r].office+') — '+assets[r].baseStatus;
+    lbl.textContent=p.icon+' '+(assets[r].deviceId?('#'+assets[r].deviceId):('#'+assets[r].id));
+    lbl.title=p.label+' '+(assets[r].deviceId?('#'+assets[r].deviceId):('#'+assets[r].id))+' ('+assets[r].office+') — '+assets[r].baseStatus+(assets[r].site?(' @ '+assets[r].site):'');
     labels.appendChild(lbl);
   }
 
@@ -4361,7 +4375,7 @@ function renderFleet(){
       var isReserved=st.indexOf('reserved')===0;
       var statusLabel,statusColor,detail='';
       if(isReserved){statusLabel='Reserved';statusColor='#4a5568';if(ji)detail=ji.job+' \u2014 '+fmtShort(ji.start)+' to '+fmtShort(ji.end);}
-      else if(st==='deployed'){statusLabel='Deployed';statusColor='#0071BC';detail=ji?(ji.job+' \u2014 '+fmtShort(ji.start)+' to '+fmtShort(ji.end)):'In Field';}
+      else if(st==='deployed'){statusLabel='Deployed';statusColor='#0071BC';detail=ji?(ji.fulcrum?((ji.deviceId?(ji.deviceId+' \u00b7 '):'')+ji.job+(ji.site?(' \u00b7 '+ji.site):'')):(ji.job+' \u2014 '+fmtShort(ji.start)+' to '+fmtShort(ji.end))):'In Field';}
       else if(st==='maintenance'){statusLabel='Maintenance';statusColor='#e8a020';detail='Under Assessment';}
       else{statusLabel='Available';statusColor='#00c49a';}
       var weekLabel=weeks[col].toLocaleDateString('en-US',{month:'short',day:'numeric'});
