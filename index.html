@@ -550,7 +550,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="kit" onclick="sw('kit',this)"><span class="ti">📦</span>Build Kit</div>
     <div class="ntab" data-page="count" onclick="sw('count',this)"><span class="ti">🧮</span>Warehouse Count</div>
-    <div class="ntab" data-page="shop" onclick="sw('shop',this);if(window.US3)US3.renderShop()"><span class="ti">🏭</span>Shop Floor</div>
+    <div class="ntab" data-page="shop" onclick="sw('shop',this);if(window.US3)US3.renderShop()"><span class="ti">🏭</span>Ship Station</div>
     <div class="ntab" data-page="devmap" onclick="sw('devmap',this)"><span class="ti">📍</span>Device Map</div>
     <div class="ntab" data-page="viewer" onclick="sw('viewer',this)"><span class="ti">🧊</span>Product 3D</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
@@ -3651,12 +3651,48 @@ function renderHoustonTable(){
     '</div>';
 }
 
+function houstonLiveLoad(){
+  var host=document.getElementById('houstonLivePanel');if(!host)return;
+  if(typeof supa==='undefined'||!supa){host.innerHTML='';return;}
+  Promise.all([
+    supa.from('houston_device_status').select('site_id,site_name,device_id,description,last_sample,total_messages,pct_total',{count:'exact'}),
+    supa.from('houston_alerts').select('device_id',{count:'exact'}).eq('alert_status','Active'),
+    supa.from('houston_weekly_stats').select('*').order('week_date',{ascending:false}).limit(1)
+  ]).then(function(r){
+    var devs=(r[0]&&r[0].data)||[];
+    var total=(r[0]&&r[0].count)||devs.length;
+    var alertCount=(r[1]&&r[1].count)||0;
+    var wk=((r[2]&&r[2].data)||[])[0]||null;
+    if(!total){host.innerHTML='<div class="us3w-card" style="background:var(--panel-bg);border:1px solid var(--borderb);border-radius:12px;padding:14px 16px;color:var(--muted);font-family:Rajdhani,sans-serif;">No Houston device data loaded yet.</div>';return;}
+    var silent=devs.filter(function(d){return (d.total_messages===0||d.total_messages===null)||d.pct_total===0;}).length;
+    var reporting=total-silent;
+    function kpi(n,l,c){return '<div style="flex:1;min-width:150px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:14px 16px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:38px;line-height:1;color:'+c+';">'+n+'</div><div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em;font-size:12px;color:var(--muted);margin-top:6px;">'+l+'</div></div>';}
+    var down=devs.filter(function(d){return (d.total_messages===0||d.total_messages===null)||d.pct_total===0;})
+      .sort(function(a,b){return String(a.last_sample||'').localeCompare(String(b.last_sample||''));}).slice(0,150);
+    var rowsHtml=down.map(function(d){return '<tr><td><b>'+houstonEsc(d.site_name||d.site_id)+'</b></td><td>'+houstonEsc(d.device_id||'—')+'</td><td>'+houstonEsc(d.description||'—')+'</td><td>'+houstonEsc(d.last_sample||'—')+'</td><td style="text-align:right;">'+(d.total_messages==null?'—':d.total_messages)+'</td></tr>';}).join('');
+    host.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Status</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest upload · '+total+' devices</div></div>'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;">'+
+        kpi(total,'Total devices','var(--text,#e8edf4)')+
+        kpi(silent,'Silent (0 messages)','#ED1C24')+
+        kpi(reporting,'Reporting','#2ecc71')+
+        kpi(alertCount,'Active comm alerts','#e8a020')+
+        (wk?kpi((wk.need_maintenance==null?'—':wk.need_maintenance),'Need maintenance ('+houstonEsc(wk.week||'')+')','#e8a020'):'')+
+      '</div>'+
+      '<div style="background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;">'+
+        '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Silent / down devices'+(down.length>=150?' (top 150 by oldest sample)':' ('+down.length+')')+'</div>'+
+        '<div style="max-height:340px;overflow:auto;"><table class="us3w-tbl" style="width:100%;"><thead><tr><th>Site</th><th>Device</th><th>Type</th><th>Last sample</th><th style="text-align:right;">Msgs</th></tr></thead><tbody>'+(rowsHtml||'<tr><td colspan="5" style="color:var(--muted);padding:10px;">None — all devices reporting.</td></tr>')+'</tbody></table></div>'+
+      '</div>'+
+      '<hr style="border:none;border-top:1px solid var(--borderb,#243044);margin:22px 0;">';
+  },function(){host.innerHTML='';});
+}
 function renderHouston(){
   var inner=document.getElementById('houstonInner');
   if(!inner)return;
+  setTimeout(houstonLiveLoad,0);
   var reports=getHoustonReports();
   var latest=getLatestHoustonReport();
-  var titleHtml='<div class="dc-title">Houston Fleet Health</div><div class="dc-sub">Cricket project · Monthly device-health snapshots from Osama</div>';
+  var titleHtml='<div id="houstonLivePanel"></div><div class="dc-title">Houston Fleet Health</div><div class="dc-sub">Cricket project · Monthly device-health snapshots from Osama</div>';
   if(!latest){
     inner.innerHTML=titleHtml+
       '<div style="padding:32px;text-align:center;color:var(--muted);font-family:Rajdhani,sans-serif;font-size:15px;border:1px dashed var(--borderb);border-radius:8px;margin:24px 0;">No Houston report imported yet. Click "Import Report" to get started.</div>'+
@@ -4812,26 +4848,29 @@ function scanLookup(code,skipRecent){
   Promise.all([
     supa.from('device_events').select('*').eq('device_id',code).order('created_at',{ascending:false}).limit(60),
     supa.from('device_locations').select('*').eq('device_id',code).limit(1),
-    supa.from('sites').select('*').eq('device_sn',code).limit(1)
+    supa.from('sites').select('*').eq('device_sn',code).limit(1),
+    supa.from('device_scans').select('*').eq('device_id',code).order('scanned_at',{ascending:false}).limit(60)
   ]).then(function(res){
     var events=(res[0]&&res[0].data)||[];
     var loc=((res[1]&&res[1].data)||[])[0]||null;
     var site=((res[2]&&res[2].data)||[])[0]||null;
+    var scans=(res[3]&&res[3].data)||[];
     if(!skipRecent){
       scanState.recent=scanState.recent.filter(function(r){return r.code!==code;});
-      scanState.recent.unshift({code:code,ts:new Date().toISOString(),count:events.length});
+      scanState.recent.unshift({code:code,ts:new Date().toISOString(),count:events.length+scans.length});
       if(scanState.recent.length>25)scanState.recent.pop();
       scanRenderRecent();
     }
     var jobNo=loc?loc.project_no:(site?site.job_number:null);
     if(jobNo){
       supa.from('jobs').select('*').eq('job_number',jobNo).limit(1).then(function(jr){
-        scanShowModal(code,events,loc,site,((jr&&jr.data)||[])[0]||null);
+        scanShowModal(code,events,loc,site,((jr&&jr.data)||[])[0]||null,scans);
       });
-    }else scanShowModal(code,events,loc,site,null);
+    }else scanShowModal(code,events,loc,site,null,scans);
   });
 }
-function scanShowModal(code,events,loc,site,job){
+function scanShowModal(code,events,loc,site,job,scans){
+  scans=scans||[];
   var ctxHtml;
   if(loc||site){
     var siteName=loc?(loc.site_name||''):(site?(site.site_id||''):'');
@@ -4856,7 +4895,14 @@ function scanShowModal(code,events,loc,site,job){
     hist='<table class="us3b2-tbl"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Failure</th><th>Notes</th><th>Tech</th><th>Station</th></tr></thead><tbody>'+
       events.map(function(e){return '<tr><td>'+us3fmtTs(e.created_at)+'</td><td>'+us3esc(e.event_type||'')+'</td><td>'+(e.status?us3StatusPill(e.status):'—')+'</td><td>'+us3esc(e.failure_reason||'—')+'</td><td>'+us3esc(e.notes||'')+'</td><td>'+us3esc(e.tech||'')+'</td><td>'+us3esc(e.station||'')+'</td></tr>';}).join('')+
       '</tbody></table>';
-  }else hist='<div class="us3b2-empty">No prior events for this device.</div>';
+  }else hist='<div class="us3b2-empty">No prior warehouse events for this device.</div>';
+  // Movement history (ship/receive/inventory) from the door-scanner log — the "where has it been" trail.
+  function scanDirChip(d){var s=(d||'').toLowerCase();var c=s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';return '<span class="us3b2-pill" style="background:'+c+';color:#fff;">'+us3esc(d||'—')+'</span>';}
+  var moveHist=scans.length?
+    ('<table class="us3b2-tbl"><thead><tr><th>When</th><th>Direction</th><th>Location</th><th>Note</th><th>Client</th><th>Job</th></tr></thead><tbody>'+
+      scans.map(function(s){return '<tr><td>'+us3fmtTs(s.scanned_at)+'</td><td>'+scanDirChip(s.direction)+'</td><td>'+us3esc(s.location||'—')+'</td><td>'+us3esc(s.note||'')+'</td><td>'+us3esc(s.client_name||'')+'</td><td>'+us3esc(s.job_number||'')+'</td></tr>';}).join('')+
+      '</tbody></table>')
+    :'<div class="us3b2-empty">No ship / receive scans for this device in the door-scanner log.</div>';
   var failOpts='<option value="">— none —</option>'+(typeof FAIL_CATS!=='undefined'?FAIL_CATS:[]).map(function(c){return '<option>'+us3esc(c)+'</option>';}).join('');
   var statusOpts='<option value="">— no change —</option>'+US3_SCAN_STATUSES.map(function(s){return '<option>'+s+'</option>';}).join('');
   var typeOpts=['lookup','status','return','repair','received'].map(function(t){return '<option'+(t==='lookup'?' selected':'')+'>'+t+'</option>';}).join('');
@@ -4864,7 +4910,8 @@ function scanShowModal(code,events,loc,site,job){
   '<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:22px;">'+us3esc(code)+'</div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div>'+
   '<div class="us3b2-mbody">'+
     '<div class="us3b2-label">Context</div>'+ctxHtml+
-    '<div class="us3b2-label" style="margin-top:16px;">History ('+events.length+')</div><div style="max-height:240px;overflow:auto;">'+hist+'</div>'+
+    '<div class="us3b2-label" style="margin-top:16px;">Movement history — ship / receive ('+scans.length+')</div><div style="max-height:240px;overflow:auto;">'+moveHist+'</div>'+
+    '<div class="us3b2-label" style="margin-top:16px;">Warehouse events ('+events.length+')</div><div style="max-height:240px;overflow:auto;">'+hist+'</div>'+
     '<div class="us3b2-label" style="margin-top:18px;">Log an event</div>'+
     '<div class="us3b2-grid3">'+
       '<div><label class="us3b2-label">Event type</label><select id="scanFType" class="us3b2-select">'+typeOpts+'</select></div>'+
@@ -5133,7 +5180,10 @@ function renderCount(){
   var inner=document.getElementById('countInner');if(!inner)return;
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
-    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">🧮 Warehouse Kit Count</div>'+
+    '<div class="us3b2-h" style="font-size:30px;margin-bottom:4px;">🧮 Warehouse Kit Count'+
+      '<span title="A physical-count reconciliation check. Pick an office, enter how many kits you physically count of each type, and it compares your count against the EXPECTED on-hand (available + reserved + maintenance) and flags any variance. Save Snapshot stores the count for the record. NOTE: the numbers you type here do NOT update Availability, the Fleet Map, or the Asset Map — it is a one-way audit tool for now." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
+    '</div>'+
+    '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;margin-bottom:14px;">Physical-count check: your count vs expected on-hand, per office. Audit only — it doesn’t change inventory elsewhere (yet).</div>'+
     '<div class="us3b2-card">'+
       '<label class="us3b2-label">Office</label>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+offBtns+'</div>'+
@@ -5304,12 +5354,17 @@ function devMapBuild(data){
     devmapMap.invalidateSize();
     if(pts.length){try{devmapMap.fitBounds(pts,{padding:[30,30],maxZoom:12});}catch(e){devmapMap.setView(pts[0],10);}}
   },220);
-  if(info){
-    var bits='Source: <b>'+us3esc(data.source)+'</b> · '+withCoords.length+' mapped';
-    if(missing)bits+=' · <span style="color:#e8a020;">'+missing+' missing coords</span>';
-    if(act.ready&&histTotal)bits+=' · <span style="color:#8a97a8;">'+histTotal+' historical'+(devmapActiveOnly?' hidden':' shown faded')+'</span>';
-    info.innerHTML=bits;
-  }
+  if(info)info.innerHTML='Source: <b>'+us3esc(data.source)+'</b>';
+  // Big, legible stats panel ON the map (top-right) — the header text was too small.
+  var ov=document.getElementById('devmapStats'); if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);
+  ov=document.createElement('div'); ov.id='devmapStats';
+  ov.style.cssText='position:absolute;top:14px;right:14px;z-index:1200;pointer-events:none;background:rgba(10,14,22,.88);border:1px solid #2b3a52;border-radius:14px;padding:14px 20px;font-family:Oswald,sans-serif;color:#e8edf4;box-shadow:0 8px 26px rgba(0,0,0,.5);text-align:right;';
+  var ovh='<div style="font-size:48px;font-weight:700;line-height:1;color:#0071BC;">'+withCoords.length+'</div>'+
+    '<div style="font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#aebacb;margin-top:2px;">devices mapped</div>';
+  if(missing)ovh+='<div style="font-size:16px;color:#e8a020;margin-top:10px;">⚠ '+missing+' missing coords</div>';
+  if(act.ready&&histTotal)ovh+='<div style="font-size:16px;color:#9aa3b2;margin-top:'+(missing?'4px':'10px')+';">'+histTotal+' historical '+(devmapActiveOnly?'hidden':'shown faded')+'</div>';
+  ov.innerHTML=ovh;
+  box.appendChild(ov);
 }
 
 // ═══ PHASE 5 — FAILURE ANALYTICS (Pareto + Fishbone on device_events) ═══
@@ -5893,7 +5948,7 @@ var TOUR=[
   {h:'Welcome to US3 Operations',p:'This is your live operations hub. The data here is pulled automatically from three places — your Airtable job tracker, the Fulcrum field app, and the warehouse door-scanner log. Nothing here is typed by hand. Let me show you around.'},
   {h:'Dashboard',p:'The landing page. Top row = live counts (jobs in the ground, devices deployed, devices out the door). Below are the things that need your attention: studies ending soon, equipment overdue for return, upcoming jobs, and data-hygiene alerts. Every card is clickable.'},
   {h:'Where the jobs come from',p:'“Jobs” are your company Airtable project tracker (last synced June 4). That includes early sales-stage jobs (“New”) you may not recognise yet — they only become warehouse-relevant once devices ship. “In the ground” now means a job that actually has deployed devices, not just an open record.'},
-  {h:'Shipping Desk (Shop Floor)',p:'Your daily tool. Look up any device by ID to see its full ship/receive history. Build a shipment: scan/paste device IDs, hit “Copy for email”, and tick them off the packing checklist as they go in the box. Station tiles + activity show the door scanners.'},
+  {h:'Ship Station',p:'Your daily tool. Look up any device by ID to see its full ship/receive history. Build a shipment: scan/paste device IDs, hit “Copy for email”, and tick them off the packing checklist as they go in the box. Station tiles + activity show the door scanners.'},
   {h:'Projects & Schedule',p:'Two views of the same live jobs. Projects = cards; Schedule = a list of what’s in the ground. Click any job to open its page: real Fulcrum devices, sites, dates, value, and links out to the map and each device.'},
   {h:'Device pages',p:'Click any device ID anywhere and you get its page: current field location (Fulcrum), full movement history (the door scans), kit membership, and a Notes section you can add to — handy for flagging a faulty unit.'},
   {h:'Device Map & the rest',p:'Device Map plots deployed devices (filter by job). Build Kit packs/ships totes with a scannable QR manifest. Station Scanner logs devices at a bench. Availability / Fleet Map / Decommission are the older inventory tools. That’s the tour — explore, then tell me what to change.'}
@@ -6018,7 +6073,7 @@ function paintShop(ops){
   inner.innerHTML=
     '<div class="us3dash-wrap" style="padding:14px 18px 60px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px;">'+
-      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Shipping Desk</div>'+
+      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Ship Station</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div></div>'+
     // device lookup
     '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device</div>'+
