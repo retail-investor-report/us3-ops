@@ -709,7 +709,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <div class="page" id="page-fleet">
   <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg);">
     <div style="display:flex;align-items:center;gap:12px;padding:8px 22px;border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;flex-wrap:wrap;">
-      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Fleet Map <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· kit availability lives on the Availability tab</span></div>
+      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Fleet Map <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· live: green = available kits · amber = red-tagged · blue = deployed</span></div>
       <div id="fleetFilters" style="display:flex;gap:8px;margin-left:12px;"></div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
         <div onclick="fleetZoom(-2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
@@ -1713,6 +1713,32 @@ function loadStorage(){
 
 function gc(o,p,s){return kCounts[o+'_'+p+'_'+s]||0;}
 
+// ═══ LIVE STOCK (Phase 2b) — drives the maps from the real model ═══
+// available = computed kits (inventory_components) · reserved/maintenance = warehouse_devices
+var liveStock={ready:false,tried:false};
+function loadLiveStock(cb){
+  if(typeof supa==='undefined'||!supa){if(cb)cb();return;}
+  Promise.all([
+    supa.from('inventory_components').select('office,component_key,qty'),
+    supa.from('warehouse_devices').select('product,status,office')
+  ]).then(function(r){
+    var comp={};((r[0]&&r[0].data)||[]).forEach(function(row){(comp[row.office]=comp[row.office]||{})[row.component_key]=Number(row.qty)||0;});
+    var recipes=(typeof US3_KIT_RECIPES!=='undefined')?US3_KIT_RECIPES:{};
+    var kits={};Object.keys(comp).forEach(function(off){kits[off]={};Object.keys(recipes).forEach(function(p){var min=Infinity;recipes[p].forEach(function(rec){var a=Math.floor((comp[off][rec[0]]||0)/rec[1]);if(a<min)min=a;});kits[off][p]=isFinite(min)?min:0;});});
+    var resv={},maint={};((r[1]&&r[1].data)||[]).forEach(function(d){if(!d.product)return;var o=d.office||'_';if(d.status==='reserved'){(resv[o]=resv[o]||{})[d.product]=((resv[o]||{})[d.product]||0)+1;}else if(d.status==='red'){(maint[o]=maint[o]||{})[d.product]=((maint[o]||{})[d.product]||0)+1;}});
+    liveStock={ready:true,tried:true,kits:kits,reserved:resv,maint:maint};
+    if(cb)cb();
+  },function(){if(cb)cb();});
+}
+function liveCount(office,product,status){
+  if(!liveStock.ready)return gc(office,product,status);
+  if(status==='available')return (liveStock.kits[office]&&liveStock.kits[office][product])||0;
+  if(status==='reserved')return (liveStock.reserved[office]&&liveStock.reserved[office][product])||0;
+  if(status==='maintenance')return (liveStock.maint[office]&&liveStock.maint[office][product])||0;
+  return gc(office,product,status);
+}
+function liveStockRefresh(){liveStock.ready=false;liveStock.tried=false;}
+
 // ═══ NAV ═══
 function sw(id,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -2277,6 +2303,7 @@ function amFilter(state,el){
 
 function renderAssetMap(){
   var canvas=document.getElementById('amCanvas');canvas.innerHTML='';
+  if(!liveStock.tried){liveStock.tried=true;loadLiveStock(function(){renderAssetMap();});}
   canvas.style.setProperty('--am-dot-size',amDotSize+'px');
   var label=document.getElementById('amSizeLabel');if(label)label.textContent=amDotSize+'px';
   var tip=document.getElementById('dotTip');
@@ -2300,7 +2327,7 @@ function renderAssetMap(){
         var dots=document.createElement('div');dots.className='am-dots';
 
         LOC_STATUS.forEach(function(st){
-          var cnt=gc(off.id,pid,st);
+          var cnt=liveCount(off.id,pid,st);
           for(var i=0;i<cnt;i++){
             if(amFilterState!=='all'&&amFilterState!==st)continue;
             var dot=document.createElement('div');
@@ -2799,6 +2826,7 @@ function redTagApply(tag){
   supa.from('warehouse_devices').upsert(rows).then(function(r){
     if(r.error){if(msg)msg.textContent='Save failed: '+r.error.message;return;}
     if(msg)msg.textContent='✓ '+rows.length+' device'+(rows.length===1?'':'s')+' '+tag+'-tagged.';
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     ta.value='';redTagLoad();
   });
 }
@@ -2807,6 +2835,10 @@ function redTagSetStatus(deviceId,status){
   var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
   supa.from('warehouse_devices').update({status:status,updated_by:by,updated_at:new Date().toISOString()}).eq('device_id',deviceId).then(function(r){
     if(r.error){alert('Update failed: '+r.error.message);return;}
+    if(status==='decommissioned'){
+      supa.from('failure_log').upsert([{source_ref:'decomm_wd_'+deviceId,device_id:deviceId,event_kind:'decommission',source:'red_tag',occurred_at:new Date().toISOString()}],{onConflict:'source_ref',ignoreDuplicates:true});
+    }
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     redTagLoad();
   });
 }
@@ -3221,7 +3253,20 @@ function renderRepairPareto(){
 }
 
 function dcCount(arr,t){if(t==='sensor')return arr.filter(function(d){return d.type==='sensor';}).reduce(function(s,d){return s+(d.qty||1);},0);return arr.filter(function(d){return d.type===t;}).length;}
+// Mirror every decommission into the failure_log database (the "own decommission DB").
+// Idempotent (insert-on-conflict-do-nothing). Runs from the browser where us3_decomm lives,
+// so it captures all historical decommissions already on record.
+function decommSyncFailureLog(){
+  if(typeof supa==='undefined'||!supa)return;
+  var arr=decommLog||[];if(!arr.length)return;
+  var rows=arr.map(function(d){
+    var oc=d.date?new Date(d.date):null;if(oc&&isNaN(oc))oc=null;
+    return {source_ref:'decomm_'+String(d.id||((d.date||'')+'_'+(d.type||''))),device_id:String(d.id||''),product:d.type||null,event_kind:'decommission',failure_mode:d.failureMode||null,occurred_at:oc?oc.toISOString():null,notes:d.notes||null,source:'decommission_tab'};
+  });
+  supa.from('failure_log').upsert(rows,{onConflict:'source_ref',ignoreDuplicates:true}).then(function(){},function(){});
+}
 function renderDecomm(){
+  decommSyncFailureLog();
   var now=new Date(),cQ=Math.floor(now.getMonth()/3)+1,cY=now.getFullYear();
   var qs=new Set(['all']);
   decommLog.forEach(function(d){if(d.date){var dt=new Date(d.date);qs.add('Q'+((Math.floor(dt.getMonth()/3)+1))+' '+dt.getFullYear());}});
@@ -3269,7 +3314,7 @@ function saveAddDc(){
   var fm=fmEl?fmEl.value:'';
   if(fm)entry.failureMode=fm;
   decommLog.unshift(entry);
-  sv('us3_decomm',decommLog);closeAddDc();renderDecomm();renderStats();
+  sv('us3_decomm',decommLog);decommSyncFailureLog();closeAddDc();renderDecomm();renderStats();
 }
 
 // ═══ PROJECTS ═══
@@ -3950,6 +3995,7 @@ function showFleetToast(msg){
 }
 
 function renderFleet(){
+  if(!liveStock.tried){liveStock.tried=true;loadLiveStock(function(){renderFleet();});}
   // Set default dates if empty
   var aqStart=document.getElementById('aq-start');
   var aqEnd=document.getElementById('aq-end');
@@ -3983,9 +4029,9 @@ function renderFleet(){
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
-    totalAvail+=gc(o.id,fleetProduct,'available');
-    totalRes+=gc(o.id,fleetProduct,'reserved');
-    totalMaint+=gc(o.id,fleetProduct,'maintenance');
+    totalAvail+=liveCount(o.id,fleetProduct,'available');
+    totalRes+=liveCount(o.id,fleetProduct,'reserved');
+    totalMaint+=liveCount(o.id,fleetProduct,'maintenance');
   });
   var totalDeployed=getDeployedCount(fleetProduct);
   var totalUnits=totalAvail+totalRes+totalMaint+totalDeployed;
@@ -3997,9 +4043,9 @@ function renderFleet(){
   OFFICES.forEach(function(o){
     var prods=o.products||[];
     if(prods.indexOf(fleetProduct)<0)return;
-    var avail=gc(o.id,fleetProduct,'available');
-    var resv=gc(o.id,fleetProduct,'reserved');
-    var maint=gc(o.id,fleetProduct,'maintenance');
+    var avail=liveCount(o.id,fleetProduct,'available');
+    var resv=liveCount(o.id,fleetProduct,'reserved');
+    var maint=liveCount(o.id,fleetProduct,'maintenance');
     // Available + reserved inventory rows all start GREEN on timeline
     for(var i=0;i<avail+resv;i++){assets.push({id:unitNum++,baseStatus:'available',office:o.label,officeId:o.id});}
     // Maintenance rows start ORANGE
@@ -4972,6 +5018,7 @@ function scanGreenTag(code,prod){
   supa.from('warehouse_devices').upsert([{device_id:code,status:'green',product:prod||null,updated_by:tech,updated_at:now}]).then(function(r){
     if(r&&r.error){alert('Tag failed: '+r.error.message);return;}
     supa.from('device_events').insert({device_id:code,event_type:'green-tag',status:'Available',tech:tech,station:station});
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     us3PrintLabel({title:'✅ GREEN TAG',big:code,qr:code,lines:[(prod?('Product: '+prod):''),'Tested by: '+(tech||'—'),'Station: '+(station||'—'),new Date().toLocaleString()].filter(Boolean)});
     scanLookup(code,true);
   });
@@ -4982,6 +5029,7 @@ function scanRedTag(code,prod){
   supa.from('warehouse_devices').upsert([{device_id:code,status:'red',product:prod||null,updated_by:tech,updated_at:now}]).then(function(r){
     if(r&&r.error){alert('Tag failed: '+r.error.message);return;}
     supa.from('device_events').insert({device_id:code,event_type:'red-tag',status:'Maintenance',tech:tech,station:scanGetStation()||null});
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     scanLookup(code,true);
   });
 }
@@ -5125,6 +5173,7 @@ function kitlifeReserve(){
   var rows=ids.map(function(id){return {device_id:id,status:'reserved',job:job,note:loc||null,updated_by:klBy(),updated_at:now};});
   supa.from('warehouse_devices').upsert(rows).then(function(r){
     if(r.error){klMsg('Reserve failed: '+r.error.message);return;}
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     ids.forEach(function(id){us3PrintLabel({title:'📌 RESERVED',big:id,qr:id,lines:['Job: '+job,(loc?('Location: '+loc):''),'Reserved '+new Date().toLocaleDateString()].filter(Boolean)});});
     klMsg('✓ '+ids.length+' device(s) reserved for '+us3esc(job)+'.');
   });
@@ -5137,6 +5186,7 @@ function kitlifeShip(){
   var rows=ids.map(function(id){return {device_id:id,status:'deployed_pending',job:job,note:loc||null,updated_by:klBy(),updated_at:now};});
   supa.from('warehouse_devices').upsert(rows).then(function(r){
     if(r.error){klMsg('Ship failed: '+r.error.message);return;}
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     var subj='Devices shipped to '+job;
     klLastBody='These devices are going to '+job+(loc?(' ('+loc+')'):'')+'. Please set up the sites in Fulcrum and assign these device IDs:\n\n'+ids.join('\n')+'\n\nThanks.';
     var mail='mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(klLastBody);
@@ -5464,6 +5514,7 @@ function invSave(office,btn){
   var rows=US3_COMPONENTS.map(function(c){return {id:office+'__'+c.key,office:office,component_key:c.key,qty:(m[c.key]==null?0:m[c.key]),updated_by:by,updated_at:new Date().toISOString()};});
   supa.from('inventory_components').upsert(rows).then(function(r){
     if(r.error){alert('Save failed: '+r.error.message);return;}
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
     if(btn){btn.textContent='✓ Saved';setTimeout(function(){btn.textContent='Save inventory';},1500);}
   });
 }
