@@ -3918,7 +3918,48 @@ function houstonLiveLoad(){
         '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Silent / down devices'+(down.length>=150?' (top 150 by oldest sample)':' ('+down.length+')')+'</div>'+
         '<div style="max-height:340px;overflow:auto;"><table class="us3w-tbl" style="width:100%;"><thead><tr><th>Site</th><th>Device</th><th>Type</th><th>Last sample</th><th style="text-align:right;">Msgs</th></tr></thead><tbody>'+(rowsHtml||'<tr><td colspan="5" style="color:var(--muted);padding:10px;">None — all devices reporting.</td></tr>')+'</tbody></table></div>'+
       '</div>'+
+      '<div id="houstonAnalytics" style="margin-top:18px;"></div>'+
       '<hr style="border:none;border-top:1px solid var(--borderb,#243044);margin:22px 0;">';
+    houstonAnalyticsRender();
+  },function(){host.innerHTML='';});
+}
+// Houston analytics: silent-duration buckets, repeat-offender devices, weekly maintenance trend.
+function houstonAnalyticsRender(){
+  var host=document.getElementById('houstonAnalytics');if(!host||typeof supa==='undefined'||!supa)return;
+  Promise.all([
+    supa.from('houston_device_status').select('last_sample,total_messages,pct_total,report_date'),
+    supa.from('houston_alerts').select('device_id,alert,device_type'),
+    supa.from('houston_weekly_stats').select('*').order('week_date',{ascending:true})
+  ]).then(function(r){
+    var devs=(r[0]&&r[0].data)||[],alerts=(r[1]&&r[1].data)||[],weeks=(r[2]&&r[2].data)||[];
+    if(!devs.length&&!alerts.length&&!weeks.length){host.innerHTML='';return;}
+    var now=Date.now();
+    // silent-duration buckets
+    var b={reporting:0,d0_30:0,d30_90:0,d90:0,never:0};
+    devs.forEach(function(d){
+      if(d.total_messages>0&&d.pct_total>0){b.reporting++;return;}
+      if(!d.last_sample){b.never++;return;}
+      var days=Math.floor((now-new Date(d.last_sample).getTime())/86400000);
+      if(isNaN(days)){b.never++;}else if(days<=30)b.d0_30++;else if(days<=90)b.d30_90++;else b.d90++;
+    });
+    var bucketRows=[['Reporting','#2ecc71',b.reporting],['Silent ≤30d','#e8a020',b.d0_30],['Silent 30–90d','#ED6A1C',b.d30_90],['Silent 90d+','#ED1C24',b.d90],['No sample ever','#5a6472',b.never]];
+    var maxB=Math.max.apply(null,bucketRows.map(function(x){return x[2];}).concat([1]));
+    var bucketsHtml=bucketRows.map(function(x){return '<div style="margin:5px 0;"><div style="display:flex;justify-content:space-between;font-family:Rajdhani,sans-serif;font-size:13px;"><span>'+x[0]+'</span><span style="color:var(--muted);">'+x[2]+'</span></div><div style="height:13px;background:var(--borderb,#243044);border-radius:7px;overflow:hidden;"><div style="height:100%;width:'+Math.round(x[2]/maxB*100)+'%;background:'+x[1]+';"></div></div></div>';}).join('');
+    // repeat offenders (most alerts per device)
+    var byDev={};alerts.forEach(function(a){if(a.device_id)byDev[a.device_id]=(byDev[a.device_id]||0)+1;});
+    var offenders=Object.keys(byDev).map(function(k){return [k,byDev[k]];}).sort(function(a,b2){return b2[1]-a[1];}).slice(0,10);
+    var offHtml=offenders.length?('<table class="us3w-tbl" style="width:100%;"><thead><tr><th>Device</th><th style="text-align:right;">Alerts</th></tr></thead><tbody>'+offenders.map(function(o){return '<tr><td><b>'+houstonEsc(o[0])+'</b></td><td style="text-align:right;color:#ED1C24;font-family:Oswald,sans-serif;">'+o[1]+'</td></tr>';}).join('')+'</tbody></table>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No alerts.</div>';
+    // weekly maintenance trend (need-maintenance vs maintained)
+    var wkShown=weeks.slice(-12);
+    var maxW=Math.max.apply(null,wkShown.map(function(w){return Math.max(Number(w.need_maintenance)||0,Number(w.maintained)||0);}).concat([1]));
+    var trendHtml=wkShown.length?('<div style="display:flex;align-items:flex-end;gap:6px;height:120px;">'+wkShown.map(function(w){var nm=Number(w.need_maintenance)||0,mt=Number(w.maintained)||0;return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="'+houstonEsc(w.week||'')+' · need '+nm+' / maintained '+mt+'"><div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:100px;"><div style="flex:1;background:#e8a020;height:'+Math.round(nm/maxW*100)+'%;border-radius:2px 2px 0 0;"></div><div style="flex:1;background:#2ecc71;height:'+Math.round(mt/maxW*100)+'%;border-radius:2px 2px 0 0;"></div></div></div>';}).join('')+'</div><div style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-top:4px;"><span style="color:#e8a020;">▮ need maintenance</span> · <span style="color:#2ecc71;">▮ maintained</span> · last '+wkShown.length+' weeks</div>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No weekly stats.</div>';
+    function card(title,body){return '<div style="flex:1;min-width:260px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">'+title+'</div>'+body+'</div>';}
+    host.innerHTML='<div class="dc-title" style="margin:0 0 10px;">📊 Houston Analytics</div>'+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;">'+
+        card('Silence duration',bucketsHtml)+
+        card('Repeat offenders (most alerts)','<div style="max-height:230px;overflow:auto;">'+offHtml+'</div>')+
+        card('Maintenance trend',trendHtml)+
+      '</div>';
   },function(){host.innerHTML='';});
 }
 function renderHouston(){
@@ -6146,7 +6187,12 @@ function renderDevicePage(id){
     supa.from('site_maintenance').select('*').eq('device_id',id).order('visit_date',{ascending:false})
   ]).then(function(r){
     var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[],maint=(r[5]&&r[5].data)||[];
-    var loc=locs[0];
+    var siteRecs=locs.slice().sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));});
+    var loc=siteRecs[0];
+    window.US3._dev={id:id,locs:siteRecs,maint:maint,scans:scans,events:events,notes:notes};
+    var siteRecsHtml=siteRecs.length?('<table class="us3w-tbl"><thead><tr><th>Recorded</th><th>Site</th><th>City</th><th>Job</th><th>Sensor</th><th>Status</th></tr></thead><tbody>'+
+      siteRecs.map(function(l){return '<tr><td>'+fmtDate(l.updated_at)+'</td><td>'+esc(l.site_name||'—')+'</td><td>'+esc(l.city||'—')+'</td><td>'+(l.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(l.project_no)+'\')">'+esc(l.project_no)+'</span>'):'—')+'</td><td>'+esc(l.sensor_type||'—')+'</td><td>'+(l.status==='deployed'?'<span style="color:#0071BC;">deployed</span>':esc(l.status||'—'))+'</td></tr>';}).join('')+'</tbody></table>')
+      :'<div class="us3w-empty">No Fulcrum Site-Sheet (install) records for this device.</div>';
     function dirColor(d){var s=(d||'').toLowerCase();return s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';}
     function dirChip(d){return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff;background:'+dirColor(d)+';">'+esc(d||'—')+'</span>';}
     var last=scans[0];
@@ -6190,13 +6236,15 @@ function renderDevicePage(id){
     var notesHtml=(notes.length?notes.map(function(nn){return '<div class="us3prow" style="cursor:default;align-items:flex-start;"><div><div style="font-size:15px;color:#e8edf4;">'+esc(nn.note)+'</div><div style="font-size:11px;color:#8a97a8;">'+esc(nn.author||'—')+' · '+fmtDate(nn.created_at)+'</div></div></div>';}).join(''):'<div class="us3w-empty">No notes yet — add one to flag this device (e.g. faulty antenna).</div>')+
       '<div style="display:flex;gap:8px;margin-top:10px;"><input id="devNoteInput" class="us3b2-input" style="flex:1;" placeholder="Add a note…" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();US3.addNote(\''+js(id)+'\');}"><button class="us3b2-btn" onclick="US3.addNote(\''+js(id)+'\')">Add</button></div>';
     showOverlay(
-      '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
+        '<button class="us3w-back" onclick="US3.downloadDevice()">⬇ Download full history</button></div>'+
       '<div class="us3w-h" style="font-size:30px;margin-top:14px;">'+esc(id)+'</div>'+
       '<div style="color:#8a97a8;">Device record'+lastLine+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location</div>'+locHtml+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📄 Install / Site-sheet records ('+siteRecs.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">every Fulcrum Site Sheet tied to this device</span></div>'+siteRecsHtml+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔧 Field maintenance ('+maint.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">Fulcrum Site Maintenance visits</span></div>'+maintHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📝 Notes ('+notes.length+')</div>'+notesHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔧 Field maintenance ('+maint.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">Fulcrum Site Maintenance visits</span></div>'+maintHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')</div>'+ev+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Kit membership</div>'+kitHtml+'</div>'
     );
@@ -6531,7 +6579,23 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,tour:tourNav,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
+window.US3._dev=null;
+function downloadDevice(){
+  var d=window.US3&&window.US3._dev;if(!d){alert('Open a device first.');return;}
+  function f(v){return v==null?'':String(v);}
+  var L=['US3 DEVICE HISTORY — '+f(d.id),'Generated '+new Date().toLocaleString(),''];
+  L.push('INSTALL / SITE-SHEET RECORDS ('+d.locs.length+')');
+  d.locs.forEach(function(l){L.push('  '+fmtDate(l.updated_at)+' | site: '+f(l.site_name)+' | '+f(l.city)+' | job '+f(l.project_no)+' | '+f(l.sensor_type)+' | '+f(l.status));});
+  L.push('','FIELD MAINTENANCE VISITS ('+d.maint.length+')');
+  d.maint.forEach(function(m){L.push('  '+fmtDate(m.visit_date)+' | '+f(m.installer_name)+' | root: '+f(m.root_cause)+' | action: '+f(m.maintenance_action)+' | operational_after: '+f(m.operational_after)+(m.new_device_id?(' | replaced_with: '+f(m.new_device_id)):'')+(m.additional_notes?(' | notes: '+f(m.additional_notes)):''));});
+  L.push('','MOVEMENT (SHIP/RECEIVE) SCANS ('+d.scans.length+')');
+  d.scans.forEach(function(s){L.push('  '+fmtDate(s.scanned_at)+' | '+f(s.direction)+' | '+f(s.location)+' | job '+f(s.job_number)+' | '+f(s.note));});
+  L.push('','WAREHOUSE EVENTS ('+d.events.length+')');
+  d.events.forEach(function(e){L.push('  '+fmtDate(e.created_at)+' | '+f(e.event_type)+' | '+f(e.status)+' | fail: '+f(e.failure_reason)+' | '+f(e.tech));});
+  var blob=new Blob([L.join('\n')],{type:'text/plain'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='device-'+f(d.id).replace(/[^a-z0-9]/gi,'_')+'-history.txt';document.body.appendChild(a);a.click();a.remove();
+}
 // Migrate Deployed to live device data: getDeployedCount now reflects real
 // devices in the ground (from device_locations), falling back to the old
 // reservation-based count until the live data is ready.
