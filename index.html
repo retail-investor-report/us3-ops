@@ -3343,7 +3343,9 @@ function renderFleetOverview(){
   var offices=['elcajon','downey','puertorico','houston'];
   var rows=products.map(function(p){
     var avail=0,reserved=0,maint=0,deployed=getDeployedCount(p.id);
-    offices.forEach(function(o){avail+=gc(o,p.id,'available');reserved+=gc(o,p.id,'reserved');maint+=gc(o,p.id,'maintenance');});
+    // Live model: available = computed kits, reserved/maintenance = warehouse_devices.
+    // 0 until a warehouse count is done; deployed is real (Fulcrum). No more demo gc() data.
+    offices.forEach(function(o){avail+=liveCount(o,p.id,'available');reserved+=liveCount(o,p.id,'reserved');maint+=liveCount(o,p.id,'maintenance');});
     var total=avail+reserved+deployed+maint;
     var activeJobs=getActiveJobsForProduct(p.id).length;
     var logoHtml=prodLogoHtml(p.id,32);
