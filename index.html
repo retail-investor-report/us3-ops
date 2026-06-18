@@ -6439,7 +6439,7 @@ function dashLoadAvail(){
     function kitsFor(p){var min=Infinity;(recipes[p]||[]).forEach(function(rec){var a=Math.floor((comp[rec[0]]||0)/rec[1]);if(a<min)min=a;});return isFinite(min)?min:0;}
     var wd=(r[1]&&r[1].data)||[];var resv={},maint={};
     wd.forEach(function(d){if(!d.product)return;if(d.status==='reserved')resv[d.product]=(resv[d.product]||0)+1;else if(d.status==='red')maint[d.product]=(maint[d.product]||0)+1;});
-    var th='<th style="padding:5px 10px;color:#8a97a8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-family:Oswald,sans-serif;">';
+    var th='<th style="padding:5px 10px;color:#8a97a8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-family:Oswald,sans-serif;';
     var rows=Object.keys(labels).map(function(p){
       return '<tr><td style="padding:5px 10px;font-family:Rajdhani,sans-serif;">'+labels[p]+'</td>'+
         '<td style="padding:5px 10px;text-align:center;color:#2ecc71;font-weight:700;font-family:Oswald,sans-serif;font-size:18px;">'+kitsFor(p)+'</td>'+
