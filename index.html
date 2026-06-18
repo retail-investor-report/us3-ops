@@ -1765,6 +1765,7 @@ function renderStats(){
 
 function renderMCPanel(){
   var panel=document.getElementById('avail-stats-panel');
+  if(!panel)return; // only present once the dashboard (which now hosts Availability) is rendered
   panel.innerHTML='<div id="fleetOverviewPanel"></div>';
   renderFleetOverview();
 }
