@@ -4641,10 +4641,13 @@ function toggleQuerySidebar(){
 }
 
 // ═══ LOGIN GATE ═══
+// Allowed sign-ins: any @uscubed.com address, plus this explicit owner allowlist.
+var US3_ALLOWED_EMAILS=['ianleonard1988@gmail.com'];
+function us3EmailOk(email){var e=(email||'').toLowerCase().trim();return /@uscubed\.com$/i.test(e)||US3_ALLOWED_EMAILS.indexOf(e)>=0;}
 function us3CheckLogin(){
   var email=localStorage.getItem('us3_user_email');
   var overlay=document.getElementById('loginOverlay');
-  if(email&&email.toLowerCase().match(/@uscubed\.com$/)){
+  if(email&&us3EmailOk(email)){
     overlay.style.display='none';
     us3ShowUser(email);
   }else{
@@ -4655,7 +4658,7 @@ function us3Login(){
   var input=document.getElementById('loginEmail');
   var err=document.getElementById('loginError');
   var email=input.value.trim();
-  if(email.toLowerCase().match(/@uscubed\.com$/i)){
+  if(us3EmailOk(email)){
     localStorage.setItem('us3_user_email',email);
     err.style.display='none';
     var overlay=document.getElementById('loginOverlay');
@@ -6347,7 +6350,11 @@ function paintDashboard(ops){
   var todayStr=new Date().toISOString().slice(0,10);
   var ending=inGroundJobs.filter(function(j){var d=daysLeft(j);return d!=null&&d>=0;}).sort(function(a,b){return daysLeft(a)-daysLeft(b);}).slice(0,8);
   var overdue=inGroundJobs.filter(function(j){var d=daysLeft(j);return d!=null&&d<0;}).sort(function(a,b){return daysLeft(a)-daysLeft(b);});
-  var upcoming=ongoingJobs.filter(function(j){return !inGround(j)&&(j.project_status==='New'||j.project_status==='Permitting'||(j.install_date&&j.install_date>todayStr));}).sort(function(a,b){return (a.install_date||'').localeCompare(b.install_date||'');}).slice(0,8);
+  var upcoming=ongoingJobs.filter(function(j){return !inGround(j)&&(j.project_status==='New'||j.project_status==='Permitting'||(j.install_date&&j.install_date>todayStr));}).sort(function(a,b){
+    // jobs WITH a future install date first (soonest first), then the undated pipeline by job number
+    var ad=a.install_date||'9999-99-99',bd=b.install_date||'9999-99-99';
+    return ad.localeCompare(bd)||String(a.job_number||'').localeCompare(String(b.job_number||''));
+  });
   var by=LV.deployedByProduct||{ff:0,hach:0,rg:0,cric:0};
   var recent=(ops.recent||[]);
   var ships=recent.filter(function(s){return s.direction==='Ship';}).slice(0,7);
@@ -6366,7 +6373,8 @@ function paintDashboard(ops){
 
   var endingHtml=ending.length?ending.map(function(j){var d=daysLeft(j);var col=d<=7?'#ED1C24':d<=21?'#e8a020':'#2ecc71';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+col+';">'+d+'d left</span>');}).join(''):'<div class="us3w-empty">No active studies with an end date.</div>';
   var overdueHtml=overdue.length?overdue.map(function(j){var d=daysLeft(j);return jobRow(j,'<span class="us3badge" style="color:#fff;background:#ED1C24;">'+Math.abs(d)+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
-  var upcomingHtml=upcoming.length?upcoming.map(function(j){return jobRow(j,'<span style="color:#8a97a8;font-size:12px;white-space:nowrap;">'+esc(j.project_status||'')+(j.install_date?' · '+fmtDate(j.install_date):'')+'</span>');}).join(''):'<div class="us3w-empty">No upcoming jobs queued.</div>';
+  var upcomingShown=upcoming.slice(0,15);
+  var upcomingHtml=upcoming.length?('<div style="max-height:300px;overflow:auto;">'+upcomingShown.map(function(j){return jobRow(j,'<span style="color:#8a97a8;font-size:12px;white-space:nowrap;">'+esc(j.project_status||'')+(j.install_date?' · '+fmtDate(j.install_date):'')+'</span>');}).join('')+'</div>'+(upcoming.length>15?('<div style="padding:6px 8px;font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;">+ '+(upcoming.length-15)+' more — see Projects ▸ Ongoing</div>'):'')):'<div class="us3w-empty">No upcoming jobs queued.</div>';
   var openItems='<div class="us3prow" onclick="US3.go(\'shop\')"><div>⚠ <b>'+overdue.length+'</b> job(s) overdue for equipment return</div><span style="color:#ED1C24;">review ›</span></div>'+
     '<div class="us3prow" onclick="US3.go(\'shop\')"><div>📦 <b>'+(ops.devices_out!=null?ops.devices_out:'—')+'</b> devices show as shipped-out with no return scan</div><span style="color:#8a97a8;">audit ›</span></div>'+
     (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>');
@@ -6380,7 +6388,7 @@ function paintDashboard(ops){
     '<div class="us3dash-grid">'+
       panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.')+
       panel('⚠ Overdue for return',overdueHtml,'study ended, devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Cross-check the scan log for a Receive.')+
-      panel('🔜 Upcoming jobs',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped.')+
+      panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.')+
       panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).')+
       panel('🚚 Recent shipments',(ships.length?ships.map(scanRow).join(''):'<div class="us3w-empty">No recent ships.</div>'),'out the door','Most recent "Ship" scans from the warehouse door-scanner log.')+
       panel('📥 Recent returns',(recvs.length?recvs.map(scanRow).join(''):'<div class="us3w-empty">No recent receives.</div>'),'in the door','Most recent "Receive" scans from the warehouse door-scanner log.')+
