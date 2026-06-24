@@ -401,6 +401,13 @@ body.light .hamburger span{background:var(--text);}
   #fleetCanvasRow,.fleet-zoom,.fleet-axis{display:none !important;}
   #fleetMobileSummary{display:flex !important;flex-direction:column;}
   #fleetFilters{flex-wrap:wrap;}
+  /* Ship Station: kill the sideways scroll — stack everything, constrain inputs */
+  #page-shop .us3dash-wrap{padding-left:12px !important;padding-right:12px !important;overflow-x:hidden;}
+  #page-shop .us3dash-grid{grid-template-columns:1fr !important;}
+  #page-shop .us3shop-grid{grid-template-columns:1fr 1fr !important;}
+  #page-shop input,#page-shop textarea{max-width:100% !important;box-sizing:border-box !important;}
+  #page-shop [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important;}
+  #page-shop [style*="justify-content:space-between"]{flex-wrap:wrap;}
   .sch-table{font-size:10px;}
   .modal{max-width:95vw;padding:16px;}
   .exp-box{min-width:130px;}
@@ -522,7 +529,12 @@ window.addEventListener('DOMContentLoaded',function(){
   <div class="login-card">
     <img id="loginLogo" src="" alt="US3 Logo">
     <h1>US3 Operations Platform</h1>
-    <div class="login-sub">Sign in with your US Cubed email</div>
+    <div class="login-sub">Sign in with your US Cubed Google account</div>
+    <button class="login-btn" id="loginGoogleBtn" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#202124;border:1px solid #dadce0;">
+      <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#8a97a8;font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:.05em;"><div style="flex:1;height:1px;background:rgba(120,150,210,.25);"></div>OR USE EMAIL<div style="flex:1;height:1px;background:rgba(120,150,210,.25);"></div></div>
     <input type="email" id="loginEmail" placeholder="your.name@uscubed.com">
     <button class="login-btn" id="loginBtn">Sign In</button>
     <div class="login-error" id="loginError">Please enter a valid @uscubed.com email address</div>
@@ -4343,7 +4355,7 @@ function renderFleet(){
         '<div style="width:78px;text-align:right;font-family:Oswald,sans-serif;font-weight:700;font-size:17px;color:#00c49a;">'+m.min+'<span style="font-size:11px;color:var(--muted);font-weight:400;"> /'+tot+'</span></div>'+
       '</div>';
     }).join('');
-    msum.innerHTML='<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:'+(p.color||'var(--text)')+';">'+p.icon+' '+p.label+' — free by month</div>'+
+    msum.innerHTML='<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:var(--text,#e8edf4);"><span style="color:'+(p.color||'inherit')+';-webkit-text-stroke:.3px rgba(0,0,0,.35);">'+p.icon+'</span> '+p.label+' — free by month</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin:4px 0 12px;">Fewest units available at any point in each month, out of '+tot+' total. Tap a product above to switch.</div>'+
       (tot?mrows:'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;padding:14px 0;">No '+p.label+' units in the fleet yet.</div>');
   }
@@ -4778,7 +4790,44 @@ function us3ShowUser(email){
 }
 function us3SignOut(){
   localStorage.removeItem('us3_user_email');
+  try{ if(typeof supa!=='undefined'&&supa&&supa.auth)supa.auth.signOut(); }catch(e){}
   location.reload();
+}
+
+// ═══ GOOGLE OAUTH (uscubed.com only; owner gmail allowed via us3EmailOk) ═══
+function us3GoogleSignIn(){
+  if(typeof supa==='undefined'||!supa){alert('Still connecting to the server — try again in a moment.');return;}
+  var err=document.getElementById('loginError');if(err)err.style.display='none';
+  supa.auth.signInWithOAuth({provider:'google',options:{
+    redirectTo:location.origin+location.pathname,
+    queryParams:{prompt:'select_account'}
+  }}).then(function(r){
+    if(r&&r.error){
+      var msg=r.error.message||'';
+      if(/provider is not enabled|not enabled|Unsupported provider/i.test(msg))
+        alert('Google sign-in isn’t turned on yet in Supabase. Use the email box for now.');
+      else alert('Google sign-in failed: '+msg);
+    }
+  });
+}
+function us3HandleAuthUser(user){
+  if(!user||!user.email)return;
+  var email=String(user.email).toLowerCase().trim();
+  if(us3EmailOk(email)){
+    localStorage.setItem('us3_user_email',email);
+    us3CheckLogin();
+    if(window.US3ID&&US3ID.ready&&US3ID.onLoginEmail)US3ID.onLoginEmail();
+  }else{
+    var err=document.getElementById('loginError');
+    if(err){err.textContent='Only @uscubed.com Google accounts can sign in — '+email+' isn’t allowed.';err.style.display='block';}
+    try{ if(supa&&supa.auth)supa.auth.signOut(); }catch(e){}
+    localStorage.removeItem('us3_user_email');
+  }
+}
+function us3InitOAuth(){
+  if(typeof supa==='undefined'||!supa)return setTimeout(us3InitOAuth,400);
+  supa.auth.getSession().then(function(r){ if(r&&r.data&&r.data.session&&r.data.session.user)us3HandleAuthUser(r.data.session.user); },function(){});
+  try{ supa.auth.onAuthStateChange(function(evt,session){ if(session&&session.user)us3HandleAuthUser(session.user); }); }catch(e){}
 }
 
 // ═══ MOBILE MC CONTENT ═══
@@ -5979,6 +6028,8 @@ function viewer3dInit(){
 us3CheckLogin();
 document.getElementById('loginBtn').addEventListener('click',us3Login);
 document.getElementById('loginEmail').addEventListener('keydown',function(e){if(e.key==='Enter')us3Login();});
+(function(){var g=document.getElementById('loginGoogleBtn');if(g)g.addEventListener('click',us3GoogleSignIn);})();
+us3InitOAuth();
 // Set login logo from nav
 (function(){var navImg=document.querySelector('.nb img');var loginLogo=document.getElementById('loginLogo');if(navImg&&loginLogo)loginLogo.src=navImg.src;})();
 // Welcome guide on first visit (after login check)
@@ -6622,7 +6673,8 @@ function paintShop(ops){
     '<div class="us3dash-wrap" style="padding:14px 18px 60px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px;">'+
       '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Ship Station</div>'+
-      '<div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div>'+
+      '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     // device lookup
     '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device</div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><input id="shopSearchInput" class="us3b2-input" style="flex:1;min-width:220px;" placeholder="Type or scan a device ID → see full history &amp; notes" autocomplete="off" onkeydown="if(event.key===\'Enter\')US3.search()"><button class="us3b2-btn" onclick="US3.search()">Open device ›</button></div></div>'+
@@ -7315,6 +7367,7 @@ function patchLogin(){
     window.us3SignOut._us3id=true;
   }
 }
+ID.onLoginEmail=function(){ return onLoginEmail(); };
 function onLoginEmail(){
   var email=(localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,'');
   if(!email) return;
