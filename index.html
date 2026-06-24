@@ -401,6 +401,13 @@ body.light .hamburger span{background:var(--text);}
   #fleetCanvasRow,.fleet-zoom,.fleet-axis{display:none !important;}
   #fleetMobileSummary{display:flex !important;flex-direction:column;}
   #fleetFilters{flex-wrap:wrap;}
+  /* Ship Station: kill the sideways scroll — stack everything, constrain inputs */
+  #page-shop .us3dash-wrap{padding-left:12px !important;padding-right:12px !important;overflow-x:hidden;}
+  #page-shop .us3dash-grid{grid-template-columns:1fr !important;}
+  #page-shop .us3shop-grid{grid-template-columns:1fr 1fr !important;}
+  #page-shop input,#page-shop textarea{max-width:100% !important;box-sizing:border-box !important;}
+  #page-shop [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important;}
+  #page-shop [style*="justify-content:space-between"]{flex-wrap:wrap;}
   .sch-table{font-size:10px;}
   .modal{max-width:95vw;padding:16px;}
   .exp-box{min-width:130px;}
@@ -4348,7 +4355,7 @@ function renderFleet(){
         '<div style="width:78px;text-align:right;font-family:Oswald,sans-serif;font-weight:700;font-size:17px;color:#00c49a;">'+m.min+'<span style="font-size:11px;color:var(--muted);font-weight:400;"> /'+tot+'</span></div>'+
       '</div>';
     }).join('');
-    msum.innerHTML='<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:'+(p.color||'var(--text)')+';">'+p.icon+' '+p.label+' — free by month</div>'+
+    msum.innerHTML='<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:var(--text,#e8edf4);"><span style="color:'+(p.color||'inherit')+';-webkit-text-stroke:.3px rgba(0,0,0,.35);">'+p.icon+'</span> '+p.label+' — free by month</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin:4px 0 12px;">Fewest units available at any point in each month, out of '+tot+' total. Tap a product above to switch.</div>'+
       (tot?mrows:'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;padding:14px 0;">No '+p.label+' units in the fleet yet.</div>');
   }
@@ -6666,7 +6673,8 @@ function paintShop(ops){
     '<div class="us3dash-wrap" style="padding:14px 18px 60px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px;">'+
       '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Ship Station</div>'+
-      '<div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div>'+
+      '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     // device lookup
     '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device</div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><input id="shopSearchInput" class="us3b2-input" style="flex:1;min-width:220px;" placeholder="Type or scan a device ID → see full history &amp; notes" autocomplete="off" onkeydown="if(event.key===\'Enter\')US3.search()"><button class="us3b2-btn" onclick="US3.search()">Open device ›</button></div></div>'+
