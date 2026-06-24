@@ -6697,6 +6697,10 @@ var ID = {
 };
 window.US3ID = ID;
 
+// capture the install prompt as early as possible (fires before init's timeout)
+window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); ID._installPrompt=e; });
+window.addEventListener('appinstalled', function(){ ID._installPrompt=null; });
+
 function esc(s){return window.us3esc?us3esc(s):String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 function nowISO(){return new Date().toISOString();}
@@ -6895,7 +6899,8 @@ function openSwitch(){
       '</div>';
     if(ID.active) body+='<div style="text-align:center;margin-top:10px;"><button class="us3id-btn ghost" onclick="US3ID.clearActive()">Clear active worker</button></div>';
   }
-  var foot = mgr? '<button class="us3id-btn ghost" onclick="US3ID.openBind()">⚙ Change this bench</button>' : '';
+  var foot = '<button class="us3id-btn ghost" onclick="US3ID.install()">📲 Install on this computer</button>'+
+    (mgr? ' <button class="us3id-btn ghost" onclick="US3ID.openBind()">⚙ Change this bench</button>' : '');
   modal('Who\'s at this bench?', body, foot);
 }
 ID.pick=function(id){ var w=workerById(id); if(w){ setActive(w); closeModal(); toast('Now logging as '+workerName(w)); } };
@@ -7022,6 +7027,14 @@ ID.benchDetail=function(stationId){
       '<div class="us3id-deth"><b>'+esc(s.name)+'</b> · '+esc(s.office)+' · '+esc(s.kind)+(s.locked?' 🔒 locked':'')+'</div>'+
       '<div style="margin:10px 0;"><button class="us3id-btn" onclick="US3ID.toggleLock(\''+stationId+'\')">'+lockBtn+'</button> '+
         '<button class="us3id-btn ghost" onclick="US3ID.renameBench(\''+stationId+'\')">Rename</button></div>'+
+      '<div class="us3id-feedh">Put us3-ops on a computer for this bench</div>'+
+      '<div class="us3id-distrow">'+
+        '<input class="us3id-link" readonly value="'+esc(setupLink(s.code))+'" onclick="this.select()">'+
+        '<button class="us3id-btn sm" onclick="US3ID.copyLink(\''+esc(s.code)+'\')">Copy link</button>'+
+        '<button class="us3id-btn sm" onclick="US3ID.emailLink(\''+jsq(s.name)+'\',\''+esc(s.code)+'\')">Email it</button>'+
+        '<button class="us3id-btn ghost sm" onclick="US3ID.downloadLauncher(\''+jsq(s.name)+'\',\''+esc(s.code)+'\')">Download file</button>'+
+      '</div>'+
+      '<div class="us3id-sub" style="margin-top:6px;">Send the link or file to whoever runs this bench. Opening it binds that computer to <b>'+esc(s.name)+'</b>, then they can install us3-ops as a desktop app.</div>'+
       '<div class="us3id-feedh">Recent activity</div><div class="us3id-feed">'+feed+'</div>';
   });
 };
@@ -7203,6 +7216,56 @@ function onLoginEmail(){
   });
 }
 
+// ═══ DISTRIBUTION (install as app + per-bench setup link/file) ═══
+function setupLink(code){ return location.origin + '/?setup=' + encodeURIComponent(code); }
+function us3Icon(){
+  return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="104" fill="#0071BC"/><text x="50%" y="62%" font-family="Arial,Helvetica,sans-serif" font-size="230" font-weight="bold" fill="#ffffff" text-anchor="middle">US3</text></svg>');
+}
+function injectManifest(){
+  if(document.getElementById('us3idManifest')) return;
+  var icon=us3Icon();
+  var manifest={ name:'US3 Operations', short_name:'US3 Ops', start_url:location.origin+'/', scope:'/', display:'standalone', background_color:'#0a0e1a', theme_color:'#0071BC',
+    icons:[{src:icon,sizes:'192x192',type:'image/svg+xml',purpose:'any'},{src:icon,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}] };
+  var link=document.createElement('link'); link.id='us3idManifest'; link.rel='manifest';
+  link.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));
+  document.head.appendChild(link);
+  var tc=document.createElement('meta'); tc.name='theme-color'; tc.content='#0071BC'; document.head.appendChild(tc);
+  var am=document.createElement('meta'); am.name='apple-mobile-web-app-capable'; am.content='yes'; document.head.appendChild(am);
+  var ai=document.createElement('link'); ai.rel='apple-touch-icon'; ai.href=icon; document.head.appendChild(ai);
+}
+ID.install=function(){
+  var p=ID._installPrompt;
+  if(!p){ toast('To install: open the browser menu (⋮) → “Install US3 Ops” / “Create shortcut”.'); return; }
+  p.prompt(); p.userChoice.then(function(c){ if(c&&c.outcome==='accepted'){ ID._installPrompt=null; toast('Installed — find US3 Ops on the desktop.'); log('action',{action:'app_installed'}); } });
+};
+function checkSetupLink(){
+  var code; try{ code=new URLSearchParams(location.search).get('setup'); }catch(e){ code=null; }
+  if(!code) return false;
+  var st=null; for(var i=0;i<ID.stations.length;i++) if(ID.stations[i].code===code){ st=ID.stations[i]; break; }
+  if(!st){ toast('Setup link: bench “'+code+'” not found — ask the manager.'); return false; }
+  bindStation(st.id, navigator.platform||'computer');
+  toast('This computer is now set up as '+st.name+'.');
+  try{ history.replaceState(null,'',location.origin+location.pathname+location.hash); }catch(e){}
+  return true;
+}
+ID.copyLink=function(code){ var l=setupLink(code); try{ navigator.clipboard.writeText(l); }catch(e){} toast('Setup link copied.'); };
+ID.emailLink=function(name,code){
+  var l=setupLink(code);
+  var sub=encodeURIComponent('Set up us3-ops for '+name);
+  var body=encodeURIComponent('Open this link on the '+name+' computer to set it up:\n\n'+l+'\n\nWhen it opens, that computer is bound to '+name+'. Then use the browser menu to “Install US3 Ops” as a desktop app.');
+  location.href='mailto:?subject='+sub+'&body='+body;
+};
+ID.downloadLauncher=function(name,code){
+  var l=setupLink(code);
+  var html='<!doctype html><meta charset="utf-8"><title>US3 Ops — '+esc(name)+' setup</title>'+
+    '<meta http-equiv="refresh" content="0;url='+l+'">'+
+    '<body style="font-family:Arial,Helvetica,sans-serif;text-align:center;padding:48px;color:#111;">'+
+    '<h2>Setting up '+esc(name)+'…</h2><p>If nothing happens, <a href="'+l+'">click here</a>.</p></body>';
+  var blob=new Blob([html],{type:'text/html'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='us3-'+code+'-setup.html'; document.body.appendChild(a); a.click(); a.remove();
+  toast('Downloaded '+name+' setup file.');
+};
+
 // ═══ STYLES ═══
 function injectCSS(){
   if(document.getElementById('us3idCSS')) return;
@@ -7256,12 +7319,18 @@ function injectCSS(){
     '.us3id-pchk{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--borderb,#2a3550);font-family:Rajdhani,sans-serif;font-weight:600;cursor:pointer;}',
     '.us3id-permh{font-family:Oswald,sans-serif;font-size:16px;margin:14px 0 4px;}',
     '.us3id-psel{background:#141b2e;color:#eaf1ff;border:1px solid rgba(120,150,210,.4);border-radius:8px;padding:8px 12px;font-family:Rajdhani,sans-serif;font-size:14px;margin-bottom:12px;min-width:220px;}',
+    '.us3id-distrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;}',
+    '.us3id-link{flex:1;min-width:220px;background:#141b2e;color:#eaf1ff;border:1px solid rgba(120,150,210,.4);border-radius:8px;padding:8px 12px;font-family:Rajdhani,sans-serif;font-size:13px;}',
     '.us3id-statrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}',
     '.us3id-statbox{padding:14px;border-radius:12px;border:1px solid rgba(120,150,210,.3);background:#141b2e;color:#eaf1ff;}',
     '.us3id-statt{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em;font-size:11px;color:var(--muted,#8b97b0);margin-bottom:8px;}',
     '.us3id-stat{display:inline-block;margin:3px 8px 3px 0;font-family:Rajdhani,sans-serif;font-size:13px;}.us3id-stat b{color:var(--accent,#1a7fe8);}',
     '.us3id-empty{padding:20px;text-align:center;color:var(--muted,#8b97b0);font-family:Rajdhani,sans-serif;}',
-    '@media(max-width:640px){.us3id-arow{grid-template-columns:20px 1fr 1.4fr;}.us3id-asta,.us3id-atime{display:none;}.us3id-statrow{grid-template-columns:1fr;}}'
+    '@media(max-width:640px){.us3id-arow{grid-template-columns:20px 1fr 1.4fr;}.us3id-asta,.us3id-atime{display:none;}.us3id-statrow{grid-template-columns:1fr;}}',
+    '/* ── SITE-WIDE CONTAINER SHARPEN: radius 4 (kill the soft AI-bubbly corners). Pills/avatars left alone. Injected last + !important so it wins over inline styles. ── */',
+    '.us3b2-card,.us3b2-box,.us3b2-warn,.dc-card,.login-card,.guide-card,#fleetStatusCard,#devmapBox,#scanCamRegion,.card,.panel,.edit-panel,.us3w-card{border-radius:4px !important;}',
+    '[style*="border-radius:10px"],[style*="border-radius:11px"],[style*="border-radius:12px"],[style*="border-radius:13px"],[style*="border-radius:14px"],[style*="border-radius:15px"],[style*="border-radius:16px"],[style*="border-radius:20px"]{border-radius:4px !important;}',
+    '.us3id-modal,.us3id-mapcard,.us3id-statbox,.us3id-tile,.us3id-bench,.us3id-link,.us3id-psel,.us3id-note,.us3id-toast,.us3id-chip,.us3id-ctab,.us3id-btn,.us3id-pchk,.us3id-mb,.us3id-badge{border-radius:4px !important;}'
   ].join('\n');
   document.head.appendChild(s);
 }
@@ -7271,6 +7340,7 @@ function init(){
   if(typeof supa==='undefined'||!supa){ return setTimeout(init,400); }
   ID.supa=supa;
   injectCSS();
+  injectManifest();
   ensureCmdTab();
   ensureCmdPage();
   ensureChip();
@@ -7280,6 +7350,7 @@ function init(){
     return loadBinding();
   }).then(function(){
     ID.ready=true;
+    checkSetupLink();      // ?setup=<bench> emailed link → bind this computer to that bench
     onLoginEmail();        // resolve the already-logged-in account → worker
     renderChip();
     applyPagePerms();
