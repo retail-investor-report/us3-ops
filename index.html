@@ -3887,6 +3887,7 @@ function houstonUpsertWeekly(rows,today,cb){
   houstonChunkUpsert('houston_weekly_stats','week',out,cb,out.length+' weeks');
 }
 function houstonUploadRender(){var h=document.getElementById('houstonUploadPanel');if(h)h.innerHTML=houstonUploadBar();}
+function houstonHelp(t){return '<span class="us3help">?<span class="tip">'+houstonEsc(t)+'</span></span>';}
 function houstonLiveLoad(){
   var host=document.getElementById('houstonLivePanel');if(!host)return;
   if(typeof supa==='undefined'||!supa){host.innerHTML='';return;}
@@ -3906,14 +3907,17 @@ function houstonLiveLoad(){
     var down=devs.filter(function(d){return (d.total_messages===0||d.total_messages===null)||d.pct_total===0;})
       .sort(function(a,b){return String(a.last_sample||'').localeCompare(String(b.last_sample||''));}).slice(0,150);
     var rowsHtml=down.map(function(d){return '<tr><td><b>'+houstonEsc(d.site_name||d.site_id)+'</b></td><td>'+houstonEsc(d.device_id||'—')+'</td><td>'+houstonEsc(d.description||'—')+'</td><td>'+houstonEsc(d.last_sample||'—')+'</td><td style="text-align:right;">'+(d.total_messages==null?'—':d.total_messages)+'</td></tr>';}).join('');
+    function sumln(lab,val,sub,c){return '<div class="us3sum-line"><span class="lab">'+lab+(sub?'<span class="sub2">'+sub+'</span>':'')+'</span><span class="val" style="color:'+(c||'inherit')+';">'+val+'</span></div>';}
+    var hHelp=houstonHelp;
     host.innerHTML=
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Status</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest upload · '+total+' devices</div></div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;">'+
-        kpi(total,'Total devices','var(--text,#e8edf4)')+
-        kpi(silent,'Silent (0 messages)','#ED1C24')+
-        kpi(reporting,'Reporting','#2ecc71')+
-        kpi(alertCount,'Active comm alerts','#e8a020')+
-        (wk?kpi((wk.need_maintenance==null?'—':wk.need_maintenance),'Need maintenance ('+houstonEsc(wk.week||'')+')','#e8a020'):'')+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Status'+hHelp('The latest weekly Sensus census for Houston — every Cricket device and whether it reported this week. Uploaded from Osama’s spreadsheet. “Silent” = 0 messages this week.')+'</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest upload · '+total+' devices</div></div>'+
+      '<div class="us3sum" style="margin:12px 0;max-width:460px;">'+
+        '<div class="us3sum-h">📡 Sensus census · this week</div>'+
+        sumln('Total devices',total,'in latest upload','var(--text,#e8edf4)')+
+        sumln('Reporting',reporting,'sending messages','#2ecc71')+
+        sumln('Silent (0 messages)',silent,'no data this week','#ED1C24')+
+        sumln('Active comm alerts',alertCount,'open Sensus alerts','#e8a020')+
+        (wk?sumln('Need maintenance',(wk.need_maintenance==null?'—':wk.need_maintenance),houstonEsc(wk.week||''),'#e8a020'):'')+
       '</div>'+
       '<div style="background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;">'+
         '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Silent / down devices'+(down.length>=150?' (top 150 by oldest sample)':' ('+down.length+')')+'</div>'+
@@ -3954,18 +3958,20 @@ function houstonAnalyticsRender(){
     var wkShown=weeks.slice(-12);
     var maxW=Math.max.apply(null,wkShown.map(function(w){return Math.max(Number(w.need_maintenance)||0,Number(w.maintained)||0);}).concat([1]));
     var trendHtml=wkShown.length?('<div style="display:flex;align-items:flex-end;gap:6px;height:120px;">'+wkShown.map(function(w){var nm=Number(w.need_maintenance)||0,mt=Number(w.maintained)||0;return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="'+houstonEsc(w.week||'')+' · need '+nm+' / maintained '+mt+'"><div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:100px;"><div style="flex:1;background:#e8a020;height:'+Math.round(nm/maxW*100)+'%;border-radius:2px 2px 0 0;"></div><div style="flex:1;background:#2ecc71;height:'+Math.round(mt/maxW*100)+'%;border-radius:2px 2px 0 0;"></div></div></div>';}).join('')+'</div><div style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-top:4px;"><span style="color:#e8a020;">▮ need maintenance</span> · <span style="color:#2ecc71;">▮ maintained</span> · last '+wkShown.length+' weeks</div>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No weekly stats.</div>';
-    function card(title,body){return '<div style="flex:1;min-width:260px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">'+title+'</div>'+body+'</div>';}
-    host.innerHTML='<div class="dc-title" style="margin:0 0 10px;">📊 Houston Analytics</div>'+
+    function card(title,body,tip){return '<div style="flex:1;min-width:260px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">'+title+(tip?houstonHelp(tip):'')+'</div>'+body+'</div>';}
+    host.innerHTML='<div class="dc-title" style="margin:0 0 2px;">📊 Houston Analytics'+houstonHelp('Trends computed from the weekly Sensus census + Robert’s weekly stats — a weekly snapshot, not a live feed.')+'</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin-bottom:10px;">Sensus census · weekly snapshot</div>'+
       '<div style="display:flex;gap:14px;flex-wrap:wrap;">'+
-        card('Silence duration',bucketsHtml)+
-        card('Repeat offenders (most alerts)','<div style="max-height:230px;overflow:auto;">'+offHtml+'</div>')+
-        card('Maintenance trend',trendHtml)+
+        card('Silence duration',bucketsHtml,'How long each Houston Cricket device has been silent, bucketed by days since its last Sensus sample. “Reporting” = sending now.')+
+        card('Repeat offenders (most alerts)','<div style="max-height:230px;overflow:auto;">'+offHtml+'</div>','Devices with the most Sensus comm-alerts logged — the chronic problem units worth checking first.')+
+        card('Maintenance trend',trendHtml,'Per-week from Robert’s weekly stats: devices that NEEDED maintenance vs how many were MAINTAINED. Last 12 weeks.')+
       '</div>';
   },function(){host.innerHTML='';});
 }
 function renderHouston(){
   var inner=document.getElementById('houstonInner');
   if(!inner)return;
+  if(typeof injectCSS==='function')injectCSS();
   setTimeout(function(){houstonUploadRender();houstonLiveLoad();},0);
   var reports=getHoustonReports();
   var latest=getLatestHoustonReport();
