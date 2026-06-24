@@ -398,6 +398,9 @@ body.light .hamburger span{background:var(--text);}
   .dc-table{font-size:11px;}
   .dc-table th,.dc-table td{padding:6px 8px;}
   .am-toolbar,.sch-toolbar,.fm-toolbar{flex-wrap:wrap;gap:8px;}
+  #fleetCanvasRow,.fleet-zoom,.fleet-axis{display:none !important;}
+  #fleetMobileSummary{display:flex !important;flex-direction:column;}
+  #fleetFilters{flex-wrap:wrap;}
   .sch-table{font-size:10px;}
   .modal{max-width:95vw;padding:16px;}
   .exp-box{min-width:130px;}
@@ -677,7 +680,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div style="display:flex;align-items:center;gap:12px;padding:8px 22px;border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;flex-wrap:wrap;">
       <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);display:flex;align-items:center;gap:8px;">Fleet Map <span title="A planning view for sales, booking & scheduling. Every device the company owns is one row (device ID on the left); the columns run left-to-right across the next 52 weeks (time). Each dot shows whether that unit is available, deployed, reserved, or in maintenance that week — so you can see what's free to book at any time of year. A deployed (blue) device turns green once its job's end-date passes and it frees up. Stock you haven't entered yet won't appear as available." style="cursor:help;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--muted);color:var(--muted);font-size:11px;font-weight:700;flex-shrink:0;">?</span><span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· green = available · blue = deployed (turns green after job ends) · amber = maintenance</span></div>
       <div id="fleetFilters" style="display:flex;gap:8px;margin-left:12px;"></div>
-      <div style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
+      <div class="fleet-zoom" style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
         <div onclick="fleetZoom(-2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
         <div id="fleetSizeLabel" style="font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:var(--text);min-width:42px;text-align:center;"></div>
         <div onclick="fleetZoom(2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">+</div>
@@ -691,8 +694,9 @@ window.addEventListener('DOMContentLoaded',function(){
       <div style="flex:1;"></div>
     </div>
     <div class="fleet-mobile-avail" style="display:none;padding:6px 22px;"><button onclick="sw('mc',document.querySelector('[data-page=mc]'))" style="width:100%;padding:8px;border-radius:4px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1.5px solid var(--accent);background:rgba(26,127,232,.08);color:var(--accent);">&#x1F4E6; Availability (Dashboard) &rarr;</button></div>
-    <div style="padding:5px 22px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;">↓ Y: device ID (one per row) &nbsp;·&nbsp; → X: time (each column = one week, 52 weeks ahead)</div>
-    <div style="display:flex;flex:1;overflow:hidden;">
+    <div class="fleet-axis" style="padding:5px 22px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;">↓ Y: device ID (one per row) &nbsp;·&nbsp; → X: time (each column = one week, 52 weeks ahead)</div>
+    <div id="fleetMobileSummary" style="display:none;flex:1;overflow:auto;padding:16px 18px;"></div>
+    <div id="fleetCanvasRow" style="display:flex;flex:1;overflow:hidden;">
       <div id="fleetLabels" style="flex-shrink:0;overflow-y:hidden;border-right:1px solid var(--border);background:var(--nav-bg);"></div>
       <div id="fleetWrap" style="flex:1;overflow:auto;position:relative;">
         <div id="fleetHeader" style="position:sticky;top:0;z-index:10;background:var(--nav-bg);border-bottom:1px solid var(--border);display:flex;"></div>
@@ -4320,6 +4324,30 @@ function renderFleet(){
 
   redrawFleetCanvas();
 
+  // ── Mobile-friendly summary: available units of this product, by month ──
+  var msum=document.getElementById('fleetMobileSummary');
+  if(msum){
+    var months=[],seen={};
+    for(var mc=0;mc<numCols;mc++){
+      var dt=weeks[mc],mkey=dt.getFullYear()+'-'+dt.getMonth(),av=0;
+      for(var mr=0;mr<numRows;mr++){ if(assetWeekStatus[mr][mc]==='available')av++; }
+      if(!seen[mkey]){ seen[mkey]={label:dt.toLocaleDateString('en-US',{month:'short',year:'numeric'}),min:av}; months.push(seen[mkey]); }
+      else if(av<seen[mkey].min){ seen[mkey].min=av; }
+    }
+    var tot=numRows;
+    var mrows=months.map(function(m){
+      var pct=tot?Math.round(m.min/tot*100):0;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">'+
+        '<div style="width:74px;font-family:Oswald,sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;color:var(--text);">'+m.label+'</div>'+
+        '<div style="flex:1;height:16px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:#00c49a;"></div></div>'+
+        '<div style="width:78px;text-align:right;font-family:Oswald,sans-serif;font-weight:700;font-size:17px;color:#00c49a;">'+m.min+'<span style="font-size:11px;color:var(--muted);font-weight:400;"> /'+tot+'</span></div>'+
+      '</div>';
+    }).join('');
+    msum.innerHTML='<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:'+(p.color||'var(--text)')+';">'+p.icon+' '+p.label+' — free by month</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin:4px 0 12px;">Fewest units available at any point in each month, out of '+tot+' total. Tap a product above to switch.</div>'+
+      (tot?mrows:'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;padding:14px 0;">No '+p.label+' units in the fleet yet.</div>');
+  }
+
   // Hover tooltip (div-based, not canvas.title)
   canvas.title='';
   var _lastTipRow=-1,_lastTipCol=-1;
@@ -6417,7 +6445,8 @@ function panel(title,bodyHtml,sub,tip,opts){opts=opts||{};var open=opts.open!==f
     '<span>'+title+(tip?help(tip):'')+(sub?' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">'+sub+'</span>':'')+'</span>'+
     '<span class="us3coll-ar">▾</span></div>'+
   '<div class="us3coll-body">'+bodyHtml+'</div></div>';}
-function us3ToggleColl(h){var c=h.parentNode;while(c&&c.className&&c.className.indexOf('us3coll')<0&&c.className.indexOf('us3grp')<0)c=c.parentNode;if(c)c.classList.toggle('open');}
+function us3ToggleColl(h){var c=h.parentNode;while(c&&c.className&&(''+c.className).indexOf('us3coll')<0&&(''+c.className).indexOf('us3grp')<0)c=c.parentNode;if(c)c.classList.toggle('open');}
+window.us3ToggleColl=us3ToggleColl;
 function us3SumLine(lab,val,sub,tab){return '<div class="us3sum-line"'+(tab?(' onclick="US3.go(\''+tab+'\')"'):'')+'><span class="lab">'+lab+(sub?'<span class="sub2">'+sub+'</span>':'')+'</span><span class="val">'+val+'</span></div>';}
 function us3GroupScans(arr,labelKey){
   var groups={},order=[];
