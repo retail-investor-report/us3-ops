@@ -1724,6 +1724,7 @@ function sw(id,el){
   if(id==='count')    renderCount();
   if(id==='devmap')   renderDevMap();
   if(id==='viewer')   renderViewer();
+  if(id==='shop'&&window.US3&&US3.renderShop)US3.renderShop();
   if(id!=='scan'&&window.scanStopCamera)scanStopCamera();
   if(id!=='viewer'&&window.viewer3dStop)viewer3dStop();
   // Show shared query sidebar only on fleet, assetmap, sched
@@ -6094,7 +6095,32 @@ function injectCSS(){
   '.us3tour-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:16px;padding:26px 28px;z-index:5001;font-family:Rajdhani,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);}'+
   '.us3tour-box h2{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:22px;margin:0 0 4px;}'+
   '.us3tour-box .step{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;color:#0071BC;text-transform:uppercase;}'+
-  '.us3tour-box p{font-size:16px;line-height:1.5;color:#cdd6e2;}';
+  '.us3tour-box p{font-size:16px;line-height:1.5;color:#cdd6e2;}'+
+  /* ── compact summary cards (navy border, radius 6, row format) ── */
+  '.us3sum-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}'+
+  '.us3sum{background:var(--panel-bg,#121826);border:2px solid #11365f;border-radius:6px;padding:4px 18px 10px;}'+
+  '.us3sum-h{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:12px;color:#8a97a8;padding:12px 0 2px;display:flex;align-items:center;gap:8px;}'+
+  '.us3sum-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(255,255,255,.06);}'+
+  '.us3sum-line[onclick]{cursor:pointer;}'+
+  '.us3sum-line[onclick]:hover .lab{color:#0071BC;}'+
+  '.us3sum-line .lab{font-family:Rajdhani,sans-serif;font-size:15px;font-weight:600;color:var(--text,#e8edf4);}'+
+  '.us3sum-line .sub2{font-size:11px;color:#8a97a8;font-family:Rajdhani,sans-serif;margin-left:8px;font-weight:400;}'+
+  '.us3sum-line .val{font-family:Oswald,sans-serif;font-weight:700;font-size:24px;line-height:1;color:var(--text,#e8edf4);white-space:nowrap;}'+
+  /* ── collapsible detail panels in a masonry column layout (fits content, no dead space) ── */
+  '.us3detail-grid{column-count:3;column-gap:14px;}'+
+  '.us3detail-grid>.us3w-card{break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%;margin:0 0 14px;vertical-align:top;}'+
+  '.us3coll-h{display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;user-select:none;}'+
+  '.us3coll-h .us3coll-ar{color:#8a97a8;font-size:13px;transition:transform .15s;flex:0 0 auto;}'+
+  '.us3coll:not(.open) .us3coll-body{display:none;}'+
+  '.us3coll:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
+  '.us3coll-body{margin-top:10px;}'+
+  '.us3coll-h.warn{background:rgba(232,160,32,.16);border:1px solid rgba(232,160,32,.55);border-radius:6px;padding:9px 11px;}'+
+  '.us3grp-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text,#e8edf4);}'+
+  '.us3grp-h:hover{background:rgba(0,113,188,.08);}'+
+  '.us3grp:not(.open) .us3grp-body{display:none;}'+
+  '.us3grp:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
+  '@media(max-width:1200px){.us3detail-grid{column-count:2;}}'+
+  '@media(max-width:760px){.us3detail-grid{column-count:1;}.us3sum-row{grid-template-columns:1fr;}.us3kpi-row{grid-template-columns:1fr 1fr;}}';
   document.head.appendChild(s);
 }
 
@@ -6361,7 +6387,33 @@ function renderDashboard(){
 }
 function help(txt){return '<span class="us3help">?<span class="tip">'+esc(txt)+'</span></span>';}
 function kpi(n,label,sub,tab,tip){return '<div class="us3kpi" onclick="US3.go(\''+tab+'\')"><div class="n">'+n+'</div><div class="l">'+label+(tip?help(tip):'')+'</div>'+(sub?'<div class="s">'+sub+'</div>':'')+'</div>';}
-function panel(title,bodyHtml,sub,tip){return '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">'+title+(tip?help(tip):'')+(sub?' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">'+sub+'</span>':'')+'</div>'+bodyHtml+'</div>';}
+function panel(title,bodyHtml,sub,tip,opts){opts=opts||{};var open=opts.open!==false;var hcls='us3w-h us3coll-h'+(opts.warn?' warn':'');return '<div class="us3w-card us3coll'+(open?' open':'')+'">'+
+  '<div class="'+hcls+'" style="font-size:15px;" onclick="us3ToggleColl(this)">'+
+    '<span>'+title+(tip?help(tip):'')+(sub?' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">'+sub+'</span>':'')+'</span>'+
+    '<span class="us3coll-ar">▾</span></div>'+
+  '<div class="us3coll-body">'+bodyHtml+'</div></div>';}
+function us3ToggleColl(h){var c=h.parentNode;while(c&&c.className&&c.className.indexOf('us3coll')<0&&c.className.indexOf('us3grp')<0)c=c.parentNode;if(c)c.classList.toggle('open');}
+function us3SumLine(lab,val,sub,tab){return '<div class="us3sum-line"'+(tab?(' onclick="US3.go(\''+tab+'\')"'):'')+'><span class="lab">'+lab+(sub?'<span class="sub2">'+sub+'</span>':'')+'</span><span class="val">'+val+'</span></div>';}
+function us3GroupScans(arr,labelKey){
+  var groups={},order=[];
+  arr.forEach(function(s){
+    var date=(s.scanned_at||'').slice(0,10);
+    var where=s.location||s.note||s.client_name||'—';
+    var key=date+'|'+where;
+    if(!groups[key]){groups[key]={date:date,where:where,items:[]};order.push(key);}
+    groups[key].items.push(s);
+  });
+  return order.map(function(k){return groups[k];}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+}
+function us3GroupRows(arr,prep){
+  var g=us3GroupScans(arr);
+  if(!g.length)return '<div class="us3w-empty">Nothing recent.</div>';
+  return g.map(function(grp){
+    var devs=grp.items.map(function(s){return '<div class="us3prow" onclick="US3.openDevice(\''+js(s.device_id)+'\')"><div><b>'+esc(s.device_id)+'</b></div><div style="font-size:11px;color:#8a97a8;">'+fmtDate(s.scanned_at)+'</div></div>';}).join('');
+    var place=grp.where&&grp.where!=='—'?(' '+prep+' <b>'+esc(grp.where)+'</b>'):'';
+    return '<div class="us3grp"><div class="us3grp-h" onclick="us3ToggleColl(this)"><span><b style="font-family:Oswald,sans-serif;color:var(--text,#e8edf4);">'+grp.items.length+'</b> device'+(grp.items.length>1?'s':'')+place+'<span class="sub2" style="color:#8a97a8;font-size:11px;margin-left:8px;">'+fmtDate(grp.date)+'</span></span><span class="us3coll-ar">▾</span></div><div class="us3grp-body" style="padding-left:6px;">'+devs+'</div></div>';
+  }).join('');
+}
 /* ---- guided tour ---- */
 var TOUR=[
   {h:'Welcome to US3 Operations',p:'This is your live operations hub. The data here is pulled automatically from three places — your Airtable job tracker, the Fulcrum field app, and the warehouse door-scanner log. Nothing here is typed by hand. Let me show you around.'},
@@ -6414,15 +6466,23 @@ function paintDashboard(ops){
   var notReturned=outList.filter(function(d){var j=LV.jobByNum[d.job_number];return j&&(j.project_status==='Project Completed'||j.project_status==='Removal Complete');});
   function scanRow(s){return '<div class="us3prow" onclick="US3.openDevice(\''+js(s.device_id)+'\')"><div><b>'+esc(s.device_id)+'</b> <span style="color:#8a97a8;font-size:12px;">'+esc(s.location||s.note||s.client_name||'')+'</span></div><div style="text-align:right;">'+dirChip(s.direction)+'<div style="font-size:11px;color:#8a97a8;">'+fmtDate(s.scanned_at)+'</div></div></div>';}
 
-  var kpis='<div class="us3kpi-row">'+
-    kpi(inGroundJobs.length,'Jobs in the ground',ongoingJobs.length+' ongoing total','sched','Jobs from your Airtable tracker that have at least one device deployed in the field (per Fulcrum). "Ongoing" = any job not marked completed.')+
-    kpi(LV.deployedTotal||0,'Devices deployed','FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap','Distinct devices currently deployed on active jobs, from the Fulcrum Site Sheet form, grouped by product type.')+
-    kpi((ops.devices_out!=null?ops.devices_out:'—'),'Out the door','shipped, not yet received back','shop','From the warehouse door-scanner log (ws.uscubed.com): devices whose most recent scan is "Ship" with no later "Receive". Includes historical units never scanned back.')+
-    kpi((ops.ship_7d||0)+' / '+(ops.receive_7d||0),'Ship / Receive (7d)','recent door activity','shop','Door scans in the last 7 days — Ship count / Receive count — from the scan log.')+
+  var kpis='<div class="us3sum-row">'+
+    '<div class="us3sum"><div class="us3sum-h">📊 Operations</div>'+
+      us3SumLine('Jobs in the ground',inGroundJobs.length,ongoingJobs.length+' ongoing','sched')+
+      us3SumLine('Devices deployed',(LV.deployedTotal||0),'FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap')+
+      us3SumLine('Out the door',(ops.devices_out!=null?ops.devices_out:'—'),'no return scan','shop')+
+      us3SumLine('Ship / Receive (7d)',(ops.ship_7d||0)+' / '+(ops.receive_7d||0),'this week','shop')+
+    '</div>'+
+    '<div class="us3sum"><div class="us3sum-h">🛰 Fleet Overview <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a97a8;">· deployed by type</span></div>'+
+      us3SumLine('FlexFlow',by.ff,'','fleet')+
+      us3SumLine('Cricket',by.cric,'','fleet')+
+      us3SumLine('Hach',by.hach,'','fleet')+
+      us3SumLine('Rain Gauge',by.rg,'','fleet')+
+    '</div>'+
   '</div>';
 
   var endingHtml=ending.length?ending.map(function(j){var d=daysLeft(j);var col=d<=7?'#ED1C24':d<=21?'#e8a020':'#2ecc71';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+col+';">'+d+'d left</span>');}).join(''):'<div class="us3w-empty">No active studies with an end date.</div>';
-  var overdueHtml=overdue.length?overdue.map(function(j){var d=daysLeft(j);return jobRow(j,'<span class="us3badge" style="color:#fff;background:#ED1C24;">'+Math.abs(d)+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
+  var overdueHtml=overdue.length?overdue.slice().sort(function(a,b){return daysLeft(b)-daysLeft(a);}).map(function(j){var d=daysLeft(j);var ad=Math.abs(d);var bg=ad<=7?'#e8a020':'#ED1C24';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+bg+';">'+ad+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
   var upcomingShown=upcoming.slice(0,15);
   var upcomingHtml=upcoming.length?('<div style="max-height:300px;overflow:auto;">'+upcomingShown.map(function(j){return jobRow(j,'<span style="color:#8a97a8;font-size:12px;white-space:nowrap;">'+esc(j.project_status||'')+(j.install_date?' · '+fmtDate(j.install_date):'')+'</span>');}).join('')+'</div>'+(upcoming.length>15?('<div style="padding:6px 8px;font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;">+ '+(upcoming.length-15)+' more — see Projects ▸ Ongoing</div>'):'')):'<div class="us3w-empty">No upcoming jobs queued.</div>';
   var openItems='<div class="us3prow" onclick="US3.go(\'shop\')"><div>⚠ <b>'+overdue.length+'</b> job(s) overdue for equipment return</div><span style="color:#ED1C24;">review ›</span></div>'+
@@ -6435,13 +6495,13 @@ function paintDashboard(ops){
       '<div style="display:flex;align-items:center;gap:12px;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
         '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     kpis+
-    '<div class="us3dash-grid">'+
-      panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.')+
-      panel('⚠ Overdue for return',overdueHtml,'study ended, devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Cross-check the scan log for a Receive.')+
-      panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.')+
-      panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).')+
-      panel('🚚 Recent shipments',(ships.length?ships.map(scanRow).join(''):'<div class="us3w-empty">No recent ships.</div>'),'out the door','Most recent "Ship" scans from the warehouse door-scanner log.')+
-      panel('📥 Recent returns',(recvs.length?recvs.map(scanRow).join(''):'<div class="us3w-empty">No recent receives.</div>'),'in the door','Most recent "Receive" scans from the warehouse door-scanner log.')+
+    '<div class="us3detail-grid">'+
+      panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:true})+
+      panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:false,warn:true})+
+      panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:false})+
+      panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
+      panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:true})+
+      panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:true})+
     '</div>'+
     // ─── Availability section (the whole former Availability tab, moved here) ───
     '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);margin:32px 0 2px;">Availability</div>'+
