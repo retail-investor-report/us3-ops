@@ -1,4 +1,16 @@
+# Secrets — never commit (this site is served as static files publicly)
 .env
 .env.*
 *.env
 *.env.txt
+.env.txt
+
+# Local build helper
+.us3validate.sh
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.wrangler/
+desktop.ini
+index.html.bak

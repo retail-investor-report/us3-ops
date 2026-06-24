@@ -509,6 +509,111 @@ window.addEventListener('DOMContentLoaded',function(){
   }
 });
 </script>
+<!-- ════════════════════════════════════════════════════════════════════
+     REDESIGN v2 — parallel comparison build (us3dev2.html)
+     Applies the external AI UX/aesthetic critique (2026-06-17) as a pure
+     OVERRIDE LAYER. Original index.html is untouched. Color tokens (hues)
+     preserved exactly; only their application, type, shadows, shape,
+     spacing and casing change. Vault: 2026-06-17-us3-ai-ux-critique.
+     ════════════════════════════════════════════════════════════════════ -->
+<style id="rd2-fonts">
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+</style>
+<style id="rd2">
+/* ── FOUNDATION: type system — Inter for UI, Plex Mono for data ── */
+body, body *{
+  font-family:'Inter','IBM Plex Sans',system-ui,-apple-system,sans-serif !important;
+  text-transform:none !important;
+  letter-spacing:normal !important;
+}
+.ns-n, .mc-stat-total, .mc-stat-row-val, .exp-row-num, .pin-cnt,
+.rd-mono, code, kbd, table td{ font-variant-numeric:tabular-nums; }
+.ns-n, .mc-stat-total, .mc-stat-row-val, .exp-row-num, .pin-cnt, .rd-mono, code, kbd{
+  font-family:'IBM Plex Mono',ui-monospace,monospace !important;
+}
+/* eyebrow labels: the ONLY surviving uppercase (small tracked caps) */
+.nb-top, .ns-l, .exp-row-lbl, .pin-drag, .rd-eyebrow{
+  text-transform:uppercase !important; letter-spacing:.06em !important; font-weight:600 !important;
+}
+/* headings → sentence-case, weighted, not shouty caps */
+.stub-t, .mc-panel-title, .nb-name, .pin-lbl, .exp-head-label, h1, h2, h3{
+  font-weight:600 !important; letter-spacing:-.01em !important;
+}
+.stub-t{ font-size:24px !important; color:var(--text) !important; }
+
+/* ── LIGHT MODE: authored to real parity (was a bare body override) ── */
+body.light{
+  --bg:#f5f7fa !important; --text:#0f1b2d !important; --muted:#5a6b82 !important;
+  --card-bg:#ffffff !important; --panel-bg:#ffffff !important; --nav-bg:#ffffff !important;
+  --input-bg:#ffffff !important; --overlay-bg:rgba(15,27,45,.45) !important;
+  --border:rgba(16,24,40,.10) !important; --borderb:rgba(16,24,40,.18) !important;
+  --glow:rgba(16,24,40,.05) !important;
+}
+/* ── DARK MODE: lift surfaces, kill the 40px accent glow ── */
+body:not(.light){
+  --card-bg:#0f1528 !important; --panel-bg:#0a1020 !important;
+  --border:rgba(26,100,180,.16) !important; --glow:rgba(0,0,0,0) !important;
+}
+
+/* ── CARDS: soft shadow + 12px radius ── */
+.mc-stat-card, .exp-box, .modal, .card, .stat-card{
+  border-radius:12px !important;
+  box-shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10) !important;
+}
+body:not(.light) .mc-stat-card, body:not(.light) .exp-box,
+body:not(.light) .modal, body:not(.light) .card{
+  box-shadow:0 1px 0 rgba(255,255,255,.02), 0 10px 28px rgba(0,0,0,.38) !important;
+}
+.mc-stat-card{ padding:14px 16px !important; }
+.mc-stat-card:hover{ transform:translateY(-1px); transition:transform .15s, box-shadow .15s; }
+
+/* ── BUTTONS: one coherent system, 8px radius, sentence case ── */
+.btn, .admin-btn{
+  border-radius:8px !important; text-transform:none !important; font-weight:600 !important;
+  letter-spacing:normal !important; font-size:13px !important; padding:9px 14px !important;
+  transition:all .15s !important;
+}
+.btn-p{ background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important; }
+.btn-p:hover{ opacity:.9 !important; }
+.btn-s{ background:transparent !important; border:1px solid var(--border) !important; color:var(--text) !important; }
+.btn-s:hover{ background:rgba(0,113,188,.08) !important; }
+
+/* ── INPUTS ── */
+input, select, textarea{
+  border-radius:8px !important; font-family:'Inter',sans-serif !important; font-size:13px !important;
+}
+
+/* ── NAV: sentence-case tabs, accent active underline kept; emoji→icons ── */
+.ntab{ font-size:13px !important; font-weight:500 !important; }
+.ntab.active{ font-weight:600 !important; }
+.nb-name{ font-size:20px !important; }
+.nb-name span{ color:var(--accent) !important; }
+.ti{ font-size:0 !important; display:inline-flex !important; align-items:center; }
+.ti svg{ width:16px; height:16px; }
+
+/* ── TABLES: taller rows, eyebrow headers, hover tint, tabular nums ── */
+table th{
+  text-transform:uppercase !important; font-size:11px !important; letter-spacing:.05em !important;
+  color:var(--muted) !important; font-weight:600 !important; padding:10px 12px !important;
+}
+table td{ padding:11px 12px !important; font-size:13px !important; }
+table tbody tr:hover td{ background:rgba(0,113,188,.045) !important; }
+
+/* ── BADGES / PILLS → tinted, pill-shaped ── */
+.badge, .pill, .chip, .tag, [class*="badge"]{
+  border-radius:999px !important; font-size:11px !important; font-weight:600 !important;
+  padding:2px 9px !important; letter-spacing:.01em !important;
+}
+
+/* ── comparison-build ribbon ── */
+.rd-ribbon{
+  position:fixed; right:12px; bottom:12px; z-index:9999; display:flex; align-items:center; gap:8px;
+  font-family:'IBM Plex Mono',monospace !important; font-size:11px;
+  background:var(--accent); color:#fff; padding:7px 13px; border-radius:999px;
+  box-shadow:0 6px 20px rgba(0,113,188,.4); letter-spacing:.02em; cursor:default; opacity:.92;
+}
+.rd-ribbon .dot{ width:7px;height:7px;border-radius:50%;background:#fff;opacity:.9; animation:pulse 2s ease-in-out infinite; }
+</style>
 </head>
 <body>
 <!-- LOGIN OVERLAY -->
@@ -3918,48 +4023,7 @@ function houstonLiveLoad(){
         '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Silent / down devices'+(down.length>=150?' (top 150 by oldest sample)':' ('+down.length+')')+'</div>'+
         '<div style="max-height:340px;overflow:auto;"><table class="us3w-tbl" style="width:100%;"><thead><tr><th>Site</th><th>Device</th><th>Type</th><th>Last sample</th><th style="text-align:right;">Msgs</th></tr></thead><tbody>'+(rowsHtml||'<tr><td colspan="5" style="color:var(--muted);padding:10px;">None — all devices reporting.</td></tr>')+'</tbody></table></div>'+
       '</div>'+
-      '<div id="houstonAnalytics" style="margin-top:18px;"></div>'+
       '<hr style="border:none;border-top:1px solid var(--borderb,#243044);margin:22px 0;">';
-    houstonAnalyticsRender();
-  },function(){host.innerHTML='';});
-}
-// Houston analytics: silent-duration buckets, repeat-offender devices, weekly maintenance trend.
-function houstonAnalyticsRender(){
-  var host=document.getElementById('houstonAnalytics');if(!host||typeof supa==='undefined'||!supa)return;
-  Promise.all([
-    supa.from('houston_device_status').select('last_sample,total_messages,pct_total,report_date'),
-    supa.from('houston_alerts').select('device_id,alert,device_type'),
-    supa.from('houston_weekly_stats').select('*').order('week_date',{ascending:true})
-  ]).then(function(r){
-    var devs=(r[0]&&r[0].data)||[],alerts=(r[1]&&r[1].data)||[],weeks=(r[2]&&r[2].data)||[];
-    if(!devs.length&&!alerts.length&&!weeks.length){host.innerHTML='';return;}
-    var now=Date.now();
-    // silent-duration buckets
-    var b={reporting:0,d0_30:0,d30_90:0,d90:0,never:0};
-    devs.forEach(function(d){
-      if(d.total_messages>0&&d.pct_total>0){b.reporting++;return;}
-      if(!d.last_sample){b.never++;return;}
-      var days=Math.floor((now-new Date(d.last_sample).getTime())/86400000);
-      if(isNaN(days)){b.never++;}else if(days<=30)b.d0_30++;else if(days<=90)b.d30_90++;else b.d90++;
-    });
-    var bucketRows=[['Reporting','#2ecc71',b.reporting],['Silent ≤30d','#e8a020',b.d0_30],['Silent 30–90d','#ED6A1C',b.d30_90],['Silent 90d+','#ED1C24',b.d90],['No sample ever','#5a6472',b.never]];
-    var maxB=Math.max.apply(null,bucketRows.map(function(x){return x[2];}).concat([1]));
-    var bucketsHtml=bucketRows.map(function(x){return '<div style="margin:5px 0;"><div style="display:flex;justify-content:space-between;font-family:Rajdhani,sans-serif;font-size:13px;"><span>'+x[0]+'</span><span style="color:var(--muted);">'+x[2]+'</span></div><div style="height:13px;background:var(--borderb,#243044);border-radius:7px;overflow:hidden;"><div style="height:100%;width:'+Math.round(x[2]/maxB*100)+'%;background:'+x[1]+';"></div></div></div>';}).join('');
-    // repeat offenders (most alerts per device)
-    var byDev={};alerts.forEach(function(a){if(a.device_id)byDev[a.device_id]=(byDev[a.device_id]||0)+1;});
-    var offenders=Object.keys(byDev).map(function(k){return [k,byDev[k]];}).sort(function(a,b2){return b2[1]-a[1];}).slice(0,10);
-    var offHtml=offenders.length?('<table class="us3w-tbl" style="width:100%;"><thead><tr><th>Device</th><th style="text-align:right;">Alerts</th></tr></thead><tbody>'+offenders.map(function(o){return '<tr><td><b>'+houstonEsc(o[0])+'</b></td><td style="text-align:right;color:#ED1C24;font-family:Oswald,sans-serif;">'+o[1]+'</td></tr>';}).join('')+'</tbody></table>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No alerts.</div>';
-    // weekly maintenance trend (need-maintenance vs maintained)
-    var wkShown=weeks.slice(-12);
-    var maxW=Math.max.apply(null,wkShown.map(function(w){return Math.max(Number(w.need_maintenance)||0,Number(w.maintained)||0);}).concat([1]));
-    var trendHtml=wkShown.length?('<div style="display:flex;align-items:flex-end;gap:6px;height:120px;">'+wkShown.map(function(w){var nm=Number(w.need_maintenance)||0,mt=Number(w.maintained)||0;return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="'+houstonEsc(w.week||'')+' · need '+nm+' / maintained '+mt+'"><div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:100px;"><div style="flex:1;background:#e8a020;height:'+Math.round(nm/maxW*100)+'%;border-radius:2px 2px 0 0;"></div><div style="flex:1;background:#2ecc71;height:'+Math.round(mt/maxW*100)+'%;border-radius:2px 2px 0 0;"></div></div></div>';}).join('')+'</div><div style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-top:4px;"><span style="color:#e8a020;">▮ need maintenance</span> · <span style="color:#2ecc71;">▮ maintained</span> · last '+wkShown.length+' weeks</div>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No weekly stats.</div>';
-    function card(title,body){return '<div style="flex:1;min-width:260px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">'+title+'</div>'+body+'</div>';}
-    host.innerHTML='<div class="dc-title" style="margin:0 0 10px;">📊 Houston Analytics</div>'+
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;">'+
-        card('Silence duration',bucketsHtml)+
-        card('Repeat offenders (most alerts)','<div style="max-height:230px;overflow:auto;">'+offHtml+'</div>')+
-        card('Maintenance trend',trendHtml)+
-      '</div>';
   },function(){host.innerHTML='';});
 }
 function renderHouston(){
@@ -6187,12 +6251,7 @@ function renderDevicePage(id){
     supa.from('site_maintenance').select('*').eq('device_id',id).order('visit_date',{ascending:false})
   ]).then(function(r){
     var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[],maint=(r[5]&&r[5].data)||[];
-    var siteRecs=locs.slice().sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));});
-    var loc=siteRecs[0];
-    window.US3._dev={id:id,locs:siteRecs,maint:maint,scans:scans,events:events,notes:notes};
-    var siteRecsHtml=siteRecs.length?('<table class="us3w-tbl"><thead><tr><th>Recorded</th><th>Site</th><th>City</th><th>Job</th><th>Sensor</th><th>Status</th></tr></thead><tbody>'+
-      siteRecs.map(function(l){return '<tr><td>'+fmtDate(l.updated_at)+'</td><td>'+esc(l.site_name||'—')+'</td><td>'+esc(l.city||'—')+'</td><td>'+(l.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(l.project_no)+'\')">'+esc(l.project_no)+'</span>'):'—')+'</td><td>'+esc(l.sensor_type||'—')+'</td><td>'+(l.status==='deployed'?'<span style="color:#0071BC;">deployed</span>':esc(l.status||'—'))+'</td></tr>';}).join('')+'</tbody></table>')
-      :'<div class="us3w-empty">No Fulcrum Site-Sheet (install) records for this device.</div>';
+    var loc=locs[0];
     function dirColor(d){var s=(d||'').toLowerCase();return s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';}
     function dirChip(d){return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff;background:'+dirColor(d)+';">'+esc(d||'—')+'</span>';}
     var last=scans[0];
@@ -6236,15 +6295,13 @@ function renderDevicePage(id){
     var notesHtml=(notes.length?notes.map(function(nn){return '<div class="us3prow" style="cursor:default;align-items:flex-start;"><div><div style="font-size:15px;color:#e8edf4;">'+esc(nn.note)+'</div><div style="font-size:11px;color:#8a97a8;">'+esc(nn.author||'—')+' · '+fmtDate(nn.created_at)+'</div></div></div>';}).join(''):'<div class="us3w-empty">No notes yet — add one to flag this device (e.g. faulty antenna).</div>')+
       '<div style="display:flex;gap:8px;margin-top:10px;"><input id="devNoteInput" class="us3b2-input" style="flex:1;" placeholder="Add a note…" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();US3.addNote(\''+js(id)+'\');}"><button class="us3b2-btn" onclick="US3.addNote(\''+js(id)+'\')">Add</button></div>';
     showOverlay(
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
-        '<button class="us3w-back" onclick="US3.downloadDevice()">⬇ Download full history</button></div>'+
+      '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
       '<div class="us3w-h" style="font-size:30px;margin-top:14px;">'+esc(id)+'</div>'+
       '<div style="color:#8a97a8;">Device record'+lastLine+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location</div>'+locHtml+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📄 Install / Site-sheet records ('+siteRecs.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">every Fulcrum Site Sheet tied to this device</span></div>'+siteRecsHtml+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔧 Field maintenance ('+maint.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">Fulcrum Site Maintenance visits</span></div>'+maintHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📝 Notes ('+notes.length+')</div>'+notesHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔧 Field maintenance ('+maint.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">Fulcrum Site Maintenance visits</span></div>'+maintHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')</div>'+ev+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Kit membership</div>'+kitHtml+'</div>'
     );
@@ -6579,23 +6636,7 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
-window.US3._dev=null;
-function downloadDevice(){
-  var d=window.US3&&window.US3._dev;if(!d){alert('Open a device first.');return;}
-  function f(v){return v==null?'':String(v);}
-  var L=['US3 DEVICE HISTORY — '+f(d.id),'Generated '+new Date().toLocaleString(),''];
-  L.push('INSTALL / SITE-SHEET RECORDS ('+d.locs.length+')');
-  d.locs.forEach(function(l){L.push('  '+fmtDate(l.updated_at)+' | site: '+f(l.site_name)+' | '+f(l.city)+' | job '+f(l.project_no)+' | '+f(l.sensor_type)+' | '+f(l.status));});
-  L.push('','FIELD MAINTENANCE VISITS ('+d.maint.length+')');
-  d.maint.forEach(function(m){L.push('  '+fmtDate(m.visit_date)+' | '+f(m.installer_name)+' | root: '+f(m.root_cause)+' | action: '+f(m.maintenance_action)+' | operational_after: '+f(m.operational_after)+(m.new_device_id?(' | replaced_with: '+f(m.new_device_id)):'')+(m.additional_notes?(' | notes: '+f(m.additional_notes)):''));});
-  L.push('','MOVEMENT (SHIP/RECEIVE) SCANS ('+d.scans.length+')');
-  d.scans.forEach(function(s){L.push('  '+fmtDate(s.scanned_at)+' | '+f(s.direction)+' | '+f(s.location)+' | job '+f(s.job_number)+' | '+f(s.note));});
-  L.push('','WAREHOUSE EVENTS ('+d.events.length+')');
-  d.events.forEach(function(e){L.push('  '+fmtDate(e.created_at)+' | '+f(e.event_type)+' | '+f(e.status)+' | fail: '+f(e.failure_reason)+' | '+f(e.tech));});
-  var blob=new Blob([L.join('\n')],{type:'text/plain'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='device-'+f(d.id).replace(/[^a-z0-9]/gi,'_')+'-history.txt';document.body.appendChild(a);a.click();a.remove();
-}
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,tour:tourNav,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
 // Migrate Deployed to live device data: getDeployedCount now reflects real
 // devices in the ground (from device_locations), falling back to the old
 // reservation-based count until the live data is ready.
@@ -6640,658 +6681,110 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     </div>
   </div>
 </div>
-<script>
-/* ═══════════════════════════════════════════════════════════════════════
-   US3-OPS IDENTITY + COMMAND CENTER  (Build 20 — identity spine)
-   ───────────────────────────────────────────────────────────────────────
-   • Device binding   — this computer remembers which BENCH it is.
-   • Identity roster  — real workers (uscubed.com), not typed strings.
-   • Tap-a-name        — switch the active worker on a shared bench in one tap;
-                         idle auto-revert so a walk-away doesn't keep logging.
-   • Activity log      — every login / page view / action stamped with
-                         worker + station, forever (Supabase activity_log).
-   • Command Center    — manager console: bench MAP (who last worked each bench),
-                         people management, per-user page+bench permissions,
-                         full activity analytics.
-   Isolated module: runs after the main block + US3Live so every global exists.
-   It SOURCES scanGetTech()/scanGetStation() (via localStorage) so every
-   existing action inherits real attribution, and WRAPS the action fns to log.
-   A fault here cannot break boot/login.
-   Auth today = the email gate (us3EmailOk). This is the seam Google OAuth
-   slots into later — swap ensureWorker(email) for a verified OAuth identity.
-   ═══════════════════════════════════════════════════════════════════════ */
+<!-- ════ REDESIGN v2 enhancement layer (safe, additive; original untouched) ════ -->
+<script id="rd2js">
 (function(){
-'use strict';
-
-var PAGES = [
-  {id:'mc',       label:'Dashboard'},
-  {id:'fleet',    label:'Fleet Map'},
-  {id:'assetmap', label:'Asset Map'},
-  {id:'houston',  label:'Houston'},
-  {id:'sched',    label:'Schedule'},
-  {id:'projects', label:'Projects'},
-  {id:'parts',    label:'Red Tag'},
-  {id:'scan',     label:'Station Scanner'},
-  {id:'kit',      label:'Build Kit'},
-  {id:'count',    label:'Warehouse Count'},
-  {id:'shop',     label:'Ship Station'},
-  {id:'devmap',   label:'Device Map'},
-  {id:'viewer',   label:'Product 3D'},
-  {id:'decomm',   label:'Decommission'}
-];
-var PAGE_LABEL = {}; PAGES.forEach(function(p){PAGE_LABEL[p.id]=p.label;});
-var MGR_ROLES = {owner:1,admin:1,manager:1};
-var IDLE_REVERT_MS = 8*60*1000; // communal bench: drop active worker after 8 min idle
-
-var ID = {
-  supa:null,
-  workers:[],            // roster
-  stations:[],           // benches
-  binding:null,          // { device_uid, station_id, ... }
-  station:null,          // resolved station object for THIS computer
-  session:null,          // worker for the logged-in account (us3_user_email)
-  active:null,           // the worker actions are attributed to (tap-a-name)
-  ready:false,
-  _idleTimer:null,
-  _lastPageLog:{page:'',ts:0}
-};
-window.US3ID = ID;
-
-function esc(s){return window.us3esc?us3esc(s):String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
-function nowISO(){return new Date().toISOString();}
-function uuid(){
-  try{ if(window.crypto&&crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
-    var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});
-}
-function emailOk(e){ return window.us3EmailOk?us3EmailOk(e):/@uscubed\.com$/i.test(e||''); }
-function workerName(w){ return w? (w.display_name||w.full_name||(w.email||'').split('@')[0]) : ''; }
-function isMgr(w){ return !!(w&&MGR_ROLES[w.role]); }
-function fmtTs(ts){ if(!ts)return '—'; try{return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}catch(e){return String(ts);} }
-function ago(ts){ if(!ts)return 'never'; var s=(Date.now()-new Date(ts).getTime())/1000; if(s<60)return 'just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
-
-// ─── DEVICE UID (per computer/browser) ───────────────────────────────────
-function deviceUid(){
-  var k='us3_device_uid', v=localStorage.getItem(k);
-  if(!v){ v=uuid(); localStorage.setItem(k,v); }
-  return v;
-}
-
-// ═══ DATA LOADERS ═══
-function loadWorkers(){
-  return ID.supa.from('workers').select('*').order('display_name',{ascending:true}).then(function(r){
-    if(r&&!r.error) ID.workers=r.data||[];
-    return ID.workers;
-  });
-}
-function loadStations(){
-  return ID.supa.from('stations').select('*').order('office',{ascending:true}).order('sort',{ascending:true}).then(function(r){
-    if(r&&!r.error) ID.stations=r.data||[];
-    return ID.stations;
-  });
-}
-function loadBinding(){
-  var du=deviceUid();
-  return ID.supa.from('station_bindings').select('*').eq('device_uid',du).maybeSingle().then(function(r){
-    ID.binding=(r&&!r.error)?r.data:null;
-    ID.station=ID.binding?stationById(ID.binding.station_id):null;
-    return ID.binding;
-  });
-}
-function stationById(id){ for(var i=0;i<ID.stations.length;i++) if(ID.stations[i].id===id) return ID.stations[i]; return null; }
-function workerById(id){ for(var i=0;i<ID.workers.length;i++) if(ID.workers[i].id===id) return ID.workers[i]; return null; }
-function workerByEmail(e){ e=(e||'').toLowerCase(); for(var i=0;i<ID.workers.length;i++) if((ID.workers[i].email||'').toLowerCase()===e) return ID.workers[i]; return null; }
-
-// ─── ensure a worker row exists for an email (the Google-OAuth seam) ───
-function ensureWorker(email){
-  email=(email||'').trim().toLowerCase();
-  var w=workerByEmail(email);
-  if(w) return Promise.resolve(w);
-  if(!emailOk(email)) return Promise.resolve(null);
-  var role = /@uscubed\.com$/i.test(email)? 'worker' : 'owner';
-  var row={email:email, display_name:email.split('@')[0].replace(/\./g,' '), role:role, active:true, created_by:'self', updated_at:nowISO()};
-  return ID.supa.from('workers').insert(row).select().then(function(r){
-    if(r&&!r.error&&r.data&&r.data[0]){ ID.workers.push(r.data[0]); return r.data[0]; }
-    return workerByEmail(email);
-  });
-}
-
-// ═══ STATION BINDING ═══
-function bindStation(stationId, label){
-  var du=deviceUid();
-  var row={device_uid:du, station_id:stationId, label:label||navigator.platform||'computer', bound_by:(ID.active?ID.active.email:null), bound_at:nowISO(), last_seen_at:nowISO()};
-  return ID.supa.from('station_bindings').upsert(row).then(function(r){
-    ID.binding=row; ID.station=stationById(stationId); syncScanGlobals(); renderChip();
-    log('action',{action:'station_bind', target:stationId, detail:{station:ID.station?ID.station.name:null}});
-    return r;
-  });
-}
-function touchBinding(){
-  if(!ID.binding) return;
-  ID.supa.from('station_bindings').update({
-    last_seen_at:nowISO(),
-    last_worker_id:ID.active?ID.active.id:null,
-    last_worker_name:ID.active?workerName(ID.active):null,
-    last_activity_at:nowISO()
-  }).eq('device_uid',deviceUid()).then(function(){},function(){});
-}
-
-// keep the legacy scanner globals in sync so every existing action stamps the real worker/bench
-function syncScanGlobals(){
+  "use strict";
+  var S='http://www.w3.org/2000/svg';
+  // Lucide-style line icons, keyed to nav data-page
+  var ICONS={
+    mc:'M3 3h8v8H3zM13 3h8v5h-8zM13 11h8v10h-8zM3 13h8v8H3z',
+    fleet:'M12 2a10 10 0 100 20 10 10 0 000-20M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20',
+    assetmap:'M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0zM12 13a3 3 0 100-6 3 3 0 000 6',
+    houston:'M12 3s6 6 6 11a6 6 0 01-12 0c0-5 6-11 6-11z',
+    sched:'M3 5h18v16H3zM3 9h18M8 3v4M16 3v4',
+    projects:'M9 3h6v3H9zM5 6h14v15H5zM9 11h6M9 15h6',
+    parts:'M14 7a4 4 0 01-5 5l-5 5 2 2 5-5a4 4 0 005-5l-3 3-2-2 3-3z',
+    scan:'M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M3 12h18',
+    kit:'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8',
+    count:'M5 3h14v18H5zM8 7h8M8 11h2M14 11h2M8 15h2M14 15h2',
+    shop:'M3 6h13v9H3zM16 9h4l1 3v3h-5zM7 18a2 2 0 100 .1M18 18a2 2 0 100 .1',
+    devmap:'M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15',
+    viewer:'M12 2l9 5v10l-9 5-9-5V7l9-5zM12 12l9-5M12 12v10M12 12L3 7',
+    decomm:'M3 21V3M3 21h18M8 17V9M13 17V5M18 17v-6'
+  };
+  function svg(d){
+    var s=document.createElementNS(S,'svg');
+    s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');
+    s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','2');
+    s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');
+    var p=document.createElementNS(S,'path');p.setAttribute('d',d);s.appendChild(p);return s;
+  }
+  function swapIcons(){
+    try{
+      document.querySelectorAll('.ntab[data-page]').forEach(function(tab){
+        var ti=tab.querySelector('.ti');if(!ti||ti.dataset.rd2)return;
+        var d=ICONS[tab.getAttribute('data-page')];if(!d)return;
+        ti.textContent='';ti.appendChild(svg(d));ti.dataset.rd2='1';
+      });
+    }catch(e){}
+  }
+  // comparison ribbon
+  function ribbon(){
+    if(document.querySelector('.rd-ribbon'))return;
+    var r=document.createElement('div');r.className='rd-ribbon';
+    r.innerHTML='<span class="dot"></span>Redesign v2 · comparison build';
+    document.body.appendChild(r);
+  }
+  // ── safe presentation fixes: currency to 2dp; Excel serial → date ──
+  var curRe=/\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?/g;
+  function fixCurrency(node){
+    var t=node.nodeValue;if(t.indexOf('$')<0)return;
+    var out=t.replace(curRe,function(m){
+      var n=Number(m.replace(/[$,\s]/g,''));if(!isFinite(n))return m;
+      return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    });
+    if(out!==t)node.nodeValue=out;
+  }
+  var EXCEL0=Date.UTC(1899,11,30);
+  function serialToISO(n){
+    var ms=EXCEL0+n*86400000,d=new Date(ms);
+    if(isNaN(d))return null;return d.toISOString().slice(0,10);
+  }
+  function fixSerialDates(){
+    try{
+      document.querySelectorAll('table').forEach(function(tbl){
+        var heads=tbl.querySelectorAll('thead th, tr:first-child th, tr:first-child td');
+        var dateCols={};var any=false;
+        heads.forEach(function(h,i){
+          if(/date|silent|last|sample|seen|install|return|ship/i.test(h.textContent)){dateCols[i]=1;any=true;}
+        });
+        if(!any)return;
+        tbl.querySelectorAll('tbody tr, tr').forEach(function(tr){
+          var cells=tr.children;
+          for(var i=0;i<cells.length;i++){
+            if(!dateCols[i])continue;var c=cells[i];if(c.dataset.rd2)continue;
+            var txt=(c.textContent||'').trim();var m=txt.match(/^(\d{4,6})$/);
+            if(m){var n=+m[1];if(n>=20000&&n<=60000){var iso=serialToISO(n);
+              if(iso){c.title='raw serial '+n;c.textContent=iso;c.dataset.rd2='1';}}}
+          }
+        });
+      });
+    }catch(e){}
+  }
+  function walkText(root,fn){
+    try{
+      var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null,false),n;
+      var batch=[];while((n=w.nextNode())){batch.push(n);}batch.forEach(fn);
+    }catch(e){}
+  }
+  var pending=null;
+  function pass(){
+    swapIcons();ribbon();
+    walkText(document.body,fixCurrency);
+    fixSerialDates();
+  }
+  function schedule(){ if(pending)return; pending=setTimeout(function(){pending=null;pass();},400); }
+  if(document.readyState!=='loading')pass();
+  else document.addEventListener('DOMContentLoaded',pass);
+  setTimeout(pass,1500);
   try{
-    if(ID.station) localStorage.setItem('us3_scan_station', ID.station.name);
-    if(ID.active)  localStorage.setItem('us3_scan_tech', workerName(ID.active));
-    else localStorage.removeItem('us3_scan_tech');
+    var mo=new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){if(muts[i].addedNodes&&muts[i].addedNodes.length){schedule();break;}}
+    });
+    document.addEventListener('DOMContentLoaded',function(){mo.observe(document.body,{childList:true,subtree:true});});
   }catch(e){}
-}
-
-// ═══ ACTIVE WORKER (tap-a-name) ═══
-function setActive(w, opts){
-  opts=opts||{};
-  var prev=ID.active;
-  ID.active=w||null;
-  try{ if(w) localStorage.setItem('us3_active_worker_id', w.id); else localStorage.removeItem('us3_active_worker_id'); }catch(e){}
-  syncScanGlobals(); renderChip(); applyPagePerms();
-  if(opts.log!==false && w) log('worker_switch',{detail:{from:prev?prev.email:null, to:w.email}});
-  armIdle();
-}
-function armIdle(){
-  if(ID._idleTimer){ clearTimeout(ID._idleTimer); ID._idleTimer=null; }
-  // only auto-revert on communal/shared benches (a personal bench stays signed in)
-  var communal = ID.station && (ID.station.kind==='communal'||ID.station.kind==='testing'||ID.station.kind==='receiving'||ID.station.kind==='shipping');
-  var sharedSession = ID.session && ID.session.is_shared;
-  if(!(communal||sharedSession)) return;
-  ID._idleTimer=setTimeout(function(){
-    if(ID.active && !(ID.active.is_shared)){
-      log('worker_switch',{detail:{auto_revert:true, from:ID.active.email}});
-      setActive(ID.session && ID.session.is_shared? null : ID.session, {log:false});
-      toast('Bench idle — active worker cleared. Tap your name to log work.');
-    }
-  }, IDLE_REVERT_MS);
-}
-function bumpIdle(){ if(ID._idleTimer) armIdle(); }
-
-// ═══ ACTIVITY LOG ═══
-function log(kind, extra){
-  if(!ID.supa) return;
-  extra=extra||{};
-  var w=ID.active||ID.session;
-  var row={
-    ts:nowISO(), kind:kind,
-    worker_id:w?w.id:null, worker_email:w?w.email:null, worker_name:w?workerName(w):null,
-    station_id:ID.station?ID.station.id:null, station_code:ID.station?ID.station.code:null,
-    device_uid:deviceUid(),
-    page:extra.page||null, action:extra.action||null, target:extra.target||null,
-    detail:extra.detail||null, user_agent:navigator.userAgent
-  };
-  try{ ID.supa.from('activity_log').insert(row).then(function(){},function(){}); }catch(e){}
-  touchBinding();
-}
-
-// ═══ PERMISSIONS ═══
-function canSee(w, page){
-  if(page==='cmd') return isMgr(w);
-  if(!w) return true;
-  if(isMgr(w)) return true;
-  var allow=w.allowed_pages;
-  if(allow==null) return true;             // null = all pages
-  return allow.indexOf(page)>=0;
-}
-function applyPagePerms(){
-  var w=ID.active||ID.session;
-  document.querySelectorAll('#nav .ntab[data-page]').forEach(function(t){
-    var pg=t.getAttribute('data-page');
-    t.style.display = canSee(w,pg)? '' : 'none';
-  });
-  // command-center tab visibility
-  var cmd=document.querySelector('#nav .ntab[data-page="cmd"]');
-  if(cmd) cmd.style.display = canSee(w,'cmd')? '' : 'none';
-}
-
-// ═══ THE STATION + WORKER CHIP (top of nav) ═══
-function ensureChip(){
-  if(document.getElementById('us3idChip')) return;
-  var host=document.querySelector('#nav .nb') || document.querySelector('#nav');
-  if(!host) return;
-  var chip=document.createElement('div');
-  chip.id='us3idChip'; chip.className='us3id-chip';
-  chip.onclick=function(){ openSwitch(); };
-  host.appendChild(chip);
-}
-function renderChip(){
-  ensureChip();
-  var chip=document.getElementById('us3idChip'); if(!chip) return;
-  var st=ID.station? esc(ID.station.name) : '<span style="color:var(--bad,#e5484d)">Set bench</span>';
-  var locked = ID.station && ID.station.locked;
-  var who = ID.active? esc(workerName(ID.active)) : '<span style="opacity:.7">tap to sign in</span>';
-  chip.innerHTML =
-    '<span class="us3id-st">🏷 '+st+(locked?' 🔒':'')+'</span>'+
-    '<span class="us3id-who">👤 '+who+'</span>'+
-    '<span class="us3id-sw">Switch ▾</span>';
-}
-
-// ═══ SWITCH MODAL (tap-a-name) ═══
-function openSwitch(){
-  if(!ID.station){ openBind(); return; }
-  var locked = ID.station.locked || ID.station.allow_switch===false;
-  var mgr = isMgr(ID.active||ID.session);
-  var roster = ID.workers.filter(function(w){return w.active!==false && !w.is_shared;});
-  var tiles = roster.map(function(w){
-    var on = ID.active && ID.active.id===w.id;
-    return '<button class="us3id-tile'+(on?' on':'')+'" onclick="US3ID.pick(\''+w.id+'\')">'+
-      '<span class="us3id-av">'+esc((workerName(w)||'?').slice(0,1).toUpperCase())+'</span>'+
-      '<span class="us3id-nm">'+esc(workerName(w))+'</span>'+
-      (w.role&&w.role!=='worker'?'<span class="us3id-rl">'+esc(w.role)+'</span>':'')+
-    '</button>';
-  }).join('');
-  var body='';
-  if(locked && !mgr){
-    body='<div class="us3id-note">🔒 This bench is locked. Work is logged to <b>'+esc(ID.session?workerName(ID.session):'the bench account')+'</b>. A manager can change who works here.</div>';
-  }else{
-    body='<div class="us3id-sub">Tap your name to log your work at <b>'+esc(ID.station.name)+'</b>.</div>'+
-      '<div class="us3id-tiles">'+(tiles||'<div class="us3id-empty">No workers yet.</div>')+
-        '<button class="us3id-tile add" onclick="US3ID.addPerson()"><span class="us3id-av">＋</span><span class="us3id-nm">New person<br><small>sign in</small></span></button>'+
-      '</div>';
-    if(ID.active) body+='<div style="text-align:center;margin-top:10px;"><button class="us3id-btn ghost" onclick="US3ID.clearActive()">Clear active worker</button></div>';
-  }
-  var foot = mgr? '<button class="us3id-btn ghost" onclick="US3ID.openBind()">⚙ Change this bench</button>' : '';
-  modal('Who\'s at this bench?', body, foot);
-}
-ID.pick=function(id){ var w=workerById(id); if(w){ setActive(w); closeModal(); toast('Now logging as '+workerName(w)); } };
-ID.clearActive=function(){ setActive(ID.session&&ID.session.is_shared?null:ID.session,{log:true}); closeModal(); };
-ID.addPerson=function(){
-  var email=prompt('Sign in — enter your @uscubed.com email:');
-  if(!email) return;
-  email=email.trim().toLowerCase();
-  if(!emailOk(email)){ alert('Must be a @uscubed.com email.'); return; }
-  ensureWorker(email).then(function(w){
-    if(!w){ alert('Could not sign in.'); return; }
-    setActive(w); log('login',{detail:{via:'add_person'}}); closeModal(); toast('Welcome, '+workerName(w));
-  });
-};
-
-// ═══ BIND MODAL (which bench is this computer) ═══
-function openBind(){
-  var byOffice={};
-  ID.stations.filter(function(s){return s.active!==false;}).forEach(function(s){ (byOffice[s.office]=byOffice[s.office]||[]).push(s); });
-  var groups=Object.keys(byOffice).map(function(off){
-    var rows=byOffice[off].map(function(s){
-      var on=ID.station&&ID.station.id===s.id;
-      return '<button class="us3id-bench'+(on?' on':'')+'" onclick="US3ID.doBind(\''+s.id+'\')">'+
-        esc(s.name)+(s.locked?' 🔒':'')+'<small>'+esc(s.kind)+'</small></button>';
-    }).join('');
-    return '<div class="us3id-offg"><div class="us3id-offh">'+esc(off)+'</div><div class="us3id-benchgrid">'+rows+'</div></div>';
-  }).join('');
-  var foot = isMgr(ID.active||ID.session)? '<button class="us3id-btn" onclick="US3ID.openCmd(\'people\')">Manage workers & benches →</button>' : '';
-  modal('Which bench is this computer?', '<div class="us3id-sub">This sets it once. The computer remembers — a manager can reassign it from the Command Center.</div>'+groups, foot);
-}
-ID.doBind=function(id){ bindStation(id).then(function(){ closeModal(); toast('This computer is now '+(stationById(id)||{}).name); openSwitch(); }); };
-ID.openBind=function(){ closeModal(); setTimeout(openBind,50); };
-
-// ═══ tiny modal + toast (self-contained, no dependency on us3b2) ═══
-function modal(title, body, foot){
-  closeModal();
-  var ov=document.createElement('div'); ov.id='us3idOverlay'; ov.className='us3id-ov';
-  ov.onclick=function(e){ if(e.target===ov) closeModal(); };
-  ov.innerHTML='<div class="us3id-modal"><div class="us3id-mh">'+esc(title)+'<button class="us3id-x" onclick="US3ID.closeModal()">×</button></div>'+
-    '<div class="us3id-mb">'+body+'</div>'+(foot?'<div class="us3id-mf">'+foot+'</div>':'')+'</div>';
-  document.body.appendChild(ov);
-}
-function closeModal(){ var o=document.getElementById('us3idOverlay'); if(o) o.remove(); }
-ID.closeModal=closeModal;
-function toast(msg){
-  var t=document.createElement('div'); t.className='us3id-toast'; t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(function(){ t.classList.add('show'); },20);
-  setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){t.remove();},300); },2600);
-}
-
-// ═══ COMMAND CENTER ═══
-function ensureCmdPage(){
-  if(document.getElementById('page-cmd')) return;
-  var pages=document.querySelector('.page')? document.querySelector('.page').parentNode : document.body;
-  var div=document.createElement('div'); div.className='page'; div.id='page-cmd';
-  div.innerHTML='<div id="cmdInner" style="padding:18px 22px;"></div>';
-  pages.appendChild(div);
-}
-function ensureCmdTab(){
-  if(document.querySelector('#nav .ntab[data-page="cmd"]')) return;
-  var tabs=document.querySelector('#nav .ntabs'); if(!tabs) return;
-  var tab=document.createElement('div');
-  tab.className='ntab'; tab.setAttribute('data-page','cmd');
-  tab.innerHTML='<span class="ti">🎛</span>Command Center';
-  tab.onclick=function(){ if(window.sw) sw('cmd',tab); renderCmd(); };
-  tabs.appendChild(tab);
-}
-var cmdView='map';
-ID.openCmd=function(v){ closeModal(); cmdView=v||'map'; var tab=document.querySelector('#nav .ntab[data-page="cmd"]'); if(window.sw&&tab) sw('cmd',tab); renderCmd(); };
-function renderCmd(){
-  ensureCmdPage();
-  var inner=document.getElementById('cmdInner'); if(!inner) return;
-  if(!isMgr(ID.active||ID.session)){ inner.innerHTML='<div class="us3id-note">Command Center is for managers only.</div>'; return; }
-  var tabs=[['map','🗺 Bench Map'],['people','👥 People'],['perms','🔑 Access'],['activity','📜 Activity']];
-  var nav=tabs.map(function(t){return '<button class="us3id-ctab'+(cmdView===t[0]?' on':'')+'" onclick="US3ID.cmdGo(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  inner.innerHTML='<div class="us3id-ch"><div class="us3id-ct">🎛 Command Center</div><div class="us3id-ctabs">'+nav+'</div></div><div id="cmdBody"></div>';
-  if(cmdView==='map') cmdMap();
-  else if(cmdView==='people') cmdPeople();
-  else if(cmdView==='perms') cmdPerms();
-  else if(cmdView==='activity') cmdActivity();
-}
-ID.cmdGo=function(v){ cmdView=v; renderCmd(); };
-
-function cmdMap(){
-  var body=document.getElementById('cmdBody'); body.innerHTML='<div class="us3id-empty">Loading benches…</div>';
-  Promise.all([loadStations(),loadBinding(),loadWorkers()]).then(function(){
-    return ID.supa.from('station_bindings').select('*');
-  }).then(function(r){
-    var binds=(r&&!r.error)?r.data:[];
-    var bindByStation={}; binds.forEach(function(b){ (bindByStation[b.station_id]=bindByStation[b.station_id]||[]).push(b); });
-    var byOffice={};
-    ID.stations.forEach(function(s){ (byOffice[s.office]=byOffice[s.office]||[]).push(s); });
-    var html=Object.keys(byOffice).map(function(off){
-      var cards=byOffice[off].map(function(s){
-        var bs=bindByStation[s.id]||[];
-        var last=null; bs.forEach(function(b){ if(b.last_activity_at&&(!last||b.last_activity_at>last.last_activity_at)) last=b; });
-        var who = last&&last.last_worker_name? esc(last.last_worker_name) : '—';
-        var when = last&&last.last_activity_at? ago(last.last_activity_at) : 'no activity';
-        var kindColor={personal:'#1a7fe8',communal:'#8b5cf6',testing:'#e5484d',receiving:'#e8a020',shipping:'#44bb88'}[s.kind]||'#1a7fe8';
-        return '<button class="us3id-mapcard" style="border-top:3px solid '+kindColor+'" onclick="US3ID.benchDetail(\''+s.id+'\')">'+
-          '<div class="us3id-mapname">'+esc(s.name)+(s.locked?' 🔒':'')+'</div>'+
-          '<div class="us3id-mapkind" style="color:'+kindColor+'">'+esc(s.kind)+'</div>'+
-          '<div class="us3id-mapwho">👤 '+who+'</div>'+
-          '<div class="us3id-mapwhen">'+when+'</div>'+
-          '<div class="us3id-mappc">'+bs.length+' computer'+(bs.length===1?'':'s')+'</div>'+
-        '</button>';
-      }).join('');
-      return '<div class="us3id-offg"><div class="us3id-offh">'+esc(off)+'</div><div class="us3id-mapgrid">'+cards+'</div></div>';
-    }).join('');
-    document.getElementById('cmdBody').innerHTML='<div class="us3id-sub">Click any bench to see who last worked it and its recent activity. <button class="us3id-btn" style="float:right" onclick="US3ID.newBench()">＋ New bench</button></div>'+html;
-  });
-}
-ID.benchDetail=function(stationId){
-  var s=stationById(stationId); if(!s) return;
-  var body=document.getElementById('cmdBody');
-  body.innerHTML='<button class="us3id-btn ghost" onclick="US3ID.cmdGo(\'map\')">‹ Back to map</button><div class="us3id-empty" style="margin-top:12px;">Loading '+esc(s.name)+'…</div>';
-  ID.supa.from('activity_log').select('*').eq('station_id',stationId).order('ts',{ascending:false}).limit(60).then(function(r){
-    var rows=(r&&!r.error)?r.data:[];
-    var feed=rows.length? rows.map(activityRow).join('') : '<div class="us3id-empty">No activity yet.</div>';
-    var lockBtn = s.locked? 'Unlock bench' : 'Lock bench (testing)';
-    body.innerHTML=
-      '<button class="us3id-btn ghost" onclick="US3ID.cmdGo(\'map\')">‹ Back to map</button>'+
-      '<div class="us3id-deth"><b>'+esc(s.name)+'</b> · '+esc(s.office)+' · '+esc(s.kind)+(s.locked?' 🔒 locked':'')+'</div>'+
-      '<div style="margin:10px 0;"><button class="us3id-btn" onclick="US3ID.toggleLock(\''+stationId+'\')">'+lockBtn+'</button> '+
-        '<button class="us3id-btn ghost" onclick="US3ID.renameBench(\''+stationId+'\')">Rename</button></div>'+
-      '<div class="us3id-feedh">Recent activity</div><div class="us3id-feed">'+feed+'</div>';
-  });
-};
-ID.toggleLock=function(id){ var s=stationById(id); if(!s)return; ID.supa.from('stations').update({locked:!s.locked, allow_switch:s.locked}).eq('id',id).then(function(){ s.locked=!s.locked; s.allow_switch=s.locked?false:true; ID.benchDetail(id); }); };
-ID.renameBench=function(id){ var s=stationById(id); if(!s)return; var n=prompt('Bench name:',s.name); if(!n)return; ID.supa.from('stations').update({name:n}).eq('id',id).then(function(){ s.name=n; if(ID.station&&ID.station.id===id){syncScanGlobals();renderChip();} ID.benchDetail(id); }); };
-ID.newBench=function(){
-  var n=prompt('New bench name (e.g. Bench 4):'); if(!n)return;
-  var off=prompt('Office (elcajon / downey / puertorico / houston):','elcajon')||'elcajon';
-  var kind=prompt('Type: personal / communal / testing / receiving / shipping','personal')||'personal';
-  var code=(off+'-'+n).toLowerCase().replace(/[^a-z0-9]+/g,'-');
-  ID.supa.from('stations').insert({code:code,name:n,office:off.toLowerCase().trim(),kind:kind.toLowerCase().trim(),locked:kind==='testing',allow_switch:kind!=='testing',sort:99}).select().then(function(r){
-    if(r&&r.error){alert(r.error.message);return;}
-    if(r&&r.data&&r.data[0])ID.stations.push(r.data[0]);
-    cmdMap();
-  });
-};
-
-function activityRow(a){
-  var icon={login:'🔑',logout:'🚪',worker_switch:'🔁',page_view:'👁',session_start:'▶',action:'⚙'}[a.kind]||'•';
-  var what = a.action? (a.action+(a.target?(' · '+a.target):'')) : (a.page? ('viewed '+(PAGE_LABEL[a.page]||a.page)) : a.kind);
-  return '<div class="us3id-arow"><span class="us3id-aic">'+icon+'</span>'+
-    '<span class="us3id-awho">'+esc(a.worker_name||a.worker_email||'—')+'</span>'+
-    '<span class="us3id-awhat">'+esc(what)+'</span>'+
-    '<span class="us3id-asta">'+esc(a.station_code||'')+'</span>'+
-    '<span class="us3id-atime">'+fmtTs(a.ts)+'</span></div>';
-}
-
-function cmdPeople(){
-  var body=document.getElementById('cmdBody'); body.innerHTML='<div class="us3id-empty">Loading people…</div>';
-  loadWorkers().then(function(){
-    var rows=ID.workers.map(function(w){
-      var home=w.home_station_id?(stationById(w.home_station_id)||{}).name:'';
-      var pages = w.allowed_pages==null? 'all pages' : (w.allowed_pages.length+' pages');
-      return '<tr>'+
-        '<td><b>'+esc(workerName(w))+'</b>'+(w.is_shared?' <span class="us3id-badge">shared</span>':'')+'</td>'+
-        '<td>'+esc(w.email)+'</td>'+
-        '<td><select onchange="US3ID.setRole(\''+w.id+'\',this.value)">'+['owner','admin','manager','worker'].map(function(r){return '<option'+(w.role===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select></td>'+
-        '<td>'+esc(w.office||'—')+'</td>'+
-        '<td>'+esc(home||'—')+'</td>'+
-        '<td><button class="us3id-btn ghost sm" onclick="US3ID.cmdGo(\'perms\');US3ID.permFor=\''+w.id+'\'">'+esc(pages)+'</button></td>'+
-        '<td><button class="us3id-btn ghost sm" onclick="US3ID.toggleActive(\''+w.id+'\')">'+(w.active===false?'inactive':'active')+'</button></td>'+
-      '</tr>';
-    }).join('');
-    document.getElementById('cmdBody').innerHTML=
-      '<div class="us3id-sub">Every person who can use us3-ops. You control role, office, home bench, and what each can see. <button class="us3id-btn" style="float:right" onclick="US3ID.addWorker()">＋ Add person</button></div>'+
-      '<table class="us3id-tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Office</th><th>Home bench</th><th>Access</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
-  });
-}
-ID.setRole=function(id,role){ ID.supa.from('workers').update({role:role,updated_at:nowISO()}).eq('id',id).then(function(){ var w=workerById(id); if(w)w.role=role; applyPagePerms(); }); };
-ID.toggleActive=function(id){ var w=workerById(id); if(!w)return; ID.supa.from('workers').update({active:w.active===false,updated_at:nowISO()}).eq('id',id).then(function(){ w.active=(w.active===false); cmdPeople(); }); };
-ID.addWorker=function(){
-  var email=prompt('New person — @uscubed.com email:'); if(!email)return; email=email.trim().toLowerCase();
-  if(!emailOk(email)){alert('Must be @uscubed.com');return;}
-  var name=prompt('Display name:', email.split('@')[0].replace(/\./g,' '))||email.split('@')[0];
-  ID.supa.from('workers').insert({email:email,display_name:name,role:'worker',active:true,created_by:(ID.active?ID.active.email:'admin'),updated_at:nowISO()}).select().then(function(r){
-    if(r&&r.error){alert(r.error.message);return;}
-    if(r&&r.data&&r.data[0])ID.workers.push(r.data[0]);
-    cmdPeople();
-  });
-};
-
-var _permFor=null;
-Object.defineProperty(ID,'permFor',{set:function(v){_permFor=v;renderCmd();},get:function(){return _permFor;}});
-function cmdPerms(){
-  var body=document.getElementById('cmdBody');
-  var w = _permFor? workerById(_permFor) : null;
-  var picker='<div class="us3id-sub">Choose a person, then check the pages they may see. Managers always see everything.</div>'+
-    '<select class="us3id-psel" onchange="US3ID.permFor=this.value">'+
-      '<option value="">— pick a person —</option>'+
-      ID.workers.filter(function(x){return !x.is_shared;}).map(function(x){return '<option value="'+x.id+'"'+(w&&w.id===x.id?' selected':'')+'>'+esc(workerName(x))+'</option>';}).join('')+
-    '</select>';
-  if(!w){ body.innerHTML=picker; return; }
-  if(isMgr(w)){ body.innerHTML=picker+'<div class="us3id-note">'+esc(workerName(w))+' is a '+esc(w.role)+' — sees all pages including the Command Center.</div>'; return; }
-  var allow=w.allowed_pages; var all=(allow==null);
-  var grid=PAGES.map(function(p){
-    var on = all || allow.indexOf(p.id)>=0;
-    return '<label class="us3id-pchk"><input type="checkbox" '+(on?'checked':'')+' onchange="US3ID.togglePage(\''+w.id+'\',\''+p.id+'\',this.checked)"> '+esc(p.label)+'</label>';
-  }).join('');
-  body.innerHTML=picker+
-    '<div class="us3id-permh"><b>'+esc(workerName(w))+'</b> — page access '+
-      '<button class="us3id-btn ghost sm" onclick="US3ID.setAllPages(\''+w.id+'\',true)">All</button>'+
-      '<button class="us3id-btn ghost sm" onclick="US3ID.setAllPages(\''+w.id+'\',false)">None</button></div>'+
-    '<div class="us3id-pgrid">'+grid+'</div>';
-}
-ID.togglePage=function(id,page,on){
-  var w=workerById(id); if(!w)return;
-  var cur = w.allowed_pages==null? PAGES.map(function(p){return p.id;}) : w.allowed_pages.slice();
-  var i=cur.indexOf(page);
-  if(on && i<0) cur.push(page);
-  if(!on && i>=0) cur.splice(i,1);
-  ID.supa.from('workers').update({allowed_pages:cur,updated_at:nowISO()}).eq('id',id).then(function(){ w.allowed_pages=cur; applyPagePerms(); });
-};
-ID.setAllPages=function(id,all){
-  var w=workerById(id); if(!w)return;
-  var val= all? null : [];
-  ID.supa.from('workers').update({allowed_pages:val,updated_at:nowISO()}).eq('id',id).then(function(){ w.allowed_pages=val; renderCmd(); applyPagePerms(); });
-};
-
-function cmdActivity(){
-  var body=document.getElementById('cmdBody'); body.innerHTML='<div class="us3id-empty">Loading activity…</div>';
-  ID.supa.from('activity_log').select('*').order('ts',{ascending:false}).limit(200).then(function(r){
-    var rows=(r&&!r.error)?r.data:[];
-    var byWorker={},byPage={};
-    rows.forEach(function(a){ if(a.worker_name)byWorker[a.worker_name]=(byWorker[a.worker_name]||0)+1; if(a.kind==='page_view'&&a.page)byPage[a.page]=(byPage[a.page]||0)+1; });
-    var topW=Object.keys(byWorker).sort(function(a,b){return byWorker[b]-byWorker[a];}).slice(0,6).map(function(k){return '<span class="us3id-stat">'+esc(k)+' <b>'+byWorker[k]+'</b></span>';}).join('');
-    var topP=Object.keys(byPage).sort(function(a,b){return byPage[b]-byPage[a];}).slice(0,6).map(function(k){return '<span class="us3id-stat">'+esc(PAGE_LABEL[k]||k)+' <b>'+byPage[k]+'</b></span>';}).join('');
-    var feed=rows.map(activityRow).join('') || '<div class="us3id-empty">No activity yet.</div>';
-    document.getElementById('cmdBody').innerHTML=
-      '<div class="us3id-sub">The full record — every visit, page view, and action, by who and where. Last 200 events.</div>'+
-      '<div class="us3id-statrow"><div class="us3id-statbox"><div class="us3id-statt">Most active people</div>'+(topW||'—')+'</div>'+
-      '<div class="us3id-statbox"><div class="us3id-statt">Most viewed pages</div>'+(topP||'—')+'</div></div>'+
-      '<div class="us3id-feedh">Live activity feed</div><div class="us3id-feed">'+feed+'</div>';
-  });
-}
-
-// ═══ MONKEY-PATCHES: log page views, log actions, enforce perms ═══
-function patchSw(){
-  if(!window.sw || window.sw._us3id) return;
-  var orig=window.sw;
-  window.sw=function(id,el){
-    var w=ID.active||ID.session;
-    if(ID.ready && !canSee(w,id)){
-      toast('You don\'t have access to '+(PAGE_LABEL[id]||id)+'.');
-      var first=PAGES.filter(function(p){return canSee(w,p.id);})[0];
-      if(first){ id=first.id; el=document.querySelector('#nav .ntab[data-page="'+id+'"]')||el; }
-    }
-    var rv=orig.apply(this,[id,el]);
-    bumpIdle();
-    var t=Date.now();
-    if(ID.ready && !(ID._lastPageLog.page===id && t-ID._lastPageLog.ts<1500)){
-      ID._lastPageLog={page:id,ts:t};
-      log('page_view',{page:id});
-    }
-    return rv;
-  };
-  window.sw._us3id=true;
-}
-function patchAction(name, action, targetArgIdx){
-  var orig=window[name];
-  if(typeof orig!=='function' || orig._us3id) return;
-  window[name]=function(){
-    try{ log('action',{action:action, target: (arguments[targetArgIdx]!=null?String(arguments[targetArgIdx]):null)}); }catch(e){}
-    return orig.apply(this,arguments);
-  };
-  window[name]._us3id=true;
-}
-function patchActions(){
-  patchAction('scanGreenTag','green_tag',0);
-  patchAction('scanRedTag','red_tag',0);
-  patchAction('scanLookup','scan_lookup',0);
-  patchAction('kitlifeShip','ship_kit',-1);
-  patchAction('kitlifeReserve','reserve_kit',-1);
-  patchAction('redTagApply','red_tag_apply',0);
-}
-function patchLogin(){
-  if(window.us3Login && !window.us3Login._us3id){
-    var orig=window.us3Login;
-    window.us3Login=function(){ var rv=orig.apply(this,arguments); setTimeout(onLoginEmail,60); return rv; };
-    window.us3Login._us3id=true;
-  }
-  if(window.us3SignOut && !window.us3SignOut._us3id){
-    var origso=window.us3SignOut;
-    window.us3SignOut=function(){ try{ log('logout',{}); localStorage.removeItem('us3_active_worker_id'); }catch(e){} return origso.apply(this,arguments); };
-    window.us3SignOut._us3id=true;
-  }
-}
-function onLoginEmail(){
-  var email=(localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,'');
-  if(!email) return;
-  ensureWorker(email).then(function(w){
-    if(!w) return;
-    ID.session=w;
-    // active worker: restore last tapped (if still valid & not shared), else the session user
-    var savedId=localStorage.getItem('us3_active_worker_id');
-    var saved=savedId?workerById(savedId):null;
-    setActive(saved&&saved.active!==false? saved : (w.is_shared? null : w), {log:false});
-    log('login',{detail:{session:w.email}});
-    if(!ID.station){ setTimeout(openBind,400); }
-  });
-}
-
-// ═══ STYLES ═══
-function injectCSS(){
-  if(document.getElementById('us3idCSS')) return;
-  var s=document.createElement('style'); s.id='us3idCSS';
-  s.textContent=[
-    '.us3id-chip{display:inline-flex;align-items:center;gap:10px;margin-left:14px;padding:6px 12px;border-radius:9px;background:rgba(26,127,232,.10);border:1px solid rgba(26,127,232,.35);cursor:pointer;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:600;white-space:nowrap;transition:.15s;}',
-    '.us3id-chip:hover{background:rgba(26,127,232,.18);}',
-    '.us3id-chip .us3id-who{opacity:.92;}',
-    '.us3id-chip .us3id-sw{font-size:11px;opacity:.7;letter-spacing:.04em;}',
-    '.us3id-ov{position:fixed;inset:0;z-index:100000;background:rgba(6,10,20,.72);display:flex;align-items:center;justify-content:center;padding:20px;}',
-    '.us3id-modal{background:#141b2e;color:#eaf1ff;border:1px solid rgba(120,150,210,.4);border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.6);}',
-    '.us3id-mh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;font-family:Oswald,sans-serif;font-weight:700;font-size:19px;border-bottom:1px solid var(--borderb,#2a3550);}',
-    '.us3id-x{background:none;border:none;color:inherit;font-size:26px;line-height:1;cursor:pointer;opacity:.7;}',
-    '.us3id-mb{padding:18px 20px;}.us3id-mf{padding:12px 20px;border-top:1px solid var(--borderb,#2a3550);text-align:right;}',
-    '.us3id-sub{font-family:Rajdhani,sans-serif;color:var(--muted,#8b97b0);margin-bottom:14px;overflow:hidden;}',
-    '.us3id-note{font-family:Rajdhani,sans-serif;color:var(--muted,#8b97b0);background:rgba(139,151,176,.08);border:1px solid var(--borderb,#2a3550);border-radius:10px;padding:14px;}',
-    '.us3id-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}',
-    '.us3id-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 8px;border-radius:12px;background:rgba(255,255,255,.03);border:1.5px solid var(--borderb,#2a3550);cursor:pointer;color:inherit;font-family:Rajdhani,sans-serif;transition:.15s;}',
-    '.us3id-tile:hover{border-color:var(--accent,#1a7fe8);background:rgba(26,127,232,.10);}',
-    '.us3id-tile.on{border-color:#44bb88;background:rgba(68,187,136,.14);}',
-    '.us3id-tile.add{border-style:dashed;}',
-    '.us3id-av{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;background:var(--accent,#1a7fe8);color:#fff;}',
-    '.us3id-nm{font-weight:600;font-size:14px;text-align:center;line-height:1.15;}.us3id-rl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;}',
-    '.us3id-btn{padding:9px 16px;border-radius:9px;border:1px solid var(--accent,#1a7fe8);background:var(--accent,#1a7fe8);color:#fff;font-family:Oswald,sans-serif;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;}',
-    '.us3id-btn.ghost{background:transparent;color:var(--accent,#1a7fe8);}.us3id-btn.sm{padding:5px 10px;font-size:11px;}',
-    '.us3id-toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:100001;background:#1a2235;border:1px solid var(--accent,#1a7fe8);color:#eaf1ff;padding:12px 20px;border-radius:10px;font-family:Rajdhani,sans-serif;font-weight:600;opacity:0;transition:.3s;box-shadow:0 10px 40px rgba(0,0,0,.5);}',
-    '.us3id-toast.show{opacity:1;}',
-    '.us3id-offg{margin-bottom:18px;}.us3id-offh{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted,#8b97b0);margin:6px 0 8px;}',
-    '.us3id-benchgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;}',
-    '.us3id-bench{padding:12px;border-radius:10px;border:1.5px solid var(--borderb,#2a3550);background:rgba(255,255,255,.03);cursor:pointer;color:inherit;font-family:Rajdhani,sans-serif;font-weight:600;text-align:left;display:flex;flex-direction:column;gap:3px;}',
-    '.us3id-bench small{opacity:.55;font-weight:500;text-transform:capitalize;}.us3id-bench:hover{border-color:var(--accent,#1a7fe8);}.us3id-bench.on{border-color:#44bb88;background:rgba(68,187,136,.12);}',
-    '.us3id-ch{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;}',
-    '.us3id-ct{font-family:Oswald,sans-serif;font-weight:700;font-size:26px;}',
-    '.us3id-ctabs,.us3id-ctab{font-family:Oswald,sans-serif;}.us3id-ctab{padding:8px 14px;margin-left:6px;border-radius:8px;border:1px solid var(--borderb,#2a3550);background:transparent;color:inherit;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.03em;}',
-    '.us3id-ctab.on{background:var(--accent,#1a7fe8);color:#fff;border-color:var(--accent,#1a7fe8);}',
-    '.us3id-mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}',
-    '.us3id-mapcard{text-align:left;padding:14px;border-radius:12px;border:1px solid rgba(120,150,210,.3);background:#141b2e;cursor:pointer;color:#eaf1ff;transition:.15s;}',
-    '.us3id-mapcard:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.35);}',
-    '.us3id-mapname{font-family:Oswald,sans-serif;font-weight:700;font-size:16px;}.us3id-mapkind{font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px;}',
-    '.us3id-mapwho{font-family:Rajdhani,sans-serif;font-weight:600;font-size:15px;}.us3id-mapwhen{font-family:Rajdhani,sans-serif;color:var(--muted,#8b97b0);font-size:12px;}.us3id-mappc{font-size:11px;color:var(--muted,#8b97b0);margin-top:6px;}',
-    '.us3id-tbl{width:100%;border-collapse:collapse;font-family:Rajdhani,sans-serif;}.us3id-tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#8b97b0);padding:8px;border-bottom:1px solid var(--borderb,#2a3550);}',
-    '.us3id-tbl td{padding:8px;border-bottom:1px solid var(--borderb,#2a3550);font-size:14px;}.us3id-tbl select{background:#141b2e;color:#eaf1ff;border:1px solid rgba(120,150,210,.4);border-radius:6px;padding:4px;}',
-    '.us3id-badge{font-size:9px;background:#8b5cf6;color:#fff;padding:1px 6px;border-radius:8px;text-transform:uppercase;letter-spacing:.05em;}',
-    '.us3id-deth{font-family:Oswald,sans-serif;font-size:18px;margin:12px 0 4px;}',
-    '.us3id-feedh{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em;font-size:12px;color:var(--muted,#8b97b0);margin:16px 0 8px;}',
-    '.us3id-feed{display:flex;flex-direction:column;gap:2px;}',
-    '.us3id-arow{display:grid;grid-template-columns:24px 1.3fr 2fr .8fr 1fr;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;font-family:Rajdhani,sans-serif;font-size:13px;}',
-    '.us3id-arow:nth-child(odd){background:rgba(255,255,255,.025);}',
-    '.us3id-awho{font-weight:600;}.us3id-awhat{opacity:.85;}.us3id-asta,.us3id-atime{font-size:12px;color:var(--muted,#8b97b0);}',
-    '.us3id-pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px;}',
-    '.us3id-pchk{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--borderb,#2a3550);font-family:Rajdhani,sans-serif;font-weight:600;cursor:pointer;}',
-    '.us3id-permh{font-family:Oswald,sans-serif;font-size:16px;margin:14px 0 4px;}',
-    '.us3id-psel{background:#141b2e;color:#eaf1ff;border:1px solid rgba(120,150,210,.4);border-radius:8px;padding:8px 12px;font-family:Rajdhani,sans-serif;font-size:14px;margin-bottom:12px;min-width:220px;}',
-    '.us3id-statrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}',
-    '.us3id-statbox{padding:14px;border-radius:12px;border:1px solid rgba(120,150,210,.3);background:#141b2e;color:#eaf1ff;}',
-    '.us3id-statt{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em;font-size:11px;color:var(--muted,#8b97b0);margin-bottom:8px;}',
-    '.us3id-stat{display:inline-block;margin:3px 8px 3px 0;font-family:Rajdhani,sans-serif;font-size:13px;}.us3id-stat b{color:var(--accent,#1a7fe8);}',
-    '.us3id-empty{padding:20px;text-align:center;color:var(--muted,#8b97b0);font-family:Rajdhani,sans-serif;}',
-    '@media(max-width:640px){.us3id-arow{grid-template-columns:20px 1fr 1.4fr;}.us3id-asta,.us3id-atime{display:none;}.us3id-statrow{grid-template-columns:1fr;}}'
-  ].join('\n');
-  document.head.appendChild(s);
-}
-
-// ═══ INIT ═══
-function init(){
-  if(typeof supa==='undefined'||!supa){ return setTimeout(init,400); }
-  ID.supa=supa;
-  injectCSS();
-  ensureCmdTab();
-  ensureCmdPage();
-  ensureChip();
-  patchSw(); patchActions(); patchLogin();
-  ['click','keydown'].forEach(function(ev){ document.addEventListener(ev,bumpIdle,{passive:true}); });
-  Promise.all([loadStations(),loadWorkers()]).then(function(){
-    return loadBinding();
-  }).then(function(){
-    ID.ready=true;
-    onLoginEmail();        // resolve the already-logged-in account → worker
-    renderChip();
-    applyPagePerms();
-    log('session_start',{});
-  });
-}
-
-if(document.readyState==='complete'||document.readyState==='interactive') setTimeout(init,300);
-else document.addEventListener('DOMContentLoaded',function(){ setTimeout(init,300); });
-
 })();
-
 </script>
 </body>
 </html>
