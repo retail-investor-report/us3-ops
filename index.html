@@ -811,6 +811,7 @@ var ADMIN_PASSWORD = 'admin123';
 var PRODUCTS = [
   {id:'hach',label:'Hach',       icon:'\u25C9', color:'#e8e8f0'},
   {id:'ff',  label:'FlexFlow',   icon:'\u301C', color:'#3a8fe8'},
+  {id:'ffpr',label:'PR FlexFlow',icon:'\uD83C\uDF34', color:'#9b59b6'},
   {id:'rg',  label:'Rain Gauge', icon:'\uD83C\uDF27', color:'#44bb88'},
   {id:'cric',label:'Cricket',    icon:'\u25C8', color:'#e8a020'},
 ];
@@ -822,10 +823,10 @@ var ALL_STATUS = ['available','reserved','deployed','maintenance'];
 
 var OFFICES = [
   {id:'elcajon',    label:'El Cajon',    icon:'\uD83C\uDFED',
-   products:['ff','cric','hach','rg'],
+   products:['ff','ffpr','cric','hach','rg'],
    hasDecomm:true, hasInProd:true},
   {id:'downey',     label:'Downey',      icon:'\uD83D\uDCCD',
-   products:['ff','cric','hach','rg'],
+   products:['ff','ffpr','cric','hach','rg'],
    hasDecomm:false,hasInProd:false},
   {id:'houston',    label:'Houston',     icon:'\uD83C\uDFD7',
    products:null,
@@ -835,7 +836,7 @@ var OFFICES = [
      {id:'hach', label:'Hach',            icon:'\u25C9',  color:'#e8e8f0', note:'Should be 0'},
    ]},
   {id:'puertorico', label:'Puerto Rico', icon:'\uD83C\uDF34',
-   products:['ff','cric','rg'],
+   products:['ffpr','ff','cric','rg'],
    hasDecomm:false,hasInProd:false},
 ];
 
@@ -4892,8 +4893,8 @@ window.addEventListener('hashchange',function(){
 // ---- shared tokens / helpers ----
 var US3_STATUS_COLORS={available:'#2ecc71',reserved:'#A7A9AC',deployed:'#0071BC',maintenance:'#e8a020','in production':'#9b59b6',decommissioned:'#7a2520'};
 // ---- device-type (product) color tokens — single source of truth for type-colored views (map, schedule) ----
-var US3_PROD_COLORS={ff:'#0071BC',cric:'#e8a020',hach:'#9aa3b2',rg:'#44bb88',unknown:'#5a6472'};
-var US3_PROD_LABELS={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge',unknown:'Other / Unknown'};
+var US3_PROD_COLORS={ff:'#0071BC',ffpr:'#9b59b6',cric:'#e8a020',hach:'#9aa3b2',rg:'#44bb88',unknown:'#5a6472'};
+var US3_PROD_LABELS={ff:'FlexFlow',ffpr:'PR FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge',unknown:'Other / Unknown'};
 // Fulcrum sensor_type string -> product id. Shared by computeDeployed() and the map/schedule colorers.
 function US3_SENSOR_PRODUCT(stype){
   var s=(stype||'').toLowerCase();
@@ -5514,8 +5515,10 @@ function countExpected(office,prod){return (typeof gc!=='undefined')?(gc(office,
 // ═══ INVENTORY MODEL (Phase 1) — components are counted, kits are COMPUTED ═══
 // A kit is only as available as its scarcest part. Source of truth for company-wide kit availability.
 var US3_COMPONENTS=[
-  {key:'ff_rtu',product:'ff',label:'FlexFlow RTU',serial:true},
+  {key:'ff_rtu',product:'ff',label:'FlexFlow RTU (potted/US)',serial:true},
   {key:'ff_sensor',product:'ff',label:'FlexFlow sensor',serial:false},
+  {key:'ffpr_rtu',product:'ffpr',label:'PR FlexFlow RTU (un-potted)',serial:true},
+  {key:'ffpr_sensor',product:'ffpr',label:'PR FlexFlow sensor',serial:false},
   {key:'cric_rtu',product:'cric',label:'Cricket RTU',serial:true},
   {key:'cric_sensor',product:'cric',label:'Cricket radar sensor',serial:false},
   {key:'hach_logger',product:'hach',label:'Hach logger',serial:false},
@@ -5524,8 +5527,8 @@ var US3_COMPONENTS=[
   {key:'rg_bucket',product:'rg',label:'Rain Gauge bucket',serial:false},
   {key:'rg_tripod',product:'rg',label:'Rain Gauge tripod',serial:false}
 ];
-var US3_KIT_RECIPES={ff:[['ff_rtu',1],['ff_sensor',1]],cric:[['cric_rtu',1],['cric_sensor',1]],hach:[['hach_logger',1],['hach_flodar',1]],rg:[['rg_rtu',1],['rg_bucket',1],['rg_tripod',1]]};
-var US3_KIT_LABELS={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
+var US3_KIT_RECIPES={ff:[['ff_rtu',1],['ff_sensor',1]],ffpr:[['ffpr_rtu',1],['ffpr_sensor',1]],cric:[['cric_rtu',1],['cric_sensor',1]],hach:[['hach_logger',1],['hach_flodar',1]],rg:[['rg_rtu',1],['rg_bucket',1],['rg_tripod',1]]};
+var US3_KIT_LABELS={ff:'FlexFlow',ffpr:'PR FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
 var invState={}; // office -> {component_key: qty}
 var invGreen={}; // product -> count of green-tagged serial devices (warehouse_devices)
 function invLoadAndRender(office){
