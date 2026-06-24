@@ -2350,9 +2350,11 @@ function renderAssetMap(){
       canvas.appendChild(divider);
     }
     jobSections.forEach(function(jsx){
-      var sec=document.createElement('div');sec.className='am-section';
+      var sec=document.createElement('div');sec.className='am-section am-jobcard';
+      sec.style.cssText='border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:12px;background:var(--card-bg);';
       var header=jsx.header+(jsx.location?' \u2014 '+jsx.location:'');
-      sec.innerHTML='<div class="am-section-title"><span style="color:var(--deployed);">'+header+'</span><div class="am-section-line"></div></div>';
+      var totalDevs=0;Object.keys(jsx.devs).forEach(function(pid){totalDevs+=(jsx.devs[pid]||0);});
+      sec.innerHTML='<div class="am-section-title" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span style="color:var(--deployed);">\u25c6 '+header+'</span><div class="am-section-line"></div><span style="font-size:12px;color:var(--muted);white-space:nowrap;">'+totalDevs+' device'+(totalDevs===1?'':'s')+'</span></div>';
       Object.keys(jsx.devs).forEach(function(pid){
         var qty=jsx.devs[pid]||0;if(qty<=0)return;
         var p=PRODUCTS.find(function(x){return x.id===pid;});if(!p)return;
