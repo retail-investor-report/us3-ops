@@ -579,7 +579,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="viewer" onclick="sw('viewer',this)"><span class="ti">🧊</span>Product 3D</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
-  <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div class="admin-btn" id="helpBtn" onclick="openHelpModal()" style="margin-left:6px;font-size:14px;padding:6px 10px;cursor:pointer;position:relative;" title="Help & Feedback">?<span id="helpBadge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ED1C24;"></span></div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
+  <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
   <div class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
     <span></span><span></span><span></span>
   </div>
@@ -6722,14 +6722,6 @@ function paintDashboard(ops){
     '<div class="us3sum"><div class="us3sum-h">📊 Operations</div>'+
       us3SumLine('Active jobs',inGroundJobs.length,ongoingJobs.length+' ongoing','sched')+
       us3SumLine('Devices deployed',(LV.deployedTotal||0),'FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap')+
-      us3SumLine('Out the door',(ops.devices_out!=null?ops.devices_out:'—'),'no return scan','shop',' hide-mobile')+
-      us3SumLine('Ship / Receive (7d)',(ops.ship_7d||0)+' / '+(ops.receive_7d||0),'this week','shop',' hide-mobile')+
-    '</div>'+
-    '<div class="us3sum"><div class="us3sum-h">🛰 Fleet <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a97a8;">· available / deployed</span></div>'+
-      us3SumLine('FlexFlow',av.ff+' / '+by.ff,'avail / deployed','fleet')+
-      us3SumLine('Cricket',av.cric+' / '+by.cric,'avail / deployed','fleet')+
-      us3SumLine('Hach',av.hach+' / '+by.hach,'avail / deployed','fleet')+
-      us3SumLine('Rain Gauge',av.rg+' / '+by.rg,'avail / deployed','fleet')+
     '</div>'+
   '</div>';
 
@@ -6747,25 +6739,25 @@ function paintDashboard(ops){
       '<div style="display:flex;align-items:center;gap:12px;"><div class="dash-mainhead" style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
         '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     kpis+
-    '<div class="us3detail-grid">'+
-      panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:true})+
-      panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:false,warn:true})+
-      panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:false})+
-      panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
-      panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:true})+
-      panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:true})+
-    '</div>'+
-    // ─── Availability section (dense fleet super-display) ───
-    '<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:28px 0 10px;">'+
+    // ─── Availability section (dense fleet super-display) — moved to TOP ───
+    '<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:18px 0 10px;">'+
       '<div class="us3w-h" style="font-size:22px;color:var(--text,#e8edf4);">Fleet Availability</div>'+
-      '<div style="color:#8a97a8;font-size:12px;font-family:Rajdhani,sans-serif;">company totals · then by location</div>'+
     '</div>'+
     '<div id="avail-stats-panel" style="margin-bottom:12px;background:var(--panel-bg);padding:8px 16px;display:flex;flex-direction:column;gap:6px;border-radius:6px;border:1px solid var(--borderb);"></div>'+
     '<div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 16px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:6px;flex-wrap:wrap;gap:8px;">'+
       '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
     '</div>'+
-    '<div class="av-grid" id="avGrid"></div>';
+    '<div class="av-grid" id="avGrid"></div>'+
+    // ─── Collapsible detail panels (all collapsed by default) ───
+    '<div class="us3detail-grid" style="margin-top:18px;">'+
+      panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:false})+
+      panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:false,warn:true})+
+      panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:false})+
+      panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
+      panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:false})+
+      panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:false})+
+    '</div>';
   if(typeof renderAvail==='function')renderAvail();
 }
 
