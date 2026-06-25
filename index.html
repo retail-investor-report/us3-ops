@@ -3078,7 +3078,7 @@ function renderParts(){
   formDiv.innerHTML=
     '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Log Device Return</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'+
-      '<div class="form-row"><label>Device ID</label><input id="pr-id" placeholder="e.g. 4501"></div>'+
+      '<div class="form-row"><label>Device ID</label><div style="display:flex;gap:6px;"><input id="pr-id" placeholder="e.g. 4501" style="flex:1;"><button type="button" class="us3b2-btn alt" style="white-space:nowrap;padding:6px 10px;" onclick="prIdCamera()">📷</button></div></div>'+
       '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
       '<div class="form-row"><label>Return Date</label><input id="pr-date" type="date"></div>'+
       '<div class="form-row"><label>Failure Category</label><select id="pr-fail">'+FAIL_CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
@@ -3110,6 +3110,13 @@ function saveReturn(){
   document.getElementById('pr-id').value='';document.getElementById('pr-notes').value='';
   updateTabBadges();renderParts();
 }
+// 📷 Camera into the Red Tag Device ID field: scan once, fill, close.
+function prIdCamera(){
+  us3CameraScan({continuous:false,title:'📷 Scan device ID',onScan:function(code){
+    var el=document.getElementById('pr-id');if(el){el.value=code;try{el.focus();}catch(e){}}
+  }});
+}
+window.prIdCamera=prIdCamera;
 
 function renderPareto(returns){
   var div=document.getElementById('paretoChart');
@@ -5455,6 +5462,16 @@ function us3b2InjectCSS(){
   ".us3b2-warn{background:rgba(237,28,36,.12);border:1.5px solid #ED1C24;color:var(--text);border-radius:10px;padding:12px 14px;font-weight:600;}"+
   ".us3b2-empty{text-align:center;color:var(--muted);font-size:16px;padding:34px 16px;}"+
   "#scanCamRegion{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;}"+
+  // ── Reusable camera-scan overlay (us3CameraScan) ──
+  ".us3cam-ov{display:none;position:fixed;inset:0;background:rgba(5,9,16,.92);z-index:11000;align-items:center;justify-content:center;padding:18px;}"+
+  ".us3cam-ov.open{display:flex;}"+
+  ".us3cam-box{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:6px;width:100%;max-width:440px;padding:16px 16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.6);font-family:'Rajdhani',sans-serif;}"+
+  ".us3cam-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}"+
+  ".us3cam-title{font-family:'Oswald',sans-serif;font-weight:700;font-size:18px;letter-spacing:.03em;color:var(--text,#e8edf4);}"+
+  ".us3cam-region{width:100%;border-radius:6px;overflow:hidden;background:#000;min-height:200px;}"+
+  ".us3cam-flash{min-height:20px;margin-top:10px;font-weight:700;font-size:15px;text-align:center;}"+
+  ".us3cam-btns{display:flex;gap:10px;margin-top:12px;}"+
+  ".us3cam-btns .us3b2-btn{flex:1;}"+
   // ── Bulk scan ──
   ".us3bulk-chips{display:flex;gap:8px;flex-wrap:wrap;}"+
   ".us3bulk-chip{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;padding:8px 14px;border-radius:6px;border:1.5px solid var(--borderb);background:transparent;cursor:pointer;}"+
@@ -5578,6 +5595,7 @@ function scanRenderBulk(){
       '<label class="us3b2-label">Scan device after device — fires straight into the list</label>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'+
         '<input id="scanBulkInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:220px;" autocomplete="off" placeholder="Scan… (Enter adds &amp; re-focuses)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();scanBulkAdd();}">'+
+        '<button class="us3b2-btn alt" onclick="scanBulkCamera()">📷 Camera</button>'+
         '<button class="us3b2-btn alt" onclick="scanBulkClear()">Clear all</button>'+
       '</div>'+
       '<div id="scanBulkFlash" style="min-height:18px;margin-top:8px;font-family:Rajdhani,sans-serif;font-weight:600;font-size:14px;"></div>'+
@@ -5628,6 +5646,14 @@ function scanBulkAdd(){
   scanRenderBulkList();
 }
 window.scanBulkAdd=scanBulkAdd;
+// 📷 Camera into the bulk batch: continuous scan, each decode runs the same path as a typed-Enter.
+function scanBulkCamera(){
+  us3CameraScan({continuous:true,title:'📷 Bulk scan — fire away',onScan:function(code){
+    var inp=document.getElementById('scanBulkInput');
+    if(inp){inp.value=code;scanBulkAdd();} // reuse the exact dedupe/flash/append path
+  }});
+}
+window.scanBulkCamera=scanBulkCamera;
 function scanBulkRemove(idx){scanBulk.ids.splice(idx,1);scanRenderBulkList();var i=document.getElementById('scanBulkInput');if(i)i.focus();}
 window.scanBulkRemove=scanBulkRemove;
 function scanBulkClear(){
@@ -5728,6 +5754,98 @@ function scanStopCamera(){
     scanState.camera.stop().then(function(){try{scanState.camera.clear();}catch(e){}}).catch(function(){});
   }
 }
+
+// ═══ REUSABLE CAMERA-SCAN HELPER ═══
+// Opens a self-contained camera overlay that works on ANY page. Reuses the html5-qrcode
+// pattern from scanStartCamera but into its own overlay so it never collides with the
+// Station Scanner's #scanCamRegion. Mobile-first (rear camera via facingMode:environment).
+//   opts.onScan(code)  — called on each successful decode
+//   opts.continuous    — true: keep scanning (rapid multi-add, debounced+deduped); false: scan once then close
+//   opts.title         — overlay heading
+var us3CamState={qr:null,running:false,seen:{},lastCode:'',lastTs:0,opts:null};
+function us3CameraScan(opts){
+  opts=opts||{};
+  us3CamState.opts=opts;
+  if(typeof Html5Qrcode==='undefined'){
+    alert("Couldn't open the camera — the scanner library didn't load. Type the ID instead.");
+    return;
+  }
+  us3b2InjectCSS();
+  // Build the overlay once, reuse it after.
+  var ov=document.getElementById('us3camOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='us3camOverlay';ov.className='us3cam-ov';
+    ov.innerHTML=
+      '<div class="us3cam-box">'+
+        '<div class="us3cam-head">'+
+          '<div class="us3cam-title" id="us3camTitle">📷 Scan a code</div>'+
+          '<button class="us3b2-x" onclick="us3CameraScanClose()" aria-label="Close">&times;</button>'+
+        '</div>'+
+        '<div class="us3cam-region" id="us3camRegion"></div>'+
+        '<div class="us3cam-flash" id="us3camFlash"></div>'+
+        '<div class="us3cam-btns">'+
+          '<button class="us3b2-btn alt" id="us3camDone" onclick="us3CameraScanClose()">Done</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('us3camTitle').textContent=opts.title||'📷 Scan a code';
+  // Continuous mode keeps a "Done" button; once-mode closes itself, so label it "Cancel".
+  var doneBtn=document.getElementById('us3camDone');
+  if(doneBtn)doneBtn.textContent=opts.continuous?'Done':'Cancel';
+  var flash=document.getElementById('us3camFlash');if(flash){flash.textContent='';flash.style.color='';}
+  us3CamState.seen={};us3CamState.lastCode='';us3CamState.lastTs=0;
+  ov.classList.add('open');
+  if(us3CamState.running)return; // already scanning (shouldn't happen, but guard)
+  try{us3CamState.qr=new Html5Qrcode('us3camRegion');}catch(e){
+    alert("Couldn't open the camera — type the ID instead.");us3CameraScanClose();return;
+  }
+  us3CamState.running=true;
+  us3CamState.qr.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:170}},
+    function(decoded){us3CameraScanDecode(decoded);},function(){}
+  ).catch(function(err){
+    us3CamState.running=false;
+    alert("Couldn't open the camera — type the ID instead.\n("+err+")");
+    us3CameraScanClose();
+  });
+}
+window.us3CameraScan=us3CameraScan;
+// Each decode: debounce identical rapid fires; in continuous mode also de-dupe across the session.
+function us3CameraScanDecode(code){
+  code=(code||'').trim();if(!code)return;
+  var o=us3CamState.opts||{};
+  var now=Date.now();
+  // Debounce: same code within 1.5s = one physical barcode held in frame, ignore the repeats.
+  if(code===us3CamState.lastCode&&now-us3CamState.lastTs<1500)return;
+  us3CamState.lastCode=code;us3CamState.lastTs=now;
+  var flash=document.getElementById('us3camFlash');
+  if(o.continuous){
+    var key=code.toLowerCase();
+    if(us3CamState.seen[key]){
+      if(flash){flash.style.color='#e8a020';flash.textContent='↺ '+code+' already scanned';}
+      return;
+    }
+    us3CamState.seen[key]=true;
+    if(flash){flash.style.color='#00c49a';flash.textContent='＋ '+code;}
+    try{if(typeof o.onScan==='function')o.onScan(code);}catch(e){}
+    // keep scanning
+  }else{
+    if(flash){flash.style.color='#00c49a';flash.textContent='✓ '+code;}
+    try{if(typeof o.onScan==='function')o.onScan(code);}catch(e){}
+    setTimeout(us3CameraScanClose,300); // brief confirm flash, then close
+  }
+}
+function us3CameraScanClose(){
+  var ov=document.getElementById('us3camOverlay');if(ov)ov.classList.remove('open');
+  if(us3CamState.qr&&us3CamState.running){
+    us3CamState.running=false;
+    us3CamState.qr.stop().then(function(){try{us3CamState.qr.clear();}catch(e){}}).catch(function(){try{us3CamState.qr.clear();}catch(e){}});
+  }else{
+    us3CamState.running=false;
+  }
+}
+window.us3CameraScanClose=us3CameraScanClose;
 // ═══ LABEL PRINTING (Phase 3) — QR + human-readable sticker for green tags / kits / reserves ═══
 function us3PrintLabel(opts){
   opts=opts||{};
@@ -5930,6 +6048,18 @@ function kitlifeShip(){
     ids.forEach(function(id){us3PrintLabel({title:'🚚 SHIPPED',big:id,qr:id,lines:['Job: '+job,(loc?('Location: '+loc):''),'Shipped '+new Date().toLocaleDateString()].filter(Boolean)});});
   });
 }
+// 📷 Camera into the Build Kit textarea: continuous, append each new ID on its own line, de-duped.
+function kitIdsCamera(){
+  us3CameraScan({continuous:true,title:'📷 Scan device IDs into kit',onScan:function(code){
+    var ta=document.getElementById('klIds');if(!ta)return;
+    var existing=ta.value.split(/[\r\n]+/).map(function(s){return s.trim();}).filter(Boolean);
+    var dup=existing.some(function(x){return x.toLowerCase()===code.toLowerCase();});
+    if(dup)return; // helper already de-dupes per session, but guard against pre-typed lines too
+    existing.push(code);
+    ta.value=existing.join('\n');
+  }});
+}
+window.kitIdsCamera=kitIdsCamera;
 function renderKit(){
   us3b2InjectCSS();
   var inner=document.getElementById('kitInner');if(!inner)return;
@@ -5941,6 +6071,7 @@ function renderKit(){
       '<div class="us3b2-h" style="font-size:16px;margin-bottom:4px;">🔄 Kit Lifecycle'+houstonHelp('The guided build flow: scan in green (ready) devices, print their labels, reserve the kit for a job, then ship. Following these steps in order keeps every kit traceable from bench to field.')+' <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">scan green devices → print labels → reserve → ship</span></div>'+
       '<div style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-bottom:8px;">Each device = 1 kit. Reserve/Ship update its status in the system and print a sticker for the tote.</div>'+
       '<textarea id="klIds" rows="4" placeholder="Scan or paste device IDs — one per line" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:14px;padding:8px;border:1px solid var(--borderb);border-radius:6px;background:var(--input-bg,#0e1420);color:var(--text);"></textarea>'+
+      '<div style="margin-top:8px;"><button type="button" class="us3b2-btn alt" onclick="kitIdsCamera()">📷 Camera scan IDs</button></div>'+
       '<div class="us3b2-grid3" style="margin-top:8px;align-items:end;">'+
         '<div><label class="us3b2-label">Job</label><input id="klJob" class="us3b2-input" placeholder="Job number or name"></div>'+
         '<div><label class="us3b2-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="klTemp" style="width:16px;height:16px;"> Temp job (flag to fix later)</label></div>'+
@@ -8174,6 +8305,14 @@ function renderShop(){
   loadOps().then(paintShop,function(){inner.innerHTML='<div class="us3w-empty">Offline — can\'t reach the scan database.</div>';});
 }
 function shopSearch(){var i=document.getElementById('shopSearchInput');if(!i)return;var v=(i.value||'').trim();if(v)openDevice(v);}
+// 📷 Camera into the Ship Station lookup: scan once, fill the box, run the lookup.
+function shopSearchCamera(){
+  us3CameraScan({continuous:false,title:'📷 Scan device to look up',onScan:function(code){
+    var i=document.getElementById('shopSearchInput');if(i)i.value=code;
+    shopSearch();
+  }});
+}
+window.shopSearchCamera=shopSearchCamera;
 function shipParseIds(){var t=document.getElementById('shipIds');if(!t)return [];var seen={},out=[];t.value.split(/[\s,;]+/).forEach(function(x){x=x.trim();if(x&&!seen[x]){seen[x]=1;out.push(x);}});return out;}
 function shipPull(){
   var ops=(window.US3Live&&window.US3Live.ops)||{};
@@ -8221,7 +8360,7 @@ function paintShop(ops){
       '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     // device lookup
     '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device'+help('Type or scan a device ID to pull its full history — where it has been, its current state, and which job it is tied to. Use it to confirm a unit before you ship it or to chase down where something went.')+'</div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><input id="shopSearchInput" class="us3b2-input" style="flex:1;min-width:220px;" placeholder="Type or scan a device ID → see full history &amp; notes" autocomplete="off" onkeydown="if(event.key===\'Enter\')US3.search()"><button class="us3b2-btn" onclick="US3.search()">Open device ›</button></div></div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><input id="shopSearchInput" class="us3b2-input" style="flex:1;min-width:220px;" placeholder="Type or scan a device ID → see full history &amp; notes" autocomplete="off" onkeydown="if(event.key===\'Enter\')US3.search()"><button class="us3b2-btn alt" onclick="shopSearchCamera()">📷 Camera</button><button class="us3b2-btn" onclick="US3.search()">Open device ›</button></div></div>'+
     // shipment composer
     '<div class="us3dash-grid" style="margin-top:14px;">'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📧 Build today\'s shipment email'+help('Auto-drafts the email to whoever is receiving today\'s shipment, listing exactly what is going out. Saves retyping the manifest and makes sure the receiving end knows what to expect.')+'</div>'+
