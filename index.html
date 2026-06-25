@@ -8605,6 +8605,7 @@ function toast(msg){
   setTimeout(function(){ t.classList.add('show'); },20);
   setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){t.remove();},300); },2600);
 }
+window.toast=toast; // exposed so earlier script blocks (e.g. bulk-scan commit) can call it
 
 // ═══ COMMAND CENTER ═══
 function ensureCmdPage(){
