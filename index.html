@@ -2316,7 +2316,13 @@ function renderAvail(){
     var rows=(off.products||[]).map(function(pid){
       var p=PRODUCTS.find(function(x){return x.id===pid;});
       var cells=LOC_STATUS.map(function(st){return '<td class="'+st+'">'+liveCount(off.id,pid,st)+'</td>';}).join('');
-      return '<tr><td>'+p.label+'</td>'+cells+'</tr>';
+      // Brand logo where one exists (ff/cric/hach already spell out the product),
+      // text name for products without a logo (ffpr=PR FlexFlow, rg=Rain Gauge).
+      var pLogo=(typeof prodLogoHtml==='function')?prodLogoHtml(pid,18):'';
+      var pCell=pLogo
+        ? '<span style="display:inline-flex;align-items:center;height:18px;vertical-align:middle;">'+pLogo+'</span>'
+        : p.label;
+      return '<tr><td>'+pCell+'</td>'+cells+'</tr>';
     }).join('');
     card.innerHTML='<div class="av-card-head"><div class="av-card-icon">'+off.icon+'</div><div class="av-card-name">'+off.label+'</div><button class="av-edit-btn" onclick="openEditOffice(\''+off.id+'\')">✎ Edit</button></div><table class="av-table"><thead><tr>'+heads+'</tr></thead><tbody>'+rows+'</tbody></table>';
     grid.appendChild(card);
@@ -3468,11 +3474,12 @@ function renderFleetOverview(){
     offices.forEach(function(o){avail+=liveCount(o,p.id,'available');reserved+=liveCount(o,p.id,'reserved');maint+=liveCount(o,p.id,'maintenance');});
     var total=avail+reserved+deployed+maint;
     var activeJobs=getActiveJobsForProduct(p.id).length;
-    // Restore the brand logo next to each product name (same PRODUCT_LOGOS assets
-    // used by the Fleet Map / Projects cards). Falls back to text-only if no logo.
+    // Brand logo where one exists (ff/cric/hach logos already contain the product
+    // name, so show the logo ONLY — no redundant text). Products without a logo
+    // (rg=Rain Gauge) fall back to the text name.
     var logo=(typeof prodLogoHtml==='function')?prodLogoHtml(p.id,20):'';
     var nameCell=logo
-      ? '<span style="display:inline-flex;align-items:center;gap:8px;">'+logo+'<span>'+p.label+'</span></span>'
+      ? '<span style="display:inline-flex;align-items:center;height:20px;vertical-align:middle;">'+logo+'</span>'
       : p.label;
     return '<tr>'+
       '<td>'+nameCell+'</td>'+
@@ -6542,6 +6549,14 @@ function injectCSS(){
   /* Dashboard BY OFFICE cards: flex-basis so they sit readable + centered (the */
   /* #avGrid inline style flips this grid to a centered flex row). */
   '#page-mc #avGrid .av-card{flex:0 1 300px;max-width:340px;}'+
+  /* MOBILE: dashboard goes near edge-to-edge (no centered 1200px column, minimal */
+  /* gutter) and the BY OFFICE cards stretch full-width. Tour button drops below the */
+  /* centered title instead of overlapping it (see #dashTourBtn). Desktop unchanged. */
+  '@media(max-width:768px){'+
+    '#page-mc .dash-inner{max-width:none;padding-left:6px;padding-right:6px;}'+
+    '#page-mc #avGrid .av-card{flex:1 1 100%;max-width:none;}'+
+    '#page-mc #dashTourBtn{position:static;display:block;margin:8px auto 0;width:max-content;}'+
+  '}'+
   '.us3kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px;}'+
   '.us3kpi{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:16px 18px;cursor:pointer;transition:.12s;}'+
   '.us3kpi:hover{border-color:#0071BC;transform:translateY(-2px);}'+
@@ -6988,7 +7003,7 @@ function paintDashboard(ops){
     '<div class="dash-inner">'+
     // ─── 1. Centered title (RIR-style header) with unobtrusive top-right tour btn ───
     '<div style="position:relative;text-align:center;margin-bottom:2px;">'+
-      '<button class="us3b2-btn alt" style="position:absolute;top:0;right:0;padding:6px 12px;" onclick="US3.startTour()">🧭 Take the tour</button>'+
+      '<button id="dashTourBtn" class="us3b2-btn alt" style="position:absolute;top:0;right:0;padding:6px 12px;" onclick="US3.startTour()">🧭 Take the tour</button>'+
       '<div class="us3w-h" style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:.04em;">US3 OPERATIONS'+help('Your morning command view. Pulls live from Airtable, Fulcrum and the scan log to answer one question fast: what needs attention today? Studies ending, overdue returns, upcoming jobs and data-hygiene flags are all surfaced below.')+'</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:12px;letter-spacing:.04em;">live · Airtable + Fulcrum + scan log</div>'+
     '</div>'+
