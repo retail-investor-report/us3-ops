@@ -474,6 +474,36 @@ body.light .hamburger span{background:var(--text);}
   /* TASK 3: Fleet Overview table scroll on mobile */
   #avail-stats-panel{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   #avail-stats-panel table{min-width:500px;}
+
+  /* ─── MOBILE: EQP Avail Timeline (#page-fleet) header compaction ─── */
+  /* Tighten the header toolbar so the data shows sooner */
+  #page-fleet > div > div:first-child{padding:8px 12px !important;gap:8px !important;}
+  /* BUG FIX: the view toggle was overflowing ("Device timeline" clipped). Make it full-width with two equal buttons. */
+  #fleetViewToggle{width:100% !important;margin-left:0 !important;flex-shrink:1 !important;}
+  #fleetViewMonthBtn,#fleetViewGridBtn{flex:1 1 0 !important;padding:10px 6px !important;font-size:12px !important;text-align:center !important;justify-content:center !important;letter-spacing:.03em !important;}
+  /* Filters: wrap tight, no left margin, smaller buttons (renderFleet injects inline-styled buttons) */
+  #fleetFilters{margin-left:0 !important;gap:6px !important;width:100%;}
+  #fleetFilters > div,#fleetFilters > button{padding:6px 12px !important;font-size:11px !important;}
+  /* Zoom + legend: when grid view shows them on mobile, keep them compact and left-aligned */
+  #page-fleet .fleet-zoom{margin-left:0 !important;}
+  #page-fleet .fleet-zoom > div[onclick]{width:30px !important;height:30px !important;font-size:22px !important;}
+  #page-fleet .fleet-legend{margin-left:0 !important;gap:10px !important;flex-wrap:wrap;}
+  #page-fleet .fleet-legend > div{font-size:11px !important;gap:4px !important;}
+  #page-fleet .fleet-legend > div > div{width:11px !important;height:11px !important;}
+
+  /* ─── MOBILE: Asset Map (#page-assetmap) toolbar compaction ─── */
+  .am-toolbar{padding:8px 12px !important;gap:6px !important;}
+  /* Hide the long descriptive subtitle on mobile — saves a whole wrapped line */
+  .am-title{font-size:15px !important;margin-right:4px !important;}
+  .am-title > span[style*="font-size:11px"]{display:none !important;}
+  /* Shrink the filter pills so 3-4 fit per row instead of big blocks */
+  .am-filter{font-size:11px !important;padding:5px 11px !important;border-radius:14px !important;letter-spacing:.05em !important;}
+  /* Compact the zoom control */
+  .am-toolbar > div[style*="border:1px solid var(--border)"] > div[onclick]{width:28px !important;height:28px !important;font-size:20px !important;}
+  /* Compact the legend: smaller dots + text, tight wrap */
+  .am-legend{gap:8px !important;margin-left:0 !important;}
+  .am-leg{font-size:9px !important;gap:4px !important;}
+  .am-leg-dot{width:9px !important;height:9px !important;}
 }
 
 .job-pin{position:absolute;z-index:18;transform:translate(-50%,-50%);cursor:pointer;}
