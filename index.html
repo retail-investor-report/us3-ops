@@ -543,7 +543,9 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 let supa=null;
 window.addEventListener('DOMContentLoaded',function(){
   if(window.supabase){
-    supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    // PKCE flow: the OAuth callback returns ?code=… in the QUERY string instead of #access_token in the
+    // hash, so the app's hash router (#mc, #fleet, …) can't clobber it before the session is captured.
+    supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
     console.log('Supabase connected');
     if(typeof syncFromCloud==='function')syncFromCloud();
   } else {
