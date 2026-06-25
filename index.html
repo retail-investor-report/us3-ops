@@ -6553,9 +6553,10 @@ function injectCSS(){
   /* gutter) and the BY OFFICE cards stretch full-width. Tour button drops below the */
   /* centered title instead of overlapping it (see #dashTourBtn). Desktop unchanged. */
   '@media(max-width:768px){'+
-    '#page-mc .dash-inner{max-width:none;padding-left:6px;padding-right:6px;}'+
+    '#page-mc .us3dash-wrap{padding-left:6px !important;padding-right:6px !important;}'+
+    '#page-mc .dash-inner{max-width:none !important;padding-left:0 !important;padding-right:0 !important;}'+
     '#page-mc #avGrid .av-card{flex:1 1 100%;max-width:none;}'+
-    '#page-mc #dashTourBtn{position:static;display:block;margin:8px auto 0;width:max-content;}'+
+    '#page-mc #dashTourBtn{position:static !important;display:block !important;margin:8px auto 0 !important;width:max-content;}'+
   '}'+
   '.us3kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px;}'+
   '.us3kpi{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:16px 18px;cursor:pointer;transition:.12s;}'+
