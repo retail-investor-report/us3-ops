@@ -2443,7 +2443,7 @@ function renderAssetMap(){
         var job=jb?jb[jn]:null;
         // when job data is loaded, show only active jobs (drop historical/completed)
         if(haveJobs&&(!job||job.project_status==='Project Completed'||job.project_status==='Removal Complete'))return;
-        jobSections.push({key:jn,header:jn,location:(job&&job.location)||'',devs:liveStock.deployedByJob[jn]});
+        jobSections.push({key:jn,header:jn,location:(job&&job.location)||'',devs:liveStock.deployedByJob[jn],job:job});
       });
     }else{
       var today=new Date();today.setHours(0,0,0,0);var t=today.getTime();var activeMap={};
@@ -2461,7 +2461,9 @@ function renderAssetMap(){
       sec.style.cssText='border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:0;background:var(--card-bg);';
       var header=jsx.header+(jsx.location?' \u2014 '+jsx.location:'');
       var totalDevs=0;Object.keys(jsx.devs).forEach(function(pid){totalDevs+=(jsx.devs[pid]||0);});
-      sec.innerHTML='<div class="am-section-title" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span style="color:var(--deployed);">\u25c6 '+header+'</span><div class="am-section-line"></div><span style="font-size:12px;color:var(--muted);white-space:nowrap;">'+totalDevs+' device'+(totalDevs===1?'':'s')+'</span></div>';
+      // Data-hygiene tag: deployed but no de-install date in Airtable \u2192 frozen on the map.
+      var noEndTag=us3IsNoEndDate(jsx.job)?'<span title="This job is deployed but has NO de-install date in Airtable, so its devices stay deployed indefinitely on the map. Add an end date to fix." style="font-family:Oswald,sans-serif;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#1a1208;background:var(--warn,#f0a020);border-radius:4px;padding:2px 6px;white-space:nowrap;">\u26a0 No end date</span>':'';
+      sec.innerHTML='<div class="am-section-title" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:var(--deployed);">\u25c6 '+header+'</span>'+noEndTag+'<div class="am-section-line"></div><span style="font-size:12px;color:var(--muted);white-space:nowrap;">'+totalDevs+' device'+(totalDevs===1?'':'s')+'</span></div>';
       var prodWrap=document.createElement('div');prodWrap.className='am-jobprods';
       Object.keys(jsx.devs).forEach(function(pid){
         var qty=jsx.devs[pid]||0;if(qty<=0)return;
@@ -5958,6 +5960,7 @@ function invSetQty(office,key,val){
   var n=parseInt(val,10);if(isNaN(n)||n<0)n=0;
   (invState[office]=invState[office]||{})[key]=n;
   var sum=document.getElementById('invKitSummary');if(sum)sum.innerHTML=invKitSummaryHtml(office);
+  if(typeof invMatrixRefresh==='function')invMatrixRefresh();
 }
 function invSave(office,btn){
   if(typeof supa==='undefined'||!supa){alert('Offline.');return;}
@@ -5970,23 +5973,71 @@ function invSave(office,btn){
     if(btn){btn.textContent='✓ Saved';setTimeout(function(){btn.textContent='Save inventory';},1500);}
   });
 }
+// The 3 stocking offices shown as columns in the kit-availability matrix.
+var INV_MATRIX_OFFICES=[{id:'elcajon',label:'El Cajon'},{id:'downey',label:'Downey'},{id:'puertorico',label:'Puerto Rico'}];
+// Per-office computed kit count for a product. Prefer live cross-office data (liveStock.kits,
+// loaded for ALL offices at once); fall back to the locally-edited office (invComputeKits).
+function invKitFor(office,prod){
+  // If this office has locally-edited component counts loaded, trust them (so edits show live).
+  if(typeof invState!=='undefined'&&invState[office])return (invComputeKits(office)||{})[prod]||0;
+  if(typeof liveStock!=='undefined'&&liveStock.ready&&liveStock.kits&&liveStock.kits[office]&&liveStock.kits[office][prod]!=null)return liveStock.kits[office][prod];
+  return (invComputeKits(office)||{})[prod]||0;
+}
+// Dense product × office matrix (RIR-board / dashboard dc-table style). Rows = products with
+// their brand logo; columns = the 3 offices + TOTAL. Zeros muted, positives colored/bold.
+function invMatrixHtml(){
+  var prods=Object.keys(US3_KIT_LABELS);
+  var head='<tr><th style="text-align:left;">Product</th>'+
+    INV_MATRIX_OFFICES.map(function(o){return '<th style="text-align:right;">'+us3esc(o.label)+'</th>';}).join('')+
+    '<th style="text-align:right;background:#005689;">Total</th></tr>';
+  var colTot={};INV_MATRIX_OFFICES.forEach(function(o){colTot[o.id]=0;});var grand=0;
+  var body=prods.map(function(p){
+    var c=US3_PROD_COLORS[p]||'var(--text)';
+    var logo=(typeof prodLogoHtml==='function')?prodLogoHtml(p,18):'';
+    var rowTot=0;
+    var cells=INV_MATRIX_OFFICES.map(function(o){
+      var n=invKitFor(o.id,p)||0;rowTot+=n;colTot[o.id]+=n;
+      var sty=n>0?('color:'+c+';font-weight:700;'):'color:var(--muted);opacity:.55;';
+      return '<td style="text-align:right;font-family:Oswald,sans-serif;font-size:16px;'+sty+'">'+n+'</td>';
+    }).join('');
+    grand+=rowTot;
+    var totSty=rowTot>0?('color:'+c+';font-weight:700;'):'color:var(--muted);opacity:.55;';
+    return '<tr style="border-left:3px solid '+c+';">'+
+      '<td style="text-align:left;"><span style="display:inline-flex;align-items:center;gap:8px;">'+(logo||'')+'<span style="font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:13px;color:'+c+';">'+us3esc(US3_KIT_LABELS[p])+'</span></span></td>'+
+      cells+
+      '<td style="text-align:right;font-family:Oswald,sans-serif;font-size:16px;background:rgba(0,113,188,.07);'+totSty+'">'+rowTot+'</td></tr>';
+  }).join('');
+  var foot='<tr style="border-top:2px solid var(--borderb);"><td style="text-align:left;font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:12px;color:var(--muted);">Total kits</td>'+
+    INV_MATRIX_OFFICES.map(function(o){return '<td style="text-align:right;font-family:Oswald,sans-serif;font-weight:700;font-size:16px;color:var(--text);">'+colTot[o.id]+'</td>';}).join('')+
+    '<td style="text-align:right;font-family:Oswald,sans-serif;font-weight:700;font-size:18px;background:rgba(0,113,188,.12);color:var(--text);">'+grand+'</td></tr>';
+  return '<div class="dc-table-wrap" style="max-height:none;margin:0;">'+
+    '<table class="dc-table"><thead>'+head+'</thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
+}
+function invMatrixRefresh(){var m=document.getElementById('invMatrix');if(m)m.innerHTML=invMatrixHtml();}
 function renderCount(){
   us3b2InjectCSS();countLoad();
   var offices=countOffices();
   if(!countState.office||!offices.some(function(o){return o.id===countState.office;}))countState.office=offices.length?offices[0].id:null;
   var offBtns=offices.map(function(o){return '<button class="us3b2-btn '+(o.id===countState.office?'':'alt')+'" onclick="countSetOffice(\''+o.id+'\')">'+us3esc(o.label)+'</button>';}).join('');
   var inner=document.getElementById('countInner');if(!inner)return;
+  // Load cross-office kit data once so the matrix shows all 3 offices, then re-render the matrix.
+  if(typeof liveStock!=='undefined'&&!liveStock.tried){liveStock.tried=true;loadLiveStock(function(){invMatrixRefresh();});}
   inner.innerHTML=
-  '<div class="us3b2-wrap" style="max-width:1480px;">'+
-    '<div class="us3b2-h" style="font-size:30px;margin-bottom:4px;">📦 Inventory &amp; Kit Availability'+
-      '<span title="Count components (RTUs + sensors + parts) per office. AVAILABLE KITS are computed automatically — a kit is only as available as its scarcest part (e.g. 10 FlexFlow RTUs + 5 sensors = 5 kits). This feeds company-wide kit availability. Count one type at a time; blanks are left alone. RTUs are serial devices — a ⚠ flag shows until their serial numbers are scanned/entered (coming in the Build Kit + Red Tag scanning step)." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
+  '<div class="us3b2-wrap" style="max-width:920px;margin:0 auto;">'+
+    '<div class="us3b2-h" style="font-size:26px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">📦 Inventory &amp; Kit Availability'+
+      '<span title="Available kits per office, computed automatically — a kit is only as available as its scarcest part (e.g. 10 FlexFlow RTUs + 5 sensors = 5 kits). This is the source of truth for company-wide kit availability. Edit the underlying component counts in the per-office section below; count one type at a time, blanks left alone." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
     '</div>'+
-    '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;margin-bottom:14px;">Count components per office → <b>available kits are computed from the scarcest part</b>. This is the source of truth for company-wide kit availability.</div>'+
-    '<div class="us3b2-card">'+
-      '<label class="us3b2-label">Office</label>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+offBtns+'</div>'+
-    '</div>'+
-    '<div class="us3b2-card" id="invCard"><div class="us3b2-empty">Loading inventory…</div></div>'+
+    '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin-bottom:14px;">Available kits per office — computed from the scarcest part. Edit component counts below.</div>'+
+    // ─── Dense product × office availability matrix (top, primary) ───
+    '<div id="invMatrix">'+invMatrixHtml()+'</div>'+
+    // ─── Per-office component editor (secondary, collapsible — keeps the editable detail) ───
+    '<details style="margin-top:16px;" open><summary style="cursor:pointer;font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 0;">▾ Component counts &amp; editing (per office)</summary>'+
+      '<div class="us3b2-card" style="margin-top:6px;">'+
+        '<label class="us3b2-label">Office</label>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+offBtns+'</div>'+
+      '</div>'+
+      '<div class="us3b2-card" id="invCard"><div class="us3b2-empty">Loading inventory…</div></div>'+
+    '</details>'+
     '<details style="margin-top:6px;"><summary style="cursor:pointer;font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 0;">▸ Legacy physical-count audit (old kit reconciliation)</summary>'+
       '<div class="us3b2-card"><div id="countBody"></div></div>'+
       '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">'+
@@ -6356,6 +6407,17 @@ function inGround(j){
 }
 function ongoing(j){return j&&j.project_status!=='Project Completed'&&j.project_status!=='Removal Complete';}
 function jobWho(j){return j.company_name||j.customer_name||'—';}
+// Data-hygiene: a job is "deployed with no end date" when it has devices deployed in
+// Fulcrum (liveStock.deployedByJob) but its Airtable record has a null/blank deinstall_date.
+// These show as deployed INDEFINITELY on the maps because the app only frees devices after
+// a job's de-install date. Returns [{num, job}] (active jobs only), sorted by job number.
+function us3IsNoEndDate(j){return !!(j&&!(j.deinstall_date&&String(j.deinstall_date).trim())&&ongoing(j));}
+function us3NoEndDateJobs(){
+  if(!(typeof liveStock!=='undefined'&&liveStock.ready&&liveStock.deployedByJob))return [];
+  var jb=(window.US3Live&&window.US3Live.jobByNum)||{};
+  return Object.keys(liveStock.deployedByJob).filter(function(jn){return us3IsNoEndDate(jb[jn]);})
+    .sort().map(function(jn){return {num:jn,job:jb[jn]};});
+}
 function jobSites(n){return (window.US3Live.sitesByJob[n])||[];}
 // Colored device-type dots for a job, from live deployed devices (Fulcrum sensor_type).
 function typeDots(n){
@@ -6892,9 +6954,14 @@ function paintDashboard(ops){
   var overdueHtml=overdue.length?overdue.slice().sort(function(a,b){return daysLeft(b)-daysLeft(a);}).map(function(j){var d=daysLeft(j);var ad=Math.abs(d);var bg=ad<=7?'#e8a020':'#ED1C24';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+bg+';">'+ad+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
   var upcomingShown=upcoming.slice(0,15);
   var upcomingHtml=upcoming.length?('<div style="max-height:300px;overflow:auto;">'+upcomingShown.map(function(j){return jobRow(j,'<span style="color:#8a97a8;font-size:12px;white-space:nowrap;">'+esc(j.project_status||'')+(j.install_date?' · '+fmtDate(j.install_date):'')+'</span>');}).join('')+'</div>'+(upcoming.length>15?('<div style="padding:6px 8px;font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;">+ '+(upcoming.length-15)+' more — see Projects ▸ Ongoing</div>'):'')):'<div class="us3w-empty">No upcoming jobs queued.</div>';
+  // Deployed-forever hygiene: active jobs with deployed devices but no de-install date.
+  var noEnd=(typeof us3NoEndDateJobs==='function')?us3NoEndDateJobs():[];
+  var noEndList=noEnd.map(function(x){return x.num;});
+  var noEndPreview=noEndList.slice(0,6).join(' · ')+(noEndList.length>6?(' · +'+(noEndList.length-6)+' more'):'');
   var openItems='<div class="us3prow" onclick="US3.go(\'shop\')"><div>⚠ <b>'+overdue.length+'</b> job(s) overdue for equipment return</div><span style="color:#ED1C24;">review ›</span></div>'+
     '<div class="us3prow" onclick="US3.go(\'shop\')"><div>📦 <b>'+(ops.devices_out!=null?ops.devices_out:'—')+'</b> devices show as shipped-out with no return scan</div><span style="color:#8a97a8;">audit ›</span></div>'+
-    (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>');
+    (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>')+
+    (noEndList.length?('<div class="us3prow" onclick="US3.go(\'assetmap\')"><div>⚠ <b>'+noEndList.length+'</b> deployed job(s) with <b>no end date</b> (stuck deployed forever — add a de-install date in Airtable)<div style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;margin-top:2px;">'+esc(noEndPreview)+'</div></div><span style="color:#e8a020;white-space:nowrap;">fix ›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ Every deployed job has an end date</div></div>');
 
   document.getElementById('dashWrap').innerHTML=
     // ─── 0. Centered max-width content column (normal-site margins, not full-bleed) ───
