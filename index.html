@@ -6167,9 +6167,9 @@ function renderScannedDevices(){
       var conf=confMap[String(d.device_id)];
       var warn=conf?(' <span title="Also listed deployed on '+us3esc((conf.jobs||[]).join(', ')||'a job')+' — chase it in Airtable" style="font-family:Rajdhani,sans-serif;font-size:11px;color:#e8a020;white-space:nowrap;">⚠ deployed on '+us3esc((conf.jobs[0]||'a job'))+(conf.jobs.length>1?(' +'+(conf.jobs.length-1)):'')+'</span>'):'';
       var col=kind==='green'?'#00c49a':'#ED1C24';
-      return '<span class="us3w-link" onclick="US3.openDevice(\''+js(d.device_id)+'\')" '+
+      return '<span class="us3w-link" onclick="US3.openDevice(\''+us3esc(d.device_id)+'\')" '+
         'style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--borderb);border-left:3px solid '+col+';border-radius:5px;background:var(--panel-bg);font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--text);cursor:pointer;margin:3px 6px 3px 0;">'+
-        '<b>'+esc(d.device_id)+'</b>'+warn+'</span>';
+        '<b>'+us3esc(d.device_id)+'</b>'+warn+'</span>';
     }
     var cards=prodOrder.filter(function(p){return grp[p].green.length||grp[p].red.length;}).map(function(p){
       var g=grp[p],col=US3_PROD_COLORS[p]||'var(--text)';
