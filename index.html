@@ -5128,7 +5128,17 @@ function us3HandleAuthUser(user){
   if(!user||!user.email)return;
   var email=String(user.email).toLowerCase().trim();
   if(us3EmailOk(email)){
+    var freshOAuthLogin=!localStorage.getItem('us3_user_email');
     localStorage.setItem('us3_user_email',email);
+    if(freshOAuthLogin){
+      // The app booted logged-OUT (the OAuth session arrives a beat after boot), so the dashboard never
+      // painted -> blank screen. Clean the OAuth params out of the URL and reload ONCE so it boots fresh
+      // with the session already stored (exactly what a manual refresh does). Guard: after the reload
+      // us3_user_email is already set, so this branch won't run again -> no loop.
+      try{ history.replaceState(null,'',location.origin+location.pathname+'#mc'); }catch(e){}
+      location.reload();
+      return;
+    }
     us3CheckLogin();
     if(window.US3ID&&US3ID.ready&&US3ID.onLoginEmail)US3ID.onLoginEmail();
   }else{
