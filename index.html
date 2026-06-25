@@ -172,9 +172,12 @@ body.light #techSubBar{box-shadow:0 2px 8px rgba(0,0,0,.07);}
 .am-prodcard{border:1px solid var(--border);border-radius:5px;padding:8px 10px;}
 .am-prodcard .am-dots{max-width:220px;}
 .am-prodcard.am-prodcard-ffpr{background:rgba(155,89,182,.08);border:1px solid rgba(155,89,182,.5);}
-.am-jobcard .am-prodblock .am-dots{max-width:220px;}
-.am-jobcard .am-prodblock{margin-right:14px;margin-bottom:10px;}
-.am-jobprods{display:flex;flex-wrap:wrap;gap:8px 0;}
+.am-jobgrid{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;}
+.am-jobcard{width:fit-content;max-width:280px;}
+.am-jobcard .am-prodblock .am-dots{max-width:150px;}
+.am-jobcard .am-prodblock{margin-right:0;margin-bottom:0;padding-left:12px;border-left:1px solid var(--border);}
+.am-jobcard .am-prodblock:first-child{padding-left:0;border-left:none;}
+.am-jobprods{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;}
 .am-dots{display:flex;flex-wrap:wrap;gap:8px;}
 .am-dot{width:var(--am-dot-size,30px);height:var(--am-dot-size,30px);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;position:relative;border:2px solid transparent;font-family:'Rajdhani',sans-serif;}
 .am-dot>span{font-size:calc(var(--am-dot-size,30px) * 0.55);line-height:1;display:flex;align-items:center;justify-content:center;}
@@ -2452,9 +2455,10 @@ function renderAssetMap(){
       divider.innerHTML='<div class="am-section-title" style="margin-top:18px;"><span style="color:var(--deployed);">\u25C6 Deployed \u2014 Active Jobs (Fulcrum)</span><div class="am-section-line" style="background:var(--deployed);"></div></div>';
       canvas.appendChild(divider);
     }
+    var jobGrid=document.createElement('div');jobGrid.className='am-jobgrid';
     jobSections.forEach(function(jsx){
       var sec=document.createElement('div');sec.className='am-section am-jobcard';
-      sec.style.cssText='border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:12px;background:var(--card-bg);';
+      sec.style.cssText='border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:0;background:var(--card-bg);';
       var header=jsx.header+(jsx.location?' \u2014 '+jsx.location:'');
       var totalDevs=0;Object.keys(jsx.devs).forEach(function(pid){totalDevs+=(jsx.devs[pid]||0);});
       sec.innerHTML='<div class="am-section-title" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span style="color:var(--deployed);">\u25c6 '+header+'</span><div class="am-section-line"></div><span style="font-size:12px;color:var(--muted);white-space:nowrap;">'+totalDevs+' device'+(totalDevs===1?'':'s')+'</span></div>';
@@ -2492,8 +2496,9 @@ function renderAssetMap(){
         dotsWrap.appendChild(dots);prodWrap.appendChild(dotsWrap);
       });
       sec.appendChild(prodWrap);
-      canvas.appendChild(sec);
+      jobGrid.appendChild(sec);
     });
+    canvas.appendChild(jobGrid);
   }
 }
 
