@@ -4183,6 +4183,7 @@ function renderHouston(){
 
 // ═══ FLEET MAP — EXPERIMENTAL ═══
 var fleetProduct='hach';
+var fleetAvailNowOn=false; // when true, show all-products "available now" snapshot instead of one product's timeline
 var fleetCellSize=18; // user-controlled dot size
 var _fleetAssets=[];
 var _fleetWeekStatus=[];
@@ -4257,13 +4258,23 @@ function renderFleet(){
   var schedOrder=['hach','ff','rg','cric'];
   schedOrder.forEach(function(pid){
     var p=PRODUCTS.find(function(x){return x.id===pid;});
-    var isActive=pid===fleetProduct;
+    var isActive=(!fleetAvailNowOn)&&pid===fleetProduct;
     var btn=document.createElement('div');
     btn.style.cssText="font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;padding:10px 26px;border:1.5px solid "+(isActive?'var(--accent)':'var(--border)')+";border-radius:5px;cursor:pointer;user-select:none;text-transform:uppercase;letter-spacing:.1em;color:"+(isActive?'#ffffff':'#c0d0e8')+";background:"+(isActive?'rgba(26,127,232,.15)':'transparent')+";transition:all .15s;";
     if(PRODUCT_LOGOS[pid]){btn.innerHTML='<img src="'+PRODUCT_LOGOS[pid]+'" style="height:24px;object-fit:contain;" alt="'+p.label+'">';}else{btn.textContent=p.label;btn.className='fleet-btn-text';}
-    btn.onclick=(function(pid2){return function(){fleetProduct=pid2;renderFleet();};})(pid);
+    btn.onclick=(function(pid2){return function(){fleetAvailNowOn=false;fleetProduct=pid2;renderFleet();};})(pid);
     filDiv.appendChild(btn);
   });
+  // "Available now" snapshot toggle — shows ALL products' current free/deployed counts at once
+  (function(){
+    var anActive=fleetAvailNowOn;
+    var anBtn=document.createElement('div');
+    anBtn.style.cssText="font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;padding:10px 22px;border:1.5px solid "+(anActive?'var(--available)':'var(--border)')+";border-radius:5px;cursor:pointer;user-select:none;text-transform:uppercase;letter-spacing:.08em;color:"+(anActive?'#ffffff':'#c0d0e8')+";background:"+(anActive?'rgba(0,196,154,.18)':'transparent')+";transition:all .15s;margin-left:4px;";
+    anBtn.textContent='⚡ Available now';
+    anBtn.className='fleet-btn-text';
+    anBtn.onclick=function(){fleetAvailNowOn=true;renderFleet();};
+    filDiv.appendChild(anBtn);
+  })();
 
   // Houston banner removed — shown on Availability tab info bar only
 
@@ -4423,9 +4434,48 @@ function renderFleet(){
 
   redrawFleetCanvas();
 
+  // ── "Available now" snapshot: every product's current free/deployed at a glance ──
+  var canvasRow=document.getElementById('fleetCanvasRow');
+  if(fleetAvailNowOn){
+    var msumA=document.getElementById('fleetMobileSummary');
+    if(canvasRow)canvasRow.style.display='none';
+    if(msumA){
+      msumA.style.display='flex';
+      msumA.style.flexDirection='column';
+      var snapTotAvail=0,snapTotDep=0;
+      var snapRows=PRODUCTS.map(function(pp){
+        var av=0;
+        OFFICES.forEach(function(o){ if((o.products||[]).indexOf(pp.id)>=0) av+=liveCount(o.id,pp.id,'available'); });
+        var dep=getDeployedCount(pp.id);
+        snapTotAvail+=av;snapTotDep+=dep;
+        var col=US3_PROD_COLORS[pp.id]||pp.color||'var(--accent)';
+        var lbl=US3_PROD_LABELS[pp.id]||pp.label;
+        return '<div style="display:flex;align-items:center;gap:12px;padding:13px 12px;border:1px solid var(--border);border-left:4px solid '+col+';border-radius:5px;background:var(--panel-bg);margin-bottom:9px;">'+
+          '<div style="flex:1;min-width:0;font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span style="color:'+col+';">'+pp.icon+'</span> '+lbl+'</div>'+
+          '<div style="text-align:right;font-family:Oswald,sans-serif;font-weight:700;"><span style="font-size:22px;color:#00c49a;">'+av+'</span><span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:uppercase;letter-spacing:.04em;"> available</span></div>'+
+          '<div style="width:1px;height:26px;background:var(--border);"></div>'+
+          '<div style="text-align:right;font-family:Oswald,sans-serif;font-weight:700;min-width:96px;"><span style="font-size:22px;color:#0071BC;">'+dep+'</span><span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:uppercase;letter-spacing:.04em;"> deployed</span></div>'+
+        '</div>';
+      }).join('');
+      msumA.innerHTML='<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:var(--text);">⚡ Available now — every product</div>'+
+        '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin:4px 0 14px;">Current in-stock units free to book right now, across all locations, plus units deployed in the field. Tap a product above to see its 52-week timeline.</div>'+
+        snapRows+
+        '<div style="display:flex;align-items:center;gap:12px;padding:14px 12px;margin-top:5px;border-top:2px solid var(--border);font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">'+
+          '<div style="flex:1;font-size:15px;color:var(--text);">Total</div>'+
+          '<div style="text-align:right;"><span style="font-size:24px;color:#00c49a;">'+snapTotAvail+'</span><span style="font-size:11px;color:var(--muted);font-weight:400;"> available</span></div>'+
+          '<div style="width:1px;height:26px;background:var(--border);"></div>'+
+          '<div style="text-align:right;min-width:96px;"><span style="font-size:24px;color:#0071BC;">'+snapTotDep+'</span><span style="font-size:11px;color:var(--muted);font-weight:400;"> deployed</span></div>'+
+        '</div>';
+    }
+    // skip the per-product timeline rendering below — snapshot mode is active
+    return;
+  }
+  if(canvasRow)canvasRow.style.display='flex';
+
   // ── Mobile-friendly summary: available units of this product, by month ──
   var msum=document.getElementById('fleetMobileSummary');
   if(msum){
+    msum.style.display='';
     var months=[],seen={};
     for(var mc=0;mc<numCols;mc++){
       var dt=weeks[mc],mkey=dt.getFullYear()+'-'+dt.getMonth(),av=0;
