@@ -6627,7 +6627,27 @@ function injectCSS(){
   '.us3grp:not(.open) .us3grp-body{display:none;}'+
   '.us3grp:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
   '@media(max-width:1200px){.us3detail-grid{column-count:2;}}'+
-  '@media(max-width:760px){.us3detail-grid{column-count:1;}.us3sum-row{grid-template-columns:1fr;}.us3kpi-row{grid-template-columns:1fr 1fr;}}';
+  /* ── Sample History Report (purple-accented, illustrative-data report) ── */
+  '.shr-open-btn:hover{background:#8844cc !important;color:#fff !important;}'+
+  '.shr-banner{background:rgba(136,68,204,.14);border:1px solid #8844cc;border-radius:8px;padding:13px 16px;margin:14px 0 4px;}'+
+  '.shr-banner .t{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:14px;color:#b07be0;display:flex;align-items:center;gap:8px;}'+
+  '.shr-banner .d{font-family:Rajdhani,sans-serif;font-size:13.5px;color:#cdd6e2;margin-top:5px;line-height:1.5;}'+
+  '.shr-foot{font-family:Rajdhani,sans-serif;font-size:12px;color:#8a97a8;font-style:italic;text-align:center;margin:6px 0 0;padding:10px;border-top:1px dashed #3a3052;}'+
+  '.shr-tl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}'+
+  '.shr-tl th,.shr-tl td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle;}'+
+  '.shr-tl th{font-family:Oswald,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#8a97a8;text-align:left;}'+
+  '.shr-tl .dn{font-family:"IBM Plex Mono",monospace;font-size:12px;color:#e8edf4;white-space:nowrap;}'+
+  '.shr-bar{position:relative;height:18px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;}'+
+  '.shr-seg{position:absolute;top:0;height:100%;border-radius:3px;}'+
+  '.shr-ev{position:absolute;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;border:2px solid #0b0f17;box-sizing:content-box;cursor:default;}'+
+  '.shr-row-warn td{background:rgba(237,28,36,.07);}'+
+  '.shr-callout{background:rgba(237,28,36,.1);border:1px solid #ED1C24;border-radius:8px;padding:11px 14px;margin-top:12px;font-family:Rajdhani,sans-serif;font-size:14px;color:#ffd7d9;display:flex;gap:9px;align-items:flex-start;}'+
+  '.shr-cbar{height:9px;border-radius:5px;background:rgba(255,255,255,.05);overflow:hidden;display:flex;margin-top:7px;}'+
+  '.shr-cbar>span{height:100%;}'+
+  '.shr-leg{display:flex;flex-wrap:wrap;gap:13px;font-family:Rajdhani,sans-serif;font-size:12px;color:#8a97a8;margin-top:9px;}'+
+  '.shr-leg span{display:inline-flex;align-items:center;gap:5px;}'+
+  '.shr-dot{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid #0a0e16;}'+
+  '@media(max-width:760px){.us3detail-grid{column-count:1;}.us3sum-row{grid-template-columns:1fr;}.us3kpi-row{grid-template-columns:1fr 1fr;}.shr-tl{font-size:11px;}.shr-tl .dn{font-size:10px;}}';
   document.head.appendChild(s);
 }
 
@@ -6679,8 +6699,12 @@ function renderProjectPage(n){
       var map=(s.latitude!=null&&s.longitude!=null)?('<span class="us3w-link" onclick="US3.mapJob(\''+js(n)+'\')">Map</span>'):'<span style="color:#5a6472;">no coords</span>';
       return '<tr><td><b>'+esc(s.site_id||'—')+'</b></td><td>'+esc(s.mh_number||'—')+'</td><td>'+esc(s.city||'—')+'</td><td>'+esc(s.system_type||'—')+'</td><td>'+fmtDate(s.install_date)+'</td><td>'+dev+'</td><td>'+map+'</td></tr>';
     }).join(''):'<tr><td colspan="7" class="us3w-empty">No sites listed in Airtable for this job.</td></tr>';
+    // Stash the real deployed device list so the Sample History Report can base its
+    // illustrative failure history on the actual deployed counts for this job.
+    window.US3._shrSeed={n:n,job:j,sites:sites,devices:fieldDevices};
     var html=
     '<button class="us3w-back" onclick="US3.close()">‹ Back</button>'+
+    '<button class="us3w-back shr-open-btn" style="margin-left:8px;border-color:#8844cc;color:#8844cc;" onclick="US3.sampleReport(\''+js(n)+'\')">📊 Sample History Report</button>'+
     '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:14px;">'+
       '<div class="us3w-h" style="font-size:32px;">'+esc(j.job_number||'—')+'</div>'+pill(j.project_status)+'</div>'+
     '<div style="font-size:18px;margin-top:4px;">'+esc(jobWho(j))+'</div>'+
@@ -6697,6 +6721,264 @@ function renderProjectPage(n){
     showOverlay(html);
   },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline — can\'t reach Supabase to load this job.</div>');});
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   SAMPLE HISTORY REPORT  ·  per-project device-lifecycle analytics
+   ───────────────────────────────────────────────────────────────────────
+   ALL FIGURES ARE ILLUSTRATIVE/FICTITIOUS. The projects are real; the
+   failure/replacement history is mock, generated DETERMINISTICALLY from a
+   hash of the job number so each project's report is stable across reloads
+   yet varies project-to-project. Where real deployed-device counts exist
+   (from device_locations), they seed the device count; the lifecycle events
+   layered on top are sample data. Disclaimer banner stays on every report.
+   ════════════════════════════════════════════════════════════════════════ */
+// Deterministic 32-bit hash of a string (FNV-1a-ish) → unsigned seed.
+function shrHash(str){var h=2166136261;str=String(str||'');for(var i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
+// Mulberry32 PRNG: a seed in → a stable stream of [0,1) floats out.
+function shrRng(seed){var a=seed>>>0;return function(){a|=0;a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};}
+function shrInt(r,lo,hi){return lo+Math.floor(r()*(hi-lo+1));}
+function shrPick(r,arr){return arr[Math.floor(r()*arr.length)];}
+function shrDateAdd(base,days){var d=new Date(base.getTime()+days*86400000);return d;}
+function shrFmt(d){try{return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return '—';}}
+
+// Build the deterministic mock dataset for one job. Pulls real device count
+// (and product mix) from the live detail data when present, else fabricates.
+function shrBuild(n){
+  var stash=(window.US3._shrSeed&&window.US3._shrSeed.n===n)?window.US3._shrSeed:null;
+  var job=stash?stash.job:(window.US3Live.jobByNum[n]||{job_number:n});
+  var realDevs=(stash&&stash.devices)?stash.devices:[];
+  var seed=shrHash(n);var r=shrRng(seed);
+
+  // --- timeline window: anchor to real install date if we have one ---
+  var installDate=job.install_date?new Date(String(job.install_date).length<=10?(job.install_date+'T00:00:00'):job.install_date):null;
+  if(!installDate||isNaN(installDate))installDate=shrDateAdd(new Date(),-shrInt(r,120,520));
+  var today=new Date();
+  // project duration (days in field). Use real de-install if available & future-bounded.
+  var deinstall=job.deinstall_date?new Date(String(job.deinstall_date).length<=10?(job.deinstall_date+'T00:00:00'):job.deinstall_date):null;
+  var endRef=(deinstall&&!isNaN(deinstall))?deinstall:today;
+  var daysDeployed=Math.max(45,Math.round((Math.min(endRef.getTime(),today.getTime())-installDate.getTime())/86400000));
+  if(daysDeployed>900)daysDeployed=shrInt(r,120,540); // guard odd dates
+  var spanDays=daysDeployed; // x-axis width
+
+  // --- device count + product mix (real base when present) ---
+  var PRODS=['ff','cric','hach','rg'];
+  var mix={ff:0,cric:0,hach:0,rg:0};
+  realDevs.forEach(function(d){var p=(typeof US3_SENSOR_PRODUCT==='function')?(US3_SENSOR_PRODUCT(d.sensor_type)||null):null;if(p&&mix[p]!=null)mix[p]++;else mix.ff++;});
+  var realTotal=realDevs.length;
+  var usedReal=realTotal>0;
+  if(!usedReal){ // fabricate a plausible mix deterministically
+    var total=shrInt(r,5,16);
+    var primary=shrPick(r,PRODS);mix[primary]=Math.ceil(total*0.55);
+    var rem=total-mix[primary];for(var k=0;k<PRODS.length&&rem>0;k++){if(PRODS[k]===primary)continue;var add=shrInt(r,0,Math.max(1,Math.ceil(rem/2)));mix[PRODS[k]]+=add;rem-=add;}
+    if(rem>0)mix[primary]+=rem;
+  }
+  var deviceCount=mix.ff+mix.cric+mix.hach+mix.rg;
+  if(deviceCount<4){mix.ff+=4-deviceCount;deviceCount=4;}
+
+  // --- build device rows with product type, expanded from the mix ---
+  var devs=[];var idx=0;
+  function pad(x){return (x<10?'00':x<100?'0':'')+x;}
+  PRODS.forEach(function(p){for(var i=0;i<mix[p];i++){idx++;
+    // borrow a real device id where we have one of this product, else synthesize
+    var rid=null;
+    for(var z=0;z<realDevs.length;z++){var rp=(typeof US3_SENSOR_PRODUCT==='function')?(US3_SENSOR_PRODUCT(realDevs[z].sensor_type)||null):null;if((rp||'ff')===p&&!realDevs[z]._taken){rid=realDevs[z].device_id;realDevs[z]._taken=true;break;}}
+    devs.push({id:rid||(US3_PROD_LABELS[p].replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase()+'-'+pad(idx)),realId:!!rid,prod:p,site:'Site '+pad(idx)});
+  }});
+  realDevs.forEach(function(d){delete d._taken;});
+
+  // --- pick a repeat-failure SITE (one location that ate 3 devices) ---
+  // Assign sites; cluster a few devices onto a single "problem" location.
+  var nSites=Math.max(2,Math.min(devs.length,shrInt(r,Math.ceil(devs.length/3),devs.length)));
+  var problemSite='MH-'+pad(shrInt(r,11,89))+' / '+shrPick(r,['Inlet','Outfall','Lift Station','Trunk Main','CSO Junction','Pump Vault']);
+  // how many devices the problem site chews through (the repeat-failure story)
+  var problemSwaps=shrInt(r,2,3)+1; // 3–4 devices total at one site
+  problemSwaps=Math.min(problemSwaps,Math.max(3,Math.floor(devs.length/2)));
+
+  // assign generic sites, then designate a chunk to the problem site
+  var siteNames=[];for(var si=0;si<nSites;si++)siteNames.push('MH-'+pad(shrInt(r,10,95))+'-'+String.fromCharCode(65+si));
+  devs.forEach(function(d,i){d.site=shrPick(r,siteNames);});
+  // force the first `problemSwaps` devices onto the problem site (the story)
+  for(var pi=0;pi<problemSwaps&&pi<devs.length;pi++){devs[pi].site=problemSite;devs[pi].atProblem=true;}
+
+  // --- generate lifecycle events per device (deploy → [fail → replace]*) ---
+  var truckRolls=0, totalReplacements=0, firstFailLags=[], firstDataLags=[];
+  var causeCounts={site:0,product:0,install:0};
+  var CAUSE_LABEL={site:'Site condition',product:'Product fault',install:'Install error'};
+  devs.forEach(function(d,i){
+    // each device gets its own deterministic sub-stream
+    var dr=shrRng(shrHash(n+'|'+d.id+'|'+i));
+    d.events=[];
+    var deployOffset=shrInt(dr,0,Math.max(1,Math.floor(spanDays*0.25)));
+    d.deployDay=deployOffset;
+    // install-to-first-data lag (hours→days). Good installs report fast.
+    var lag=Math.round((dr()<0.7?dr()*1.2:1.2+dr()*4)*10)/10; // mostly <1.5 days
+    d.firstDataLag=lag;firstDataLags.push(lag);
+    d.events.push({day:deployOffset,type:'deploy'});
+    // failures: problem-site devices fail more; others mostly survive (healthy fleet)
+    var failChance=d.atProblem?0.9:(dr()*0.5);
+    var failed=false;var lastDay=deployOffset;
+    if(failChance>0.62){
+      failed=true;
+      var nFail=d.atProblem?1:(dr()<0.25?2:1);
+      for(var f=0;f<nFail;f++){
+        var lifeDays=shrInt(dr,18,Math.max(30,Math.floor(spanDays*0.55)));
+        var failDay=Math.min(spanDays-3,lastDay+lifeDays);
+        if(failDay<=lastDay+5)break;
+        // cause: problem site → 'site'; install error if very early; else product
+        var cause=d.atProblem?'site':((failDay-deployOffset)<14?'install':(dr()<0.45?'product':'site'));
+        causeCounts[cause]++;
+        if(f===0){d.firstFailDay=failDay;firstFailLags.push(failDay-deployOffset);}
+        d.events.push({day:failDay,type:'fail',cause:cause});
+        truckRolls++;
+        // replacement a few days later
+        var repDay=Math.min(spanDays-1,failDay+shrInt(dr,1,6));
+        d.events.push({day:repDay,type:'replace'});
+        totalReplacements++;truckRolls++;
+        lastDay=repDay;
+      }
+    }
+    // routine maintenance visits (battery/desiccant) on long-lived devices
+    if(!failed&&dr()<0.35){var mDay=Math.min(spanDays-2,deployOffset+shrInt(dr,40,spanDays));d.events.push({day:mDay,type:'maint'});truckRolls++;}
+    d.failed=failed;
+    d.endDay=spanDays; // still in field at report time
+  });
+
+  // --- repeat-failure sites (2+ swaps at one location = site problem) ---
+  var swapsBySite={};devs.forEach(function(d){var sw=d.events.filter(function(e){return e.type==='replace';}).length;if(sw)swapsBySite[d.site]=(swapsBySite[d.site]||0)+sw;});
+  var repeatSites=Object.keys(swapsBySite).filter(function(s){return swapsBySite[s]>=2;});
+  var topSite=null,topN=0;Object.keys(swapsBySite).forEach(function(s){if(swapsBySite[s]>topN){topN=swapsBySite[s];topSite=s;}});
+
+  // --- metrics ---
+  var failedCount=devs.filter(function(d){return d.failed;}).length;
+  var failureRate=Math.round(failedCount/devs.length*100);
+  var mttf=firstFailLags.length?Math.round(firstFailLags.reduce(function(a,b){return a+b;},0)/firstFailLags.length):null;
+  var avgFirstData=firstDataLags.length?Math.round(firstDataLags.reduce(function(a,b){return a+b;},0)/firstDataLags.length*10)/10:null;
+  // fleet uptime: healthy devices ~96–99.5%, dinged by failures
+  var uptime=Math.round((99.4-failureRate*0.08-(r()*1.2))*10)/10;if(uptime>99.9)uptime=99.9;if(uptime<88)uptime=88+Math.round(r()*4);
+  // parts/BOM consumed: each deploy + each replacement consumes a kit
+  var kitsDeployed=devs.length;var kitsReplaced=totalReplacements;
+  var unitCost={ff:1850,cric:1250,hach:2100,rg:640};
+  var replCost=0;devs.forEach(function(d){var sw=d.events.filter(function(e){return e.type==='replace';}).length;replCost+=sw*(unitCost[d.prod]||1500);});
+  var truckRollCost=truckRolls*(280+shrInt(r,0,90)); // labor per roll
+
+  return {
+    n:n,job:job,usedReal:usedReal,installDate:installDate,daysDeployed:daysDeployed,spanDays:spanDays,
+    devs:devs,mix:mix,deviceCount:devs.length,
+    failedCount:failedCount,failureRate:failureRate,mttf:mttf,uptime:uptime,
+    avgFirstData:avgFirstData,totalReplacements:totalReplacements,truckRolls:truckRolls,
+    kitsDeployed:kitsDeployed,kitsReplaced:kitsReplaced,replCost:replCost,truckRollCost:truckRollCost,
+    repeatSites:repeatSites,swapsBySite:swapsBySite,topSite:topSite,topN:topN,
+    causeCounts:causeCounts,CAUSE_LABEL:CAUSE_LABEL
+  };
+}
+
+// KPI tile helper (mirrors .us3kpi look but tuned for the dark report surface)
+function shrKpi(num,label,sub,accent){
+  return '<div class="us3kpi" style="cursor:default;">'+
+    '<div class="n" style="color:'+(accent||'#e8edf4')+';">'+num+'</div>'+
+    '<div class="l">'+label+'</div>'+
+    (sub?('<div class="s">'+sub+'</div>'):'')+
+  '</div>';
+}
+
+function sampleHistoryReport(n){
+  var d;try{d=shrBuild(n);}catch(e){showOverlay('<button class="us3w-back" onclick="US3.sampleBack(\''+js(n)+'\')">‹ Back</button><div class="us3w-card us3w-empty">Could not build the sample report.</div>');return;}
+  var span=d.spanDays;
+  function pct(day){return Math.max(0,Math.min(100,(day/span)*100));}
+
+  // ── BANNER (must be on every report) ──
+  var banner='<div class="shr-banner"><div class="t">⚠ Sample Report — Illustrative Data</div>'+
+    '<div class="d">This is what every project\'s history report will look like once US3 Ops logs device lifecycle events. The project is real; the failure, replacement, cost and uptime figures below are <b>fictitious examples</b>'+(d.usedReal?(' layered on the <b>'+d.deviceCount+' real deployed device'+(d.deviceCount===1?'':'s')+'</b> on this job'):'')+'. Not actual performance data.</div></div>';
+
+  // ── KPI CARDS (the 10 metrics) ──
+  var mixParts=['ff','cric','hach','rg'].filter(function(p){return d.mix[p];}).map(function(p){return d.mix[p]+' '+US3_PROD_LABELS[p];}).join(' · ');
+  var kpis='<div class="us3kpi-row">'+
+    shrKpi(d.deviceCount,'Devices deployed',mixParts||'—','#0071BC')+
+    shrKpi(d.failureRate+'%','Failure rate',d.failedCount+' of '+d.deviceCount+' failed ≥1×',d.failureRate>30?'#ED1C24':d.failureRate>15?'#e8a020':'#00c49a')+
+    shrKpi(d.totalReplacements,'Replacements',(d.repeatSites.length?d.repeatSites.length+' repeat-failure site'+(d.repeatSites.length===1?'':'s'):'no repeat sites'),d.repeatSites.length?'#ED1C24':'#e8edf4')+
+    shrKpi(d.mttf!=null?d.mttf+'d':'—','Mean time to failure','avg days before 1st fault','#e8a020')+
+    shrKpi(d.uptime+'%','Fleet uptime','avg reporting on this job',d.uptime>=98?'#00c49a':d.uptime>=95?'#e8a020':'#ED1C24')+
+    shrKpi(d.avgFirstData!=null?d.avgFirstData+'d':'—','Install→1st data','lag = install quality',d.avgFirstData!=null&&d.avgFirstData<1.5?'#00c49a':'#e8a020')+
+    shrKpi(d.kitsDeployed+d.kitsReplaced,'Parts / BOM used',d.kitsDeployed+' kits + '+d.kitsReplaced+' replacement'+(d.kitsReplaced===1?'':'s')+' · '+money(d.replCost)+' parts','#8844cc')+
+    shrKpi(d.truckRolls,'Truck rolls',money(d.truckRollCost)+' est. field labor','#e8a020')+
+    shrKpi(d.daysDeployed+'d','Days in field','project duration / utilization','#0071BC')+
+    shrKpi(['ff','cric','hach','rg'].filter(function(p){return d.mix[p];}).length,'Product types','+ maintenance events logged','#44bb88')+
+  '</div>';
+
+  // ── TIMELINE / LIFECYCLE VIEW (centerpiece) ──
+  var EVCOL={deploy:'#0071BC',fail:'#ED1C24',replace:'#00c49a',maint:'#e8a020'};
+  var EVLBL={deploy:'Deployed',fail:'Failed',replace:'Replaced',maint:'Maintenance'};
+  // sort: problem-site devices first, then failed, then healthy
+  var rows=d.devs.slice().sort(function(a,b){return (b.atProblem?1:0)-(a.atProblem?1:0)||(b.failed?1:0)-(a.failed?1:0);});
+  var tlRows=rows.map(function(dev){
+    var warn=dev.atProblem?' shr-row-warn':'';
+    // baseline life bar (deploy → end), then event markers
+    var bar='<div class="shr-bar"><div class="shr-seg" style="left:'+pct(dev.deployDay)+'%;width:'+(100-pct(dev.deployDay))+'%;background:'+(dev.failed?'rgba(237,28,36,.18)':'rgba(0,113,188,.22)')+';"></div>';
+    dev.events.forEach(function(e){
+      bar+='<span class="shr-ev" style="left:'+pct(e.day)+'%;background:'+EVCOL[e.type]+';" title="'+EVLBL[e.type]+(e.cause?(' — '+d.CAUSE_LABEL[e.cause]):'')+' · day '+e.day+'"></span>';
+    });
+    bar+='</div>';
+    var prodDot='<span class="shr-dot" style="background:'+US3_PROD_COLORS[dev.prod]+';" title="'+US3_PROD_LABELS[dev.prod]+'"></span>';
+    var idCell=dev.realId?('<span class="us3w-link" onclick="US3.sampleDevice(\''+js(dev.id)+'\')">'+esc(dev.id)+'</span>'):('<span class="dn">'+esc(dev.id)+'</span>');
+    var siteCell=dev.atProblem?('<b style="color:#ED1C24;">'+esc(dev.site)+' ⚠</b>'):esc(dev.site);
+    return '<tr class="'+warn+'"><td style="width:120px;">'+prodDot+' '+idCell+'</td><td style="width:130px;font-size:11px;color:#9fb0c4;">'+siteCell+'</td><td>'+bar+'</td></tr>';
+  }).join('');
+  var timeMarks='<div style="display:flex;justify-content:space-between;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a6472;margin:2px 0 0 250px;"><span>'+shrFmt(d.installDate)+'</span><span>day '+Math.round(span/2)+'</span><span>'+shrFmt(shrDateAdd(d.installDate,span))+'</span></div>';
+  var legend='<div class="shr-leg">'+Object.keys(EVLBL).map(function(k){return '<span><span class="shr-dot" style="background:'+EVCOL[k]+';"></span>'+EVLBL[k]+'</span>';}).join('')+'<span style="margin-left:auto;color:#5a6472;">Rows = devices on this job · time runs left→right</span></div>';
+
+  var callout='';
+  if(d.topSite&&d.topN>=2){
+    callout='<div class="shr-callout"><span style="font-size:18px;">⚠</span><div><b>Site issue, not product.</b> Location <b style="font-family:\'IBM Plex Mono\',monospace;">'+esc(d.topSite)+'</b> ate <b>'+(d.topN+1)+' devices</b> ('+d.topN+' replacements) while the rest of the fleet held. That points to a <b>field/site condition</b> (flooding, H₂S, vandalism) — not a hardware defect. Recommend a site survey before the next swap.</div></div>';
+  }
+
+  var timeline='<div class="us3w-card"><div class="us3w-h" style="font-size:16px;">Device Lifecycle Timeline'+
+    ' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">deploy → fail → replace, per device (illustrative)</span></div>'+
+    callout+
+    '<div style="overflow-x:auto;margin-top:12px;"><table class="shr-tl"><thead><tr><th style="width:120px;">Device</th><th style="width:130px;">Site</th><th>Timeline</th></tr></thead><tbody>'+tlRows+'</tbody></table></div>'+
+    timeMarks+legend+'</div>';
+
+  // ── FAILURE-CAUSE BREAKDOWN (bonus tile) ──
+  var cc=d.causeCounts;var ccTotal=cc.site+cc.product+cc.install;
+  var CAUSE_COL={site:'#ED1C24',product:'#8844cc',install:'#e8a020'};
+  var causeBar='',causeLeg='';
+  if(ccTotal){
+    ['site','product','install'].forEach(function(k){if(!cc[k])return;causeBar+='<span style="width:'+(cc[k]/ccTotal*100)+'%;background:'+CAUSE_COL[k]+';"></span>';});
+    causeLeg=['site','product','install'].map(function(k){return '<span><span class="shr-dot" style="background:'+CAUSE_COL[k]+';"></span>'+d.CAUSE_LABEL[k]+' ('+cc[k]+')</span>';}).join('');
+  }else{causeBar='<span style="width:100%;background:#00c49a;"></span>';causeLeg='<span style="color:#00c49a;">No failures logged on this job</span>';}
+  var causeTile='<div class="us3w-card"><div class="us3w-h" style="font-size:16px;">Failure-Cause Breakdown'+
+    ' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">site vs product vs install (illustrative)</span></div>'+
+    '<div style="font-family:Rajdhani,sans-serif;font-size:13.5px;color:#cdd6e2;margin-top:8px;">Most failures here trace to <b>'+(ccTotal?d.CAUSE_LABEL[['site','product','install'].sort(function(a,b){return cc[b]-cc[a];})[0]].toLowerCase():'no')+'</b> causes — the story a prospect needs: when a number looks bad, this tells them <i>why</i>, and whether it\'s the gear or the ground.</div>'+
+    '<div class="shr-cbar">'+causeBar+'</div><div class="shr-leg">'+causeLeg+'</div></div>';
+
+  // ── PRODUCT MIX + MAINTENANCE (ties to Asset Map) ──
+  var maintCount=0;d.devs.forEach(function(dev){dev.events.forEach(function(e){if(e.type==='maint')maintCount++;});});
+  var mixBar='';var mixTot=d.deviceCount;['ff','cric','hach','rg'].forEach(function(p){if(!d.mix[p])return;mixBar+='<span style="width:'+(d.mix[p]/mixTot*100)+'%;background:'+US3_PROD_COLORS[p]+';" title="'+US3_PROD_LABELS[p]+': '+d.mix[p]+'"></span>';});
+  var mixTile='<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><div class="us3w-h" style="font-size:16px;">Product Mix &amp; Maintenance'+
+    ' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">FlexFlow / Cricket / Hach / Rain Gauge on this job</span></div>'+
+    '<button class="us3w-back" onclick="US3.sampleAssetMap()">Asset Map ›</button></div>'+
+    '<div class="shr-cbar" style="height:14px;margin-top:12px;">'+mixBar+'</div>'+
+    '<div class="shr-leg">'+['ff','cric','hach','rg'].filter(function(p){return d.mix[p];}).map(function(p){return '<span><span class="shr-dot" style="background:'+US3_PROD_COLORS[p]+';"></span>'+US3_PROD_LABELS[p]+' · '+d.mix[p]+'</span>';}).join('')+'<span style="margin-left:auto;">'+maintCount+' maintenance event'+(maintCount===1?'':'s')+' logged</span></div></div>';
+
+  var html=
+    '<button class="us3w-back" onclick="US3.sampleBack(\''+js(n)+'\')">‹ Back to project</button>'+
+    '<button class="us3w-back" style="margin-left:8px;" onclick="US3.mapJob(\''+js(n)+'\')">Device Map ›</button>'+
+    '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:14px;">'+
+      '<div class="us3w-h" style="font-size:30px;">'+esc(n)+' — History Report</div>'+
+      '<span style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:#8844cc;border-radius:11px;padding:3px 10px;">SAMPLE</span></div>'+
+    '<div style="font-size:16px;margin-top:2px;color:#cdd6e2;">'+esc(jobWho(d.job))+'</div>'+
+    '<div style="color:#8a97a8;font-size:14px;">'+esc(d.job.location||'—')+'</div>'+
+    banner+
+    kpis+
+    timeline+
+    '<div class="us3dash-grid" style="margin-top:14px;">'+causeTile+mixTile+'</div>'+
+    '<div class="shr-foot">SAMPLE REPORT · All failure, replacement, cost and uptime figures on this page are illustrative examples seeded from the job number — not actual US3 performance data. The project itself is real.</div>';
+  showOverlay(html);
+}
+// Connectivity helpers (keep light; reuse the existing nav patterns).
+function sampleReportOpen(n){rememberReturn();sampleHistoryReport(n);}
+function sampleBackToProject(n){renderProjectPage(n);}
+function sampleToDevice(id){openDevice(id);}
+function sampleToAssetMap(){closeDetail();if(typeof gotoTab==='function')gotoTab('assetmap');}
 
 function deviceAddNote(id){
   var i=document.getElementById('devNoteInput');if(!i)return;var v=(i.value||'').trim();if(!v)return;
@@ -6824,6 +7106,7 @@ function jobCard(j){
     '<div class="us3jcard-co">'+esc(jobWho(j))+'</div>'+
     '<div class="us3jcard-loc">'+esc(j.location||'—')+'</div>'+
     '<div class="us3jcard-meta"><span>📅 '+fmtDate(j.install_date)+' → '+fmtDate(j.deinstall_date)+'</span><span>📍 '+sites.length+' site'+(sites.length===1?'':'s')+'</span>'+(j.delivery_type?('<span>🧪 '+esc(j.delivery_type)+'</span>'):'')+'</div>'+
+    '<button class="us3w-back shr-open-btn" style="margin-top:11px;font-size:11px;padding:5px 10px;border-color:#8844cc;color:#8844cc;" onclick="event.stopPropagation();US3.sampleReport(\''+js(j.job_number)+'\')">📊 Sample History Report</button>'+
   '</div>';
 }
 
@@ -7372,7 +7655,7 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,pageTour:pageTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,sampleReport:sampleReportOpen,sampleBack:sampleBackToProject,sampleDevice:sampleToDevice,sampleAssetMap:sampleToAssetMap,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,pageTour:pageTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
 window.US3._dev=null;
 function downloadDevice(){
   var d=window.US3&&window.US3._dev;if(!d){alert('Open a device first.');return;}
