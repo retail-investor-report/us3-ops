@@ -6698,17 +6698,19 @@ function injectCSS(){
   '.us3sum-line .lab{font-family:Rajdhani,sans-serif;font-size:15px;font-weight:600;color:var(--text,#e8edf4);}'+
   '.us3sum-line .sub2{font-size:11px;color:#8a97a8;font-family:Rajdhani,sans-serif;margin-left:8px;font-weight:400;}'+
   '.us3sum-line .val{font-family:Oswald,sans-serif;font-weight:700;font-size:24px;line-height:1;color:var(--text,#e8edf4);white-space:nowrap;}'+
-  /* ── detail panels: desktop = 3 fixed columns (always-open, 4-row cap + scroll, no caret) ── */
+  /* ── detail panels: 3 columns of collapsible dropdowns (desktop AND mobile). Expanded
+     by default, click header/caret to toggle. 4-row cap + scroll when open. Big blue caret. ── */
   '.us3detail-grid{display:flex;gap:14px;align-items:flex-start;}'+
   '.us3col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:14px;}'+
   '.us3col>.us3w-card{margin:0;}'+
-  '.us3coll-h{display:flex;justify-content:space-between;align-items:center;gap:8px;user-select:none;}'+
-  '.us3coll-h .us3coll-ar{color:var(--accent,#0071BC);font-size:22px;font-weight:900;line-height:1;transition:transform .15s;flex:0 0 auto;}'+
-  '.us3coll-body{margin-top:10px;}'+
-  /* desktop: panels are always open, capped at ~4 rows then scroll, no dropdown caret */
-  '.us3coll-body{max-height:154px;overflow-y:auto;}'+
-  '.us3coll .us3coll-ar{display:none;}'+
-  '.us3coll-h{cursor:default;}'+
+  '.us3coll-h{display:flex;justify-content:space-between;align-items:center;gap:8px;user-select:none;cursor:pointer;}'+
+  /* the dropdown caret: large, bold, accent-blue — an obvious "click to open" affordance */
+  '.us3coll-h .us3coll-ar{display:inline-block;color:var(--accent,#0071BC);font-size:26px;font-weight:900;line-height:1;transition:transform .15s;flex:0 0 auto;}'+
+  '.us3coll-h:hover .us3coll-ar{opacity:.78;}'+
+  '.us3coll-body{margin-top:10px;max-height:154px;overflow-y:auto;}'+
+  /* collapsed panels hide their body and point the caret right */
+  '.us3coll:not(.open) .us3coll-body{display:none;}'+
+  '.us3coll:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
   '.us3coll-h.warn{background:rgba(232,160,32,.16);border:1px solid rgba(232,160,32,.55);border-radius:6px;padding:9px 11px;}'+
   '.us3grp-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text,#e8edf4);}'+
   '.us3grp-h:hover{background:rgba(0,113,188,.08);}'+
@@ -6736,17 +6738,12 @@ function injectCSS(){
   '.shr-leg{display:flex;flex-wrap:wrap;gap:13px;font-family:Rajdhani,sans-serif;font-size:12px;color:#8a97a8;margin-top:9px;}'+
   '.shr-leg span{display:inline-flex;align-items:center;gap:5px;}'+
   '.shr-dot{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid #0a0e16;}'+
-  /* ── mobile (≤768px): single column + restore tap-to-expand dropdown behaviour ── */
+  /* ── mobile (≤768px): collapse the 3 columns into a single stacked column. The
+     collapsible dropdown behaviour (caret, cursor, toggle) is already global above. ── */
   '@media(max-width:768px){'+
     '.us3detail-grid{display:block;}'+
     '.us3col{display:block;}'+
     '.us3col>.us3w-card{margin:0 0 14px;}'+
-    /* show the (bigger) caret and make headers tappable again */
-    '.us3coll .us3coll-ar{display:inline-block;}'+
-    '.us3coll-h{cursor:pointer;}'+
-    /* collapse closed panels; only expanded panels reveal their body */
-    '.us3coll:not(.open) .us3coll-body{display:none;}'+
-    '.us3coll:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
   '}'+
   '@media(max-width:760px){.us3sum-row{grid-template-columns:1fr;}.us3kpi-row{grid-template-columns:1fr 1fr;}.shr-tl{font-size:11px;}.shr-tl .dn{font-size:10px;}}';
   document.head.appendChild(s);
@@ -7481,7 +7478,7 @@ var TOUR_PAGES={
     {sel:'#dashWrap .us3w-h',h:'Dashboard = morning command view',p:'Your first stop each day. Everything here is live — pulled automatically from Airtable (jobs), Fulcrum (field devices) and the warehouse door-scan log. Nothing is typed by hand. It answers one question fast: what needs attention today?'},
     {sel:'#equipReqContainer',h:'Equipment requests land here',p:'This is the warehouse dashboard. When the field needs gear, the request shows up right here under the header — that is your action queue. Below it the page lays out live availability and everything that needs attention before equipment ships.'},
     {sel:'#houstonInfoBar',h:'Houston level project',p:'Houston gets its own section. This bar links straight into the Houston portal, and View Fleet Health opens the full fleet-health breakdown on the Houston tab.'},
-    {sel:'.us3detail-grid',h:'The attention panels',p:'Six panels: open items, studies ending soon, upcoming jobs, recent shipments/returns and equipment overdue for return. On desktop each shows about four rows and scrolls for the rest; on mobile you tap a panel to expand it. Every row is clickable — it jumps you to the job or device.'},
+    {sel:'.us3detail-grid',h:'The attention panels',p:'Six panels: open items, overdue for return, upcoming jobs, studies ending soon, and recent shipments/returns. They start expanded — click any panel header (or its blue arrow) to collapse or re-open it. Each shows about four rows and scrolls for the rest. Every row is clickable — it jumps you to the job or device.'},
     {sel:'#avGrid',h:'By office',p:'The same availability, broken out per office — El Cajon, Downey, Puerto Rico, Houston. Use it to see where the free hardware physically is before you plan a shipment.'}
   ],
   fleet:[
@@ -7728,28 +7725,11 @@ function paintDashboard(ops,devConflicts){
   var notReturned=outList.filter(function(d){var j=LV.jobByNum[d.job_number];return j&&(j.project_status==='Project Completed'||j.project_status==='Removal Complete');});
   function scanRow(s){return '<div class="us3prow" onclick="US3.openDevice(\''+js(s.device_id)+'\')"><div><b>'+esc(s.device_id)+'</b> <span style="color:#8a97a8;font-size:12px;">'+esc(s.location||s.note||s.client_name||'')+'</span></div><div style="text-align:right;">'+dirChip(s.direction)+'<div style="font-size:11px;color:#8a97a8;">'+fmtDate(s.scanned_at)+'</div></div></div>';}
 
-  // Clean centered stat line (no bordered box). Numbers bold + dark (var(--text)),
-  // words in a readable medium gray. Replaces the old boxed Operations us3sum card.
-  // statGray = theme-aware readable medium gray (var(--muted)); statNum = bold dark
-  // (var(--text)). Never the old hardcoded near-white #8a97a8 that vanished on white.
-  var statGray='color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:600;';
-  var statNum='color:var(--text);font-family:Oswald,sans-serif;font-weight:700;';
-  // Warehouse view: lead with EQUIPMENT metrics, not Airtable's active-jobs count
-  // (that's Airtable's number). Devices deployed + per-type breakdown only.
-  var statLine='<div style="text-align:center;margin:6px 0 4px;font-size:18px;line-height:1.5;">'+
-    '<span style="'+statNum+'">'+(LV.deployedTotal||0)+'</span> <span style="'+statGray+'">devices deployed</span>'+
-    '</div>'+
-    // Deployed-by-type detail, dark + readable (no near-white on white).
-    '<div style="text-align:center;margin:0 0 4px;font-size:13px;'+statGray+'">'+
-      'FlexFlow <b style="color:var(--text);">'+by.ff+'</b> · '+
-      'Cricket <b style="color:var(--text);">'+by.cric+'</b> · '+
-      'Hach <b style="color:var(--text);">'+by.hach+'</b> · '+
-      'Rain Gauge <b style="color:var(--text);">'+by.rg+'</b>'+
-    '</div>'+
-    // Scanned shelf units (warehouse_devices): a clearly-labeled SEPARATE line so the
-    // owner's green/red-tagged serials are visible on the dashboard without mixing into
-    // the computed kit math above. Filled live by paintScannedSummary().
-    '<div id="dashScannedSummary" style="text-align:center;margin:0 0 4px;font-size:13px;'+statGray+'"></div>';
+  // Top summary stat lines (devices-deployed + per-type breakdown + scanned-shelf line)
+  // REMOVED from the dashboard per owner request — the page now goes straight from the
+  // US3 EQUIPMENT title/subtitle into Fleet Availability. (paintScannedSummary() is no
+  // longer called here; the Inventory ▸ Scanned Devices section keeps its own counts.)
+  var statLine='';
 
   var endingHtml=ending.length?ending.map(function(j){var d=daysLeft(j);var col=d<=7?'#ED1C24':d<=21?'#e8a020':'#2ecc71';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+col+';">'+d+'d left</span>');}).join(''):'<div class="us3w-empty">No active studies with an end date.</div>';
   var overdueHtml=overdue.length?overdue.slice().sort(function(a,b){return daysLeft(b)-daysLeft(a);}).map(function(j){var d=daysLeft(j);var ad=Math.abs(d);var bg=ad<=7?'#e8a020':'#ED1C24';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+bg+';">'+ad+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
@@ -7802,25 +7782,28 @@ function paintDashboard(ops,devConflicts){
       '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project'+help('Houston gets its own section. This bar links to the Houston portal, and View Fleet Health opens the full fleet-health breakdown on the Houston tab.')+'</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span><a href="#houston" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Fleet Health</a></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
     '</div>'+
-    // ─── Detail panels. Desktop = 3 fixed columns (always-open, 4-row cap + scroll,
-    //     no caret). Mobile (≤768px) collapses each panel back to a tap dropdown.
-    //     Column layout (desktop): col1 = Open Items / Studies Ending,
-    //     col2 = Upcoming Jobs (centered), col3 = Recent Shipments / Recent Returns /
-    //     Overdue for Return. Mobile reads the same panels in source order (single
-    //     column, col1→col2→col3): Open Items, Studies Ending, Upcoming, Recent
-    //     Shipments, Recent Returns, Overdue. ───
+    // ─── Detail panels. 3 columns, 2 panels each, EXPANDED by default but click-to-
+    //     toggle on desktop AND mobile (header/caret fires us3ToggleColl). 4-row cap +
+    //     scroll when expanded. Big blue caret rotates on collapse.
+    //     Column layout: col1 = Open Items / Overdue for Return,
+    //     col2 = Upcoming Jobs / Studies Ending Soon,
+    //     col3 = Recent Shipments / Recent Returns. Mobile reads them in source order
+    //     (single column, col1→col2→col3). ───
     '<div class="us3detail-grid" style="margin-top:18px;">'+
+      // col1: Open Items (top) → Overdue for Return (under it)
       '<div class="us3col">'+
-        panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
-        panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:false})+
+        panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:true})+
+        panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:true,warn:true})+
       '</div>'+
+      // col2: Upcoming Jobs (top) → Studies Ending Soon (under it)
       '<div class="us3col">'+
-        panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:false})+
+        panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:true})+
+        panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:true})+
       '</div>'+
+      // col3: Recent Shipments (top) → Recent Returns (under it)
       '<div class="us3col">'+
-        panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:false})+
-        panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:false})+
-        panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:false,warn:true})+
+        panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:true})+
+        panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:true})+
       '</div>'+
     '</div>'+
     // ─── 6. The 3 office availability containers (El Cajon / Downey / Puerto Rico) — LAST ───
@@ -7831,7 +7814,6 @@ function paintDashboard(ops,devConflicts){
     '</div>';// /.dash-inner
   if(typeof renderAvail==='function')renderAvail();
   loadEquipmentRequests();
-  paintScannedSummary();
 }
 // Dashboard scanned-units line. Reads warehouse_devices green/red counts and shows them
 // as a SEPARATE labeled line (clickable → Inventory ▸ Scanned Devices). Maintenance also
