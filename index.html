@@ -3582,7 +3582,7 @@ function houstonSetSearch(v){
 function houstonSetPage(p){houstonState.page=p;renderHoustonTable();}
 
 function renderHoustonImportPanel(){
-  return '<div style="margin:0 0 20px 0;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+  return '<div style="margin:0 0 16px 0;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);">'+
     '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Admin · Import Monthly Report</div>'+
     '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;font-family:Rajdhani,sans-serif;">'+
       '<div><label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;">CSV File</label>'+
@@ -3629,8 +3629,8 @@ function houstonLightsGrid(devices,reportDate){
     '<span>'+legendDot('#A7A9AC')+'Silent</span>'+
     '<span>'+legendDot('#ED1C24')+'Silent 365+</span>'+
   '</div>';
-  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Fleet Status Grid — '+devices.length+' devices at a glance</div>'+
+  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);box-sizing:border-box;">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Fleet Status Grid — '+devices.length+' devices at a glance</div>'+
     '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;height:auto;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
     legend+
   '</div>';
@@ -3677,8 +3677,8 @@ function houstonHealthPareto(summary){
   var d='';pts.forEach(function(p,i){d+=(i===0?'M':'L')+p.x+','+p.y;});
   svg+='<path d="'+d+'" stroke="#0071BC" stroke-width="2" fill="none"/>';
   pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
-  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Houston Fleet Health Distribution</div>'+
+  return '<div style="max-width:900px;margin:0 auto 16px auto;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);box-sizing:border-box;">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Houston Fleet Health Distribution</div>'+
     '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
   '</div>';
 }
@@ -3827,7 +3827,7 @@ function renderHoustonTable(){
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'+filterBtns+
       '<input type="search" id="houstonSearch" placeholder="Search Device ID or Site Name…" value="'+houstonEsc(houstonState.search)+'" oninput="houstonSetSearch(this.value)" style="margin-left:auto;padding:7px 12px;border:1px solid var(--border);border-radius:18px;background:var(--card-bg);color:var(--text);font-family:Rajdhani,sans-serif;font-size:13px;min-width:240px;">'+
     '</div>'+
-    '<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--borderb);">'+
+    '<div style="overflow-x:auto;border-radius:6px;border:1px solid var(--borderb);">'+
       '<table class="dc-table" style="width:100%;">'+
         '<thead><tr>'+
           '<th>Site Name</th>'+
@@ -3948,7 +3948,7 @@ function houstonLiveLoad(){
     function sumln(lab,val,sub,c){return '<div class="us3sum-line"><span class="lab">'+lab+(sub?'<span class="sub2">'+sub+'</span>':'')+'</span><span class="val" style="color:'+(c||'inherit')+';">'+val+'</span></div>';}
     var hHelp=houstonHelp;
     host.innerHTML=
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Status'+hHelp('The latest weekly Sensus census for Houston — every Cricket device and whether it reported this week. Uploaded from Osama’s spreadsheet. “Silent” = 0 messages this week.')+'</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest upload · '+total+' devices</div></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;"><div class="dc-title" style="margin:0;">📡 Live Sensus Census'+hHelp('The latest weekly Sensus census for Houston — essentially the ENTIRE Houston fleet: every Cricket device and whether it reported this week. Uploaded from Osama’s spreadsheet. “Silent” = 0 messages this week. The Houston Analytics and repeat-offenders below are all derived from this census.')+'</div><div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;">Latest census · '+total+' devices (≈ all of Houston)</div></div>'+
       '<div class="us3sum" style="margin:12px 0;max-width:460px;">'+
         '<div class="us3sum-h">📡 Sensus census · this week</div>'+
         sumln('Total devices',total,'in latest upload','var(--text,#e8edf4)')+
@@ -3957,7 +3957,7 @@ function houstonLiveLoad(){
         sumln('Active comm alerts',alertCount,'open Sensus alerts','#e8a020')+
         (wk?sumln('Need maintenance',(wk.need_maintenance==null?'—':wk.need_maintenance),houstonEsc(wk.week||''),'#e8a020'):'')+
       '</div>'+
-      '<div style="background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;">'+
+      '<div style="background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:6px;padding:12px 14px;">'+
         '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Silent / down devices'+(down.length>=150?' (top 150 by oldest sample)':' ('+down.length+')')+'</div>'+
         '<div style="max-height:340px;overflow:auto;"><table class="us3w-tbl" style="width:100%;"><thead><tr><th>Site</th><th>Device</th><th>Type</th><th>Last sample</th><th style="text-align:right;">Msgs</th></tr></thead><tbody>'+(rowsHtml||'<tr><td colspan="5" style="color:var(--muted);padding:10px;">None — all devices reporting.</td></tr>')+'</tbody></table></div>'+
       '</div>'+
@@ -3992,20 +3992,90 @@ function houstonAnalyticsRender(){
     var byDev={};alerts.forEach(function(a){if(a.device_id)byDev[a.device_id]=(byDev[a.device_id]||0)+1;});
     var offenders=Object.keys(byDev).map(function(k){return [k,byDev[k]];}).sort(function(a,b2){return b2[1]-a[1];}).slice(0,10);
     var offHtml=offenders.length?('<table class="us3w-tbl" style="width:100%;"><thead><tr><th>Device</th><th style="text-align:right;">Alerts</th></tr></thead><tbody>'+offenders.map(function(o){return '<tr><td><b>'+houstonEsc(o[0])+'</b></td><td style="text-align:right;color:#ED1C24;font-family:Oswald,sans-serif;">'+o[1]+'</td></tr>';}).join('')+'</tbody></table>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No alerts.</div>';
-    // weekly maintenance trend (need-maintenance vs maintained)
+    // weekly maintenance trend (need-maintenance vs maintained) — bars clickable to the full detail view
+    window._houstonWeeks=weeks; // stash full series for the detail overlay
     var wkShown=weeks.slice(-12);
     var maxW=Math.max.apply(null,wkShown.map(function(w){return Math.max(Number(w.need_maintenance)||0,Number(w.maintained)||0);}).concat([1]));
-    var trendHtml=wkShown.length?('<div style="display:flex;align-items:flex-end;gap:6px;height:120px;">'+wkShown.map(function(w){var nm=Number(w.need_maintenance)||0,mt=Number(w.maintained)||0;return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="'+houstonEsc(w.week||'')+' · need '+nm+' / maintained '+mt+'"><div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:100px;"><div style="flex:1;background:#e8a020;height:'+Math.round(nm/maxW*100)+'%;border-radius:2px 2px 0 0;"></div><div style="flex:1;background:#2ecc71;height:'+Math.round(mt/maxW*100)+'%;border-radius:2px 2px 0 0;"></div></div></div>';}).join('')+'</div><div style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-top:4px;"><span style="color:#e8a020;">▮ need maintenance</span> · <span style="color:#2ecc71;">▮ maintained</span> · last '+wkShown.length+' weeks</div>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No weekly stats.</div>';
-    function card(title,body,tip){return '<div style="flex:1;min-width:260px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">'+title+(tip?houstonHelp(tip):'')+'</div>'+body+'</div>';}
-    host.innerHTML='<div class="dc-title" style="margin:0 0 2px;">📊 Houston Analytics'+houstonHelp('Trends computed from the weekly Sensus census + Robert’s weekly stats — a weekly snapshot, not a live feed.')+'</div>'+
-      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin-bottom:10px;">Sensus census · weekly snapshot</div>'+
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;">'+
-        card('Silence duration',bucketsHtml,'How long each Houston Cricket device has been silent, bucketed by days since its last Sensus sample. “Reporting” = sending now.')+
-        card('Repeat offenders (most alerts)','<div style="max-height:230px;overflow:auto;">'+offHtml+'</div>','Devices with the most Sensus comm-alerts logged — the chronic problem units worth checking first.')+
-        card('Maintenance trend',trendHtml,'Per-week from Robert’s weekly stats: devices that NEEDED maintenance vs how many were MAINTAINED. Last 12 weeks.')+
+    var trendHtml=wkShown.length?('<div style="display:flex;align-items:flex-end;gap:6px;height:120px;">'+wkShown.map(function(w,i){var nm=Number(w.need_maintenance)||0,mt=Number(w.maintained)||0;var gi=weeks.length-wkShown.length+i;return '<div onclick="houstonWeekDetail('+gi+')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;" title="'+houstonEsc(w.week||'')+' · need '+nm+' / maintained '+mt+' — click for numbers"><div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:100px;"><div style="flex:1;background:#e8a020;height:'+Math.round(nm/maxW*100)+'%;border-radius:2px 2px 0 0;"></div><div style="flex:1;background:#2ecc71;height:'+Math.round(mt/maxW*100)+'%;border-radius:2px 2px 0 0;"></div></div></div>';}).join('')+'</div><div style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-top:4px;"><span style="color:#e8a020;">▮ need maintenance</span> · <span style="color:#2ecc71;">▮ maintained</span> · last '+wkShown.length+' weeks</div>'+
+      '<div style="margin-top:8px;"><button onclick="houstonMaintTrendDetail()" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:6px 12px;border-radius:5px;border:1px solid #0071BC;background:rgba(0,113,188,.12);color:#0071BC;cursor:pointer;">View all weeks &amp; numbers →</button></div>'):'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No weekly stats.</div>';
+    function card(title,body,tip){return '<div style="flex:1;min-width:260px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:6px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">'+title+(tip?houstonHelp(tip):'')+'</div>'+body+'</div>';}
+    host.innerHTML='<div class="dc-title" style="margin:0 0 2px;">📊 Houston Analytics'+houstonHelp('Derived from the weekly Sensus census — which is essentially the entire Houston fleet — plus Robert’s weekly maintenance stats. A weekly snapshot, not a live feed.')+'</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin-bottom:10px;">From the Sensus census (essentially all of Houston) · weekly snapshot</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
+        card('Silence duration',bucketsHtml,'How long each device in the Houston Sensus census has been silent, bucketed by days since its last sample. “Reporting” = sending now.')+
+        card('Repeat offenders (most alerts)','<div style="max-height:230px;overflow:auto;">'+offHtml+'</div>','Census devices with the most Sensus comm-alerts logged — the chronic problem units worth checking first.')+
+        card('Maintenance trend',trendHtml,'Per-week from Robert’s weekly stats across the census: devices that NEEDED maintenance vs how many were MAINTAINED. Click any bar — or “View all weeks” — for the real numbers. Last 12 weeks shown.')+
       '</div>';
   },function(){host.innerHTML='';});
 }
+// Maintenance-trend detail — full per-week numbers + derived census analytics, in the global overlay.
+function houstonMaintTrendDetail(focusIdx){
+  var weeks=(window._houstonWeeks||[]).slice();
+  if(typeof showOverlay!=='function'){return;}
+  var num=function(v){return (v==null||v==='')?null:Number(v);};
+  var fmt=function(v){return v==null?'—':v;};
+  // newest-first for the table
+  var ordered=weeks.slice().reverse();
+  // derived: install vs removal pace + maintenance backlog ratio per week
+  var rows=ordered.map(function(w,i){
+    var ni=num(w.new_installs),rp=num(w.replacements),mt=num(w.maintained),nm=num(w.need_maintenance),ti=num(w.total_installed);
+    var net=(ni==null&&rp==null)?null:((ni||0)-(rp||0));
+    var ratio=(nm==null||ti==null||ti===0)?null:Math.round((nm/ti)*1000)/10;
+    var hl=(focusIdx!=null&&(weeks.length-1-i)===focusIdx)?' style="background:rgba(0,113,188,.14);"':'';
+    return '<tr'+hl+'>'+
+      '<td><b>'+houstonEsc(w.week||w.week_date||'—')+'</b></td>'+
+      '<td style="text-align:right;color:#2ecc71;">'+fmt(ni)+'</td>'+
+      '<td style="text-align:right;color:#e8a020;">'+fmt(rp)+'</td>'+
+      '<td style="text-align:right;color:#2ecc71;">'+fmt(mt)+'</td>'+
+      '<td style="text-align:right;color:#ED1C24;">'+fmt(nm)+'</td>'+
+      '<td style="text-align:right;">'+fmt(ti)+'</td>'+
+      '<td style="text-align:right;color:'+(net==null?'var(--muted)':(net>=0?'#2ecc71':'#ED1C24'))+';">'+(net==null?'—':(net>0?'+'+net:net))+'</td>'+
+      '<td style="text-align:right;color:'+(ratio==null?'var(--muted)':(ratio>20?'#ED1C24':ratio>10?'#e8a020':'#2ecc71'))+';">'+(ratio==null?'—':ratio+'%')+'</td>'+
+    '</tr>';
+  }).join('');
+  // headline stats across the whole series
+  var latest=ordered[0]||{};
+  var sumInstalls=0,sumRepl=0,sumMaint=0,nWeeks=weeks.length;
+  weeks.forEach(function(w){sumInstalls+=num(w.new_installs)||0;sumRepl+=num(w.replacements)||0;sumMaint+=num(w.maintained)||0;});
+  var netGrowth=sumInstalls-sumRepl;
+  var avgMaint=nWeeks?Math.round(sumMaint/nWeeks*10)/10:0;
+  var curBacklog=num(latest.need_maintenance),curTotal=num(latest.total_installed);
+  var curRatio=(curBacklog==null||curTotal==null||curTotal===0)?null:Math.round((curBacklog/curTotal)*1000)/10;
+  // worst repeat-offender sites from the live alert table (reuse the global series already loaded)
+  function statTile(big,lab,c){return '<div style="flex:1;min-width:120px;background:#121826;border:1px solid #243044;border-left:3px solid '+c+';border-radius:5px;padding:9px 12px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:24px;line-height:1;color:'+c+';">'+big+'</div><div style="font-family:Oswald,sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#8a97a8;margin-top:4px;">'+lab+'</div></div>';}
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
+    '<div><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:.04em;color:#e8edf4;">Maintenance trend</div>'+
+    '<div style="font-family:Rajdhani,sans-serif;font-size:13px;color:#8a97a8;">Every week from Robert’s stats across the Houston Sensus census · '+nWeeks+' week'+(nWeeks!==1?'s':'')+'</div></div>'+
+    '<button onclick="hideOverlay()" style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:8px 16px;border-radius:5px;border:1px solid #243044;background:#121826;color:#e8edf4;cursor:pointer;">✕ Close</button>'+
+  '</div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">'+
+    statTile((curBacklog==null?'—':curBacklog),'Need maintenance now','#ED1C24')+
+    statTile((curRatio==null?'—':curRatio+'%'),'Backlog ratio (need ÷ installed)','#e8a020')+
+    statTile((netGrowth>0?'+'+netGrowth:netGrowth),'Net fleet growth ('+nWeeks+'w)',(netGrowth>=0?'#2ecc71':'#ED1C24'))+
+    statTile(avgMaint,'Avg maintained / week','#2ecc71')+
+    statTile(sumInstalls,'Total new installs','#0071BC')+
+  '</div>'+
+  '<div style="background:#121826;border:1px solid #243044;border-radius:6px;padding:4px 14px 12px;overflow:auto;">'+
+    '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#e8edf4;padding:12px 0 2px;">Per-week numbers</div>'+
+    '<table class="us3w-tbl" style="width:100%;"><thead><tr>'+
+      '<th>Week</th>'+
+      '<th style="text-align:right;">New installs</th>'+
+      '<th style="text-align:right;">Replacements</th>'+
+      '<th style="text-align:right;">Maintained</th>'+
+      '<th style="text-align:right;">Need maint.</th>'+
+      '<th style="text-align:right;">Total installed</th>'+
+      '<th style="text-align:right;" title="new installs − replacements">Net Δ</th>'+
+      '<th style="text-align:right;" title="need-maintenance as % of total installed">Backlog %</th>'+
+    '</tr></thead><tbody>'+(rows||'<tr><td colspan="8" style="color:#8a97a8;padding:12px;">No weekly stats loaded.</td></tr>')+'</tbody></table>'+
+    '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:#8a97a8;margin-top:8px;line-height:1.5;">'+
+      '<b>Net Δ</b> = new installs − replacements (fleet growth pace). '+
+      '<b>Backlog %</b> = devices needing maintenance ÷ total installed (lower is healthier; red &gt;20%, amber &gt;10%). '+
+      'All figures are the weekly Sensus census, which covers essentially the entire Houston fleet.'+
+    '</div>'+
+  '</div>';
+  showOverlay(html);
+}
+function houstonWeekDetail(globalIdx){houstonMaintTrendDetail(globalIdx);}
 function renderHouston(){
   var inner=document.getElementById('houstonInner');
   if(!inner)return;
@@ -4033,28 +4103,28 @@ function renderHouston(){
     {name:'Silent',color:'#A7A9AC',cnt:s.healthBuckets.silent,pct:fleetPct(s.healthBuckets.silent),criteria:'0% reporting'},
     {name:'Silent 365+',color:'#ED1C24',cnt:silent365,pct:fleetPct(silent365),criteria:'>1yr no message'}
   ];
-  var headerHtml='<div class="dc-board">'+headerCards.map(function(c){
-    var pctLine=(c.pct===undefined)?'':'<div style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:600;color:var(--accent);margin-top:2px;">'+c.pct+'% of fleet</div>';
-    var critLine='<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);margin-top:2px;">'+c.criteria+'</div>';
-    return '<div class="dc-card"><div class="dc-card-top" style="padding-top:18px;">'+
-      '<div class="dc-name" style="color:'+c.color+'">'+c.name+'</div>'+
-      '<div class="dc-num" style="color:'+c.color+';font-family:\'Oswald\',sans-serif;font-weight:700;font-size:42px;">'+c.cnt+'</div>'+
-      pctLine+critLine+
-    '</div><div class="dc-bar" style="background:'+c.color+'55"></div></div>';
+  // Compact horizontal stat strip — small tiles, no dead space.
+  var headerHtml='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px 0;">'+headerCards.map(function(c){
+    var pctLine=(c.pct===undefined)?'':'<span style="font-family:Rajdhani,sans-serif;font-size:11px;font-weight:600;color:var(--accent);margin-left:6px;">'+c.pct+'%</span>';
+    return '<div style="flex:1;min-width:118px;background:var(--panel-bg);border:1px solid var(--borderb);border-left:3px solid '+c.color+';border-radius:5px;padding:8px 11px;">'+
+      '<div style="display:flex;align-items:baseline;"><span style="font-family:Oswald,sans-serif;font-weight:700;font-size:26px;line-height:1;color:'+c.color+';">'+c.cnt+'</span>'+pctLine+'</div>'+
+      '<div style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);margin-top:4px;">'+c.name+'</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;font-size:10px;color:var(--muted);margin-top:1px;">'+c.criteria+'</div>'+
+    '</div>';
   }).join('')+'</div>';
   var byType=s.byType||{};
   var typeColor=function(t){return t==='Sensus Cricket'?'#e8a020':t==='HJ Level'?'#0071BC':t==='Cricket'?'#44bb88':'#888';};
   var typeOrder=['Sensus Cricket','HJ Level','Cricket'];
   var extraTypes=Object.keys(byType).filter(function(t){return typeOrder.indexOf(t)<0 && t && t.trim().length>0;});
   var allTypes=typeOrder.concat(extraTypes);
-  var typeHtml='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 20px 0;">'+
+  var typeHtml='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px 0;align-items:stretch;">'+
+    '<div style="display:flex;align-items:center;font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-right:2px;">By type'+houstonHelp('Device-type distribution across the full Houston Sensus census. Click a tile to filter the device table below by that type.')+'</div>'+
     allTypes.map(function(t){
       var cnt=byType[t]||0;
       var active=houstonState.typeFilter===t;
-      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" title="Click to filter device table by '+houstonEsc(t)+'" style="cursor:pointer;flex:1;min-width:160px;padding:14px;border:'+(active?'2px solid var(--accent)':'1px solid var(--borderb)')+';border-radius:8px;background:'+(active?'rgba(0,113,188,.06)':'var(--panel-bg)')+';transition:all .15s;">'+
-        '<div style="font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:'+typeColor(t)+';font-weight:700;">'+houstonEsc(t)+'</div>'+
-        '<div style="font-family:Oswald,sans-serif;font-size:32px;font-weight:700;color:var(--text);margin-top:4px;">'+cnt+'</div>'+
-        '<div style="font-family:Rajdhani,sans-serif;font-size:11px;color:var(--muted);">devices</div>'+
+      return '<div onclick="houstonSetTypeFilter(\''+t.replace(/'/g,"\\'")+'\')" title="Click to filter device table by '+houstonEsc(t)+'" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:7px 13px;border:'+(active?'2px solid var(--accent)':'1px solid var(--borderb)')+';border-radius:5px;background:'+(active?'rgba(0,113,188,.08)':'var(--panel-bg)')+';transition:all .15s;">'+
+        '<span style="font-family:Oswald,sans-serif;font-size:24px;font-weight:700;color:'+typeColor(t)+';line-height:1;">'+cnt+'</span>'+
+        '<span style="font-family:Rajdhani,sans-serif;font-size:12px;font-weight:600;color:var(--text);line-height:1.15;">'+houstonEsc(t)+'<br><span style="font-size:10px;color:var(--muted);">devices</span></span>'+
       '</div>';
     }).join('')+
   '</div>';
@@ -4069,12 +4139,12 @@ function renderHouston(){
     var ds=houstonDaysSince(d.lastSample,latest.reportDate);
     if(ds>365){var did=String(d.deviceId).trim();if(!decommSet[did])crossCount++;}
   });
-  var crossHtml='<div style="max-width:900px;margin:0 auto 16px auto;padding:14px 16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+  var crossHtml='<div style="max-width:900px;margin:0 auto 16px auto;padding:14px 16px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);">'+
     '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px;">Cross-Reference · Decommission Log</div>'+
     '<div style="font-family:Rajdhani,sans-serif;font-size:15px;color:var(--text);">Silent 365+ devices not in decommission log: <strong style="color:#ED1C24;font-size:18px;">'+crossCount+'</strong> device'+(crossCount!==1?'s':'')+'</div>'+
     '<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">These are candidates for review — devices that haven\'t reported in over a year and aren\'t logged as decommissioned.</div>'+
   '</div>';
-  var historyHtml='<div style="margin-top:24px;padding:14px 16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
+  var historyHtml='<div style="margin-top:24px;padding:14px 16px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);">'+
     '<div style="font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Report History</div>'+
     '<div style="font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);display:flex;gap:8px;flex-wrap:wrap;">'+
       reports.slice().reverse().map(function(r){
@@ -4096,16 +4166,18 @@ function renderHouston(){
       '<div style="flex:1 1 480px;min-width:0;">'+houstonLightsGrid(latest.devices,latest.reportDate)+'</div>'+
       '<div style="flex:1 1 480px;min-width:0;">'+houstonHealthPareto(s)+'</div>'+
     '</div>'+
-    '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
-      '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Geographic Map — Coming Soon</div>'+
+    '<div style="max-width:900px;margin:0 auto 16px auto;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);box-sizing:border-box;">'+
+      '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Geographic Map — Coming Soon</div>'+
       '<div style="font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text);line-height:1.5;">Once Osama\'s CSV export includes latitude/longitude (or street addresses for geocoding), this section will display every Houston device as a colored dot on an actual map of Houston, color-coded by health status. The same color scheme as the Fleet Status Grid above. Hover any dot to see site details and last sample date.</div>'+
       '<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);font-style:italic;margin-top:8px;">Requested: latitude/longitude columns added to monthly export. ETA depends on developer response.</div>'+
     '</div>'+
     houstonTrendChart(reports)+
     crossHtml+
-    '<div id="houstonTableWrap" style="margin-top:18px;"></div>'+
-    historyHtml+
-    '<div id="houstonLivePanel" style="margin-top:24px;"></div>';
+    '<div id="houstonLivePanel" style="margin-top:24px;"></div>'+
+    '<div class="dc-title" style="margin:26px 0 4px;">Device detail'+houstonHelp('Every device in the latest Sensus census — site, type, reporting %, last sample and install date. Filter and sort the full Houston fleet here.')+'</div>'+
+    '<div class="dc-sub" style="margin-bottom:8px;">Full per-device table · the entire Houston census</div>'+
+    '<div id="houstonTableWrap" style="margin-top:4px;"></div>'+
+    historyHtml;
   renderHoustonTable();
 }
 
