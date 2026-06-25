@@ -382,15 +382,14 @@ body.light .hamburger span{background:var(--text);}
 @media (max-width: 768px) {
   #nav{height:50px;flex-wrap:nowrap;position:relative;z-index:8000;}
   .ntabs{display:none !important;}
-  .nb{padding:4px 8px !important;border-right:none !important;min-width:auto !important;}
+  .nb{order:2;flex:1 1 auto;justify-content:center;align-items:center;display:flex !important;padding:4px 8px !important;border-right:none !important;min-width:auto !important;}
   .nb img{height:26px !important;}
-  .nr{margin-left:auto;padding:0 6px !important;gap:8px !important;}
+  .nr{order:3;margin-left:0 !important;padding:0 6px !important;gap:8px !important;}
   .nr #themeBtn{display:none !important;}
   .nr #userDisplay{display:none !important;}
   #navStats{display:none !important;}
-  #nav .nb{flex-shrink:0;}
-  .us3id-chip{margin-left:8px !important;}
-  .hamburger{display:flex !important;z-index:9001;}
+  .us3id-chip{display:none !important;}
+  .hamburger{display:flex !important;z-index:9001;order:1;}
   .mobile-menu{display:flex;background:var(--nav-bg);-webkit-backdrop-filter:blur(16px);}
   .mc-bottom{flex-direction:column;gap:12px;}
   .dc-board{flex-wrap:wrap;justify-content:center;}
@@ -4618,7 +4617,14 @@ function buildMobileMenu(){
   items+='<div class="mm-divider"></div>';
   var themeLabel=currentTheme==='dark'?'\u263E Switch to Light Mode':'\u263C Switch to Dark Mode';
   items+='<div class="mm-theme" onclick="toggleTheme();buildMobileMenu();">'+themeLabel+'</div>';
-  menu.innerHTML=items;
+  var workerHtml='';
+  if(window.US3ID){
+    var _w=US3ID.active||US3ID.session,_st=US3ID.station;
+    var _wn=_w?us3esc(_w.display_name||_w.full_name||(_w.email||'').split('@')[0]):'tap to sign in';
+    var _sn=_st?us3esc(_st.name):'Set bench';
+    workerHtml='<div class="mm-item" style="background:rgba(26,127,232,.07);" onclick="document.getElementById(\'mobileMenu\').classList.remove(\'open\');document.getElementById(\'hamburgerBtn\').classList.remove(\'open\');if(window.US3ID&&US3ID.openSwitch)US3ID.openSwitch();"><span class="ti">👤</span>'+_sn+' · '+_wn+' &nbsp;›</div><div class="mm-divider"></div>';
+  }
+  menu.innerHTML=workerHtml+items;
 }
 
 function mobileMenuSelect(page,el){
@@ -6663,15 +6669,14 @@ function paintShop(ops){
   var recent=(ops.recent||[]);
   function scanRow(s){return '<div class="us3prow" onclick="US3.openDevice(\''+js(s.device_id)+'\')"><div><b>'+esc(s.device_id)+'</b> <span style="color:#8a97a8;font-size:12px;">'+esc(stationName(s.scanner_id))+(s.location?(' · '+esc(s.location)):'')+'</span></div><div style="text-align:right;">'+dirChip(s.direction)+'<div style="font-size:11px;color:#8a97a8;">'+fmtDate(s.scanned_at)+'</div></div></div>';}
   var tiles=stations.length?stations.map(function(s){
-    return '<div class="us3station">'+
-      '<div class="us3station-h">🏭 '+esc(stationName(s.scanner_id))+'</div>'+
-      '<div style="font-size:11px;color:#8a97a8;font-family:Rajdhani,sans-serif;">scanner …'+esc(String(s.scanner_id).slice(-4))+'</div>'+
-      '<div class="us3station-n">'+s.c+'</div><div class="us3station-l">total scans</div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">'+
+    return '<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border:1px solid var(--borderb,#243044);border-radius:4px;background:var(--panel-bg,#121826);margin-bottom:8px;flex-wrap:wrap;">'+
+      '<div style="flex:1;min-width:150px;"><span style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;color:var(--text,#e8edf4);">🏭 '+esc(stationName(s.scanner_id))+'</span> <span style="font-size:11px;color:#8a97a8;font-family:Rajdhani,sans-serif;">…'+esc(String(s.scanner_id).slice(-4))+'</span></div>'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:22px;color:var(--text,#e8edf4);white-space:nowrap;">'+s.c+'<span style="font-size:10px;color:#8a97a8;font-weight:400;text-transform:uppercase;"> scans</span></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
         '<span class="us3badge" style="color:#fff;background:#e8a020;">'+s.ships+' ship</span>'+
         '<span class="us3badge" style="color:#fff;background:#2ecc71;">'+s.receives+' recv</span>'+
         '<span class="us3badge" style="color:#fff;background:#0071BC;">'+s.inv+' inv</span></div>'+
-      '<div style="font-size:12px;color:#8a97a8;margin-top:8px;font-family:Rajdhani,sans-serif;">last activity: '+fmtDate(s.last_at)+(s.c30?(' · <b style="color:#2ecc71;">'+s.c30+' in 30d</b>'):' · idle 30d')+'</div>'+
+      '<div style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;white-space:nowrap;">'+fmtDate(s.last_at)+(s.c30?(' · <b style="color:#2ecc71;">'+s.c30+'/30d</b>'):' · idle')+'</div>'+
     '</div>';
   }).join(''):'<div class="us3w-empty">No station activity.</div>';
   var outDoor=recent.filter(function(s){return s.direction==='Ship';}).slice(0,12);
@@ -6702,7 +6707,7 @@ function paintShop(ops){
     '</div>'+
     // station overview
     '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin:20px 0 10px;">Stations</div>'+
-    '<div class="us3shop-grid">'+tiles+'</div>'+
+    '<div>'+tiles+'</div>'+
     '<div class="us3dash-grid" style="margin-top:14px;">'+
       panel('🚪➡ Out the door',(outDoor.length?outDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent ships')+
       panel('➡🚪 In the door',(inDoor.length?inDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent receives')+
@@ -7050,6 +7055,7 @@ function renderChip(){
 }
 
 // ═══ SWITCH MODAL (tap-a-name) ═══
+ID.openSwitch=function(){ return openSwitch(); };
 function openSwitch(){
   if(!ID.station){ openBind(); return; }
   var locked = ID.station.locked || ID.station.allow_switch===false;
