@@ -6613,20 +6613,24 @@ function injectCSS(){
   '.us3sum-line .lab{font-family:Rajdhani,sans-serif;font-size:15px;font-weight:600;color:var(--text,#e8edf4);}'+
   '.us3sum-line .sub2{font-size:11px;color:#8a97a8;font-family:Rajdhani,sans-serif;margin-left:8px;font-weight:400;}'+
   '.us3sum-line .val{font-family:Oswald,sans-serif;font-weight:700;font-size:24px;line-height:1;color:var(--text,#e8edf4);white-space:nowrap;}'+
-  /* ── collapsible detail panels in a masonry column layout (fits content, no dead space) ── */
-  '.us3detail-grid{column-count:3;column-gap:14px;}'+
-  '.us3detail-grid>.us3w-card{break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%;margin:0 0 14px;vertical-align:top;}'+
-  '.us3coll-h{display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;user-select:none;}'+
-  '.us3coll-h .us3coll-ar{color:#8a97a8;font-size:13px;transition:transform .15s;flex:0 0 auto;}'+
-  '.us3coll:not(.open) .us3coll-body{display:none;}'+
-  '.us3coll:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
+  /* ── detail panels: desktop = 3 fixed columns (always-open, 4-row cap + scroll, no caret) ── */
+  '.us3detail-grid{display:flex;gap:14px;align-items:flex-start;}'+
+  '.us3col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:14px;}'+
+  '.us3col>.us3w-card{margin:0;}'+
+  '.us3coll-h{display:flex;justify-content:space-between;align-items:center;gap:8px;user-select:none;}'+
+  '.us3coll-h .us3coll-ar{color:var(--accent,#0071BC);font-size:22px;font-weight:900;line-height:1;transition:transform .15s;flex:0 0 auto;}'+
   '.us3coll-body{margin-top:10px;}'+
+  /* desktop: panels are always open, capped at ~4 rows then scroll, no dropdown caret */
+  '.us3coll-body{max-height:154px;overflow-y:auto;}'+
+  '.us3coll .us3coll-ar{display:none;}'+
+  '.us3coll-h{cursor:default;}'+
   '.us3coll-h.warn{background:rgba(232,160,32,.16);border:1px solid rgba(232,160,32,.55);border-radius:6px;padding:9px 11px;}'+
   '.us3grp-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text,#e8edf4);}'+
   '.us3grp-h:hover{background:rgba(0,113,188,.08);}'+
   '.us3grp:not(.open) .us3grp-body{display:none;}'+
   '.us3grp:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
-  '@media(max-width:1200px){.us3detail-grid{column-count:2;}}'+
+  '.us3grp .us3coll-ar{display:inline-block;color:var(--accent,#0071BC);font-size:18px;font-weight:900;line-height:1;}'+
+  '@media(max-width:1200px){.us3detail-grid{flex-wrap:wrap;}.us3col{flex:1 1 calc(50% - 7px);}}'+
   /* ── Sample History Report (purple-accented, illustrative-data report) ── */
   '.shr-open-btn:hover{background:#8844cc !important;color:#fff !important;}'+
   '.shr-banner{background:rgba(136,68,204,.14);border:1px solid #8844cc;border-radius:8px;padding:13px 16px;margin:14px 0 4px;}'+
@@ -6647,7 +6651,19 @@ function injectCSS(){
   '.shr-leg{display:flex;flex-wrap:wrap;gap:13px;font-family:Rajdhani,sans-serif;font-size:12px;color:#8a97a8;margin-top:9px;}'+
   '.shr-leg span{display:inline-flex;align-items:center;gap:5px;}'+
   '.shr-dot{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid #0a0e16;}'+
-  '@media(max-width:760px){.us3detail-grid{column-count:1;}.us3sum-row{grid-template-columns:1fr;}.us3kpi-row{grid-template-columns:1fr 1fr;}.shr-tl{font-size:11px;}.shr-tl .dn{font-size:10px;}}';
+  /* ── mobile (≤768px): single column + restore tap-to-expand dropdown behaviour ── */
+  '@media(max-width:768px){'+
+    '.us3detail-grid{display:block;}'+
+    '.us3col{display:block;}'+
+    '.us3col>.us3w-card{margin:0 0 14px;}'+
+    /* show the (bigger) caret and make headers tappable again */
+    '.us3coll .us3coll-ar{display:inline-block;}'+
+    '.us3coll-h{cursor:pointer;}'+
+    /* collapse closed panels; only expanded panels reveal their body */
+    '.us3coll:not(.open) .us3coll-body{display:none;}'+
+    '.us3coll:not(.open) .us3coll-ar{transform:rotate(-90deg);}'+
+  '}'+
+  '@media(max-width:760px){.us3sum-row{grid-template-columns:1fr;}.us3kpi-row{grid-template-columns:1fr 1fr;}.shr-tl{font-size:11px;}.shr-tl .dn{font-size:10px;}}';
   document.head.appendChild(s);
 }
 
@@ -7513,14 +7529,25 @@ function paintDashboard(ops){
       '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project'+help('Houston is our biggest standing deployment, so it gets its own line on the dashboard. This bar links straight into the Houston portal; the full fleet-health breakdown lives on the Houston tab.')+'</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
     '</div>'+
-    // ─── Collapsible detail panels (all collapsed by default) ───
+    // ─── Detail panels. Desktop = 3 fixed columns (always-open, 4-row cap + scroll,
+    //     no caret). Mobile (≤768px) collapses each panel back to a tap dropdown.
+    //     Column layout (desktop): col1 = Open Items / Studies Ending / Upcoming,
+    //     col2 = Overdue, col3 = Recent Shipments / Recent Returns. Mobile reads the
+    //     same panels in source order (single column, col1→col2→col3): Open Items,
+    //     Studies Ending, Upcoming, Overdue, Recent Shipments, Recent Returns. ───
     '<div class="us3detail-grid" style="margin-top:18px;">'+
-      panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:false})+
-      panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:false,warn:true})+
-      panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:false})+
-      panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
-      panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:false})+
-      panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:false})+
+      '<div class="us3col">'+
+        panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
+        panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:false})+
+        panel('🔜 Upcoming jobs ('+upcoming.length+')',upcomingHtml,'prep &amp; ship','Airtable jobs in New / Permitting status or with a future install date — work coming down the pipe that will need devices shipped. Dated jobs (soonest first) lead the list.',{open:false})+
+      '</div>'+
+      '<div class="us3col">'+
+        panel('⚠ Overdue for return',overdueHtml,'study ended · devices still out','Jobs whose de-install date has passed but still have deployed devices (per Fulcrum) — equipment that should be back. Newest overdue at top. Cross-check the scan log for a Receive.',{open:false,warn:true})+
+      '</div>'+
+      '<div class="us3col">'+
+        panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:false})+
+        panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:false})+
+      '</div>'+
     '</div>'+
     // ─── 6. The 3 office availability containers (El Cajon / Downey / Puerto Rico) — LAST ───
     '<div style="text-align:center;font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:22px 0 10px;">By Office</div>'+
