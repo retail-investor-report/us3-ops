@@ -7014,6 +7014,101 @@ function deviceAddNote(id){
     renderDevicePage(id);
   });
 }
+/* ════════════════════════════════════════════════════════════════════
+   DEVICE TRUTH RESOLVER (Build: trustworthy device tracking)
+   ────────────────────────────────────────────────────────────────────
+   ONE place that answers "where is this device right now?" honestly.
+   It folds EVERY dated signal for a device into a single timeline and
+   lets the most-recent event win — so a unit scanned back onto the shelf
+   AFTER its last field install reads as in the warehouse, NOT stuck on
+   the old job. It also surfaces per-device conflicts (multiple live
+   deployments, or a warehouse scan newer than a still-"deployed" row).
+
+   Sources + the date field used to order each:
+     • device_locations (status='deployed') → updated_at  (the Fulcrum
+       Site-Sheet install date; OLD installs are never cleared, so a
+       device can carry several deployed rows at once)
+     • warehouse_devices  green/red          → updated_at
+     • device_events      green-tag/red-tag   → created_at
+     • device_scans       Receive / Ship      → scanned_at
+   Pass whatever subset of {locs,wh,events,scans} you have; missing
+   sources are simply skipped. Pure read/derive — never mutates data.
+   ════════════════════════════════════════════════════════════════════ */
+function us3DeviceTimeline(src){
+  src=src||{};
+  var ev=[];
+  function t(v){return v?String(v):'';}
+  (src.locs||[]).forEach(function(l){
+    if(String(l.status||'').toLowerCase()!=='deployed')return;
+    ev.push({ts:t(l.updated_at),kind:'deploy',job:l.project_no||null,site:l.site_name||null,city:l.city||null,raw:l});
+  });
+  (src.wh||[]).forEach(function(w){
+    var s=String(w.status||'').toLowerCase();
+    if(s!=='green'&&s!=='red')return;
+    ev.push({ts:t(w.updated_at),kind:s==='green'?'green':'red',raw:w});
+  });
+  (src.events||[]).forEach(function(e){
+    var et=String(e.event_type||'').toLowerCase();
+    if(et==='green-tag')ev.push({ts:t(e.created_at),kind:'green',raw:e});
+    else if(et==='red-tag')ev.push({ts:t(e.created_at),kind:'red',raw:e});
+  });
+  (src.scans||[]).forEach(function(s){
+    var d=String(s.direction||'').toLowerCase();
+    if(d==='receive')ev.push({ts:t(s.scanned_at),kind:'receive',note:s.location||s.note||s.client_name||null,raw:s});
+    else if(d==='ship')ev.push({ts:t(s.scanned_at),kind:'ship',note:s.location||s.note||s.client_name||null,raw:s});
+    else if(d==='inventory')ev.push({ts:t(s.scanned_at),kind:'inventory',note:s.location||s.note||null,raw:s});
+  });
+  ev=ev.filter(function(e){return e.ts;}).sort(function(a,b){return b.ts.localeCompare(a.ts);});
+  return ev;
+}
+/* Reduce a timeline (latest-first) to a single "current location" verdict.
+   Returns {label,detail,color,ts,kind} or null when nothing is datable. */
+function us3CurrentLocation(timeline){
+  var top=timeline&&timeline[0];if(!top)return null;
+  if(top.kind==='deploy')return {label:'Deployed',detail:[top.job,top.site].filter(Boolean).join(' · ')||'field',color:'#0071BC',ts:top.ts,kind:'deploy'};
+  if(top.kind==='green')return {label:'Warehouse — Available',detail:'green-tagged',color:'#00c49a',ts:top.ts,kind:'green'};
+  if(top.kind==='red')return {label:'Warehouse — Maintenance',detail:'red-tagged',color:'#ED1C24',ts:top.ts,kind:'red'};
+  if(top.kind==='receive')return {label:'Warehouse / Returned',detail:top.note||'scanned back in',color:'#00c49a',ts:top.ts,kind:'receive'};
+  if(top.kind==='ship')return {label:'In transit',detail:top.note?('shipped → '+top.note):'shipped out',color:'#e8a020',ts:top.ts,kind:'ship'};
+  if(top.kind==='inventory')return {label:'Warehouse / Inventoried',detail:top.note||'inventory scan',color:'#0071BC',ts:top.ts,kind:'inventory'};
+  return null;
+}
+/* Detect per-device location conflicts. Returns an array of {type,msg,jobs}.
+   Rules:
+     A. >1 active 'deployed' device_locations row (deployed on several jobs
+        at once — only one can be physically true).
+     B. The device's latest warehouse signal (green/red tag or Receive scan)
+        is MORE RECENT than a still-'deployed' device_locations row — you
+        have it on the shelf, but a job still lists it deployed. */
+function us3DeviceConflicts(src){
+  src=src||{};
+  var out=[];
+  var deployed=(src.locs||[]).filter(function(l){return String(l.status||'').toLowerCase()==='deployed';});
+  // Rule A — multiple live deployments
+  if(deployed.length>1){
+    var jobsA=deployed.map(function(l){return l.project_no||'(no job)';});
+    out.push({type:'multi-deploy',jobs:jobsA,
+      msg:'Listed as deployed on '+deployed.length+' jobs at once ('+jobsA.join(', ')+'). Only one can be true — confirm the live install in Airtable.'});
+  }
+  // Latest warehouse-side return signal (shelf custody)
+  var shelfTs='';
+  (src.wh||[]).forEach(function(w){var s=String(w.status||'').toLowerCase();if((s==='green'||s==='red')&&String(w.updated_at||'')>shelfTs)shelfTs=String(w.updated_at||'');});
+  (src.events||[]).forEach(function(e){var et=String(e.event_type||'').toLowerCase();if((et==='green-tag'||et==='red-tag')&&String(e.created_at||'')>shelfTs)shelfTs=String(e.created_at||'');});
+  (src.scans||[]).forEach(function(s){if(String(s.direction||'').toLowerCase()==='receive'&&String(s.scanned_at||'')>shelfTs)shelfTs=String(s.scanned_at||'');});
+  // Rule B — on the shelf, but a deployed row is older than that shelf scan
+  if(shelfTs){
+    var stale=deployed.filter(function(l){return String(l.updated_at||'')<shelfTs;});
+    if(stale.length){
+      var jobsB=stale.map(function(l){return l.project_no||'(no job)';});
+      out.push({type:'returned-but-deployed',jobs:jobsB,shelfTs:shelfTs,
+        msg:'On your shelf (last scanned '+fmtDate(shelfTs)+') but job'+(jobsB.length>1?'s':'')+' '+jobsB.join(', ')+' still list'+(jobsB.length>1?'':'s')+' it deployed. Chase it in Airtable.'});
+    }
+  }
+  return out;
+}
+window.us3DeviceTimeline=us3DeviceTimeline;
+window.us3CurrentLocation=us3CurrentLocation;
+window.us3DeviceConflicts=us3DeviceConflicts;
 function renderDevicePage(id){
   showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-empty">Loading device '+esc(id)+'…</div>');
   if(typeof supa==='undefined'||!supa){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Offline.</div>');return;}
@@ -7023,11 +7118,16 @@ function renderDevicePage(id){
     supa.from('kit_devices').select('*').eq('device_id',id),
     supa.from('device_scans').select('*').eq('device_id',id).order('scanned_at',{ascending:false}),
     supa.from('device_notes').select('*').eq('device_id',id).order('created_at',{ascending:false}),
-    supa.from('site_maintenance').select('*').eq('device_id',id).order('visit_date',{ascending:false})
+    supa.from('site_maintenance').select('*').eq('device_id',id).order('visit_date',{ascending:false}),
+    supa.from('warehouse_devices').select('*').eq('device_id',id)
   ]).then(function(r){
-    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[],maint=(r[5]&&r[5].data)||[];
+    var events=(r[0]&&r[0].data)||[],locs=(r[1]&&r[1].data)||[],kits=(r[2]&&r[2].data)||[],scans=(r[3]&&r[3].data)||[],notes=(r[4]&&r[4].data)||[],maint=(r[5]&&r[5].data)||[],wh=(r[6]&&r[6].data)||[];
     var siteRecs=locs.slice().sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));});
     var loc=siteRecs[0];
+    // ── TRUTHFUL current location: fold every dated signal, latest wins ──
+    var timeline=us3DeviceTimeline({locs:locs,wh:wh,events:events,scans:scans});
+    var cur=us3CurrentLocation(timeline);
+    var conflicts=us3DeviceConflicts({locs:locs,wh:wh,events:events,scans:scans});
     window.US3._dev={id:id,locs:siteRecs,maint:maint,scans:scans,events:events,notes:notes};
     var siteRecsHtml=siteRecs.length?('<table class="us3w-tbl"><thead><tr><th>Recorded</th><th>Site</th><th>City</th><th>Job</th><th>Sensor</th><th>Status</th></tr></thead><tbody>'+
       siteRecs.map(function(l){return '<tr><td>'+fmtDate(l.updated_at)+'</td><td>'+esc(l.site_name||'—')+'</td><td>'+esc(l.city||'—')+'</td><td>'+(l.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(l.project_no)+'\')">'+esc(l.project_no)+'</span>'):'—')+'</td><td>'+esc(l.sensor_type||'—')+'</td><td>'+(l.status==='deployed'?'<span style="color:#0071BC;">deployed</span>':esc(l.status||'—'))+'</td></tr>';}).join('')+'</tbody></table>')
@@ -7036,14 +7136,32 @@ function renderDevicePage(id){
     function dirChip(d){return '<span style="display:inline-block;padding:2px 9px;border-radius:11px;font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff;background:'+dirColor(d)+';">'+esc(d||'—')+'</span>';}
     var last=scans[0];
     var lastLine=last?(' · last scan: '+(last.direction||'')+' @ '+esc(last.location||last.note||'—')+' · '+fmtDate(last.scanned_at)):'';
-    var locHtml=loc?
-      ('<div class="us3w-meta">'+[
+    // ── Conflict banner (amber) — multiple live deployments and/or shelf-vs-deployed mismatch ──
+    var conflictHtml=conflicts.length?('<div class="us3b2-warn" style="border-left:4px solid #e8a020;background:rgba(232,160,32,.12);padding:10px 12px;border-radius:6px;margin:0 0 10px;">'+
+      conflicts.map(function(c){
+        var jl=(c.jobs||[]).filter(function(jj){return jj&&jj!=='(no job)';}).map(function(jj){return '<span class="us3w-link" onclick="US3.openProject(\''+js(jj)+'\')">'+esc(jj)+'</span>';}).join(', ');
+        return '<div style="font-size:14px;line-height:1.5;color:var(--text,#e8edf4);">⚠ <b>Conflict</b> — '+esc(c.msg)+(jl?(' <span style="font-size:12px;color:#8a97a8;">Jobs: '+jl+'</span>'):'')+'</div>';
+      }).join('')+'</div>'):'';
+    // ── Verdict line: the single most-recent dated event for this device ──
+    var verdictHtml=cur?
+      ('<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">'+
+        '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+cur.color+';flex:none;"></span>'+
+        '<span style="font-family:Oswald,sans-serif;font-size:20px;font-weight:700;color:var(--text,#e8edf4);">'+esc(cur.label)+'</span>'+
+        (cur.detail?('<span style="color:#8a97a8;font-size:14px;">'+(cur.kind==='deploy'&&loc&&loc.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(loc.project_no)+'\')">'+esc(loc.project_no)+'</span>'+(loc.site_name?(' · '+esc(loc.site_name)):'')):esc(cur.detail))+'</span>'):'')+
+        '<span style="margin-left:auto;color:#8a97a8;font-size:12px;font-family:Rajdhani,sans-serif;">as of '+fmtDate(cur.ts)+'</span>'+
+      '</div>')
+      :'<div class="us3w-empty">No dated activity on record — can\'t locate this device yet.</div>';
+    var fieldMeta=loc?
+      ('<div style="font-size:11px;color:#8a97a8;font-family:Rajdhani,sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:6px 0 4px;">Last field install on record</div>'+
+       '<div class="us3w-meta">'+[
         ['Site',esc(loc.site_name||'—')],['City',esc(loc.city||'—')],
         ['Field status',loc.status?('<b>'+esc(loc.status)+'</b>'):'—'],
         ['Sensor type',esc(loc.sensor_type||'—')],
-        ['Job',loc.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(loc.project_no)+'\')">'+esc(loc.project_no)+'</span>'):'—']
+        ['Job',loc.project_no?('<span class="us3w-link" onclick="US3.openProject(\''+js(loc.project_no)+'\')">'+esc(loc.project_no)+'</span>'):'—'],
+        ['Installed',fmtDate(loc.updated_at)]
       ].map(function(m){return '<div><div class="k">'+m[0]+'</div><div class="v">'+m[1]+'</div></div>';}).join('')+'</div>')
-      :'<div class="us3w-empty">No Fulcrum field location on record for this device.</div>';
+      :'<div class="us3w-empty">No Fulcrum field install on record for this device.</div>';
+    var locHtml=conflictHtml+verdictHtml+fieldMeta;
     var mv=scans.length?('<table class="us3w-tbl"><thead><tr><th>When</th><th>Direction</th><th>Location</th><th>Note</th><th>Client</th><th>Job</th></tr></thead><tbody>'+
       scans.map(function(s){return '<tr><td>'+fmtDate(s.scanned_at)+'</td><td>'+dirChip(s.direction)+'</td><td>'+esc(s.location||'—')+'</td><td>'+esc(s.note||'')+'</td><td>'+esc(s.client_name||'')+'</td><td>'+esc(s.job_number||'')+'</td></tr>';}).join('')+'</tbody></table>')
       :'<div class="us3w-empty">No ship/receive scans for this device in the scan log.</div>';
@@ -7197,7 +7315,39 @@ function renderDashboard(){
   var page=document.getElementById('page-mc');if(!page)return;
   var w=document.getElementById('dashWrap');
   if(!w){page.innerHTML='<div id="dashWrap" class="us3dash-wrap"></div>';w=document.getElementById('dashWrap');w.innerHTML='<div class="us3w-empty">Loading operations…</div>';}
-  Promise.all([load(),loadOps().catch(function(){return null;})]).then(function(res){paintDashboard(res[1]||{});},function(){var x=document.getElementById('dashWrap');if(x)x.innerHTML='<div class="us3w-empty">Offline — can\'t reach the database.</div>';});
+  Promise.all([load(),loadOps().catch(function(){return null;}),loadDeviceConflicts().catch(function(){return [];})]).then(function(res){paintDashboard(res[1]||{},res[2]||[]);},function(){var x=document.getElementById('dashWrap');if(x)x.innerHTML='<div class="us3w-empty">Offline — can\'t reach the database.</div>';});
+}
+/* Fleet-wide device-location conflicts for the dashboard Open Items panel.
+   Pulls every deployed device_locations row + every warehouse-side signal
+   (warehouse_devices, device_scans, device_events), buckets by device_id,
+   and runs the SAME us3DeviceConflicts rules used on the device detail.
+   Cached on US3Live; read/derive only. Each entry: {device_id,jobs[],reasons[]}. */
+function loadDeviceConflicts(force){
+  var LV=window.US3Live;
+  if(LV.devConflicts&&!force)return Promise.resolve(LV.devConflicts);
+  if(LV.devConflictsLoading)return LV.devConflictsLoading;
+  if(typeof supa==='undefined'||!supa)return Promise.reject(new Error('offline'));
+  LV.devConflictsLoading=Promise.all([
+    supa.from('device_locations').select('device_id,project_no,site_name,status,updated_at').eq('status','deployed'),
+    supa.from('warehouse_devices').select('device_id,status,updated_at'),
+    supa.from('device_scans').select('device_id,direction,scanned_at'),
+    supa.from('device_events').select('device_id,event_type,created_at')
+  ]).then(function(r){
+    var locs=(r[0]&&r[0].data)||[],wh=(r[1]&&r[1].data)||[],scans=(r[2]&&r[2].data)||[],events=(r[3]&&r[3].data)||[];
+    var by={};
+    function bucket(arr){return function(row){var id=row.device_id;if(id==null)return;(by[id]||(by[id]={locs:[],wh:[],scans:[],events:[]}))[arr].push(row);};}
+    locs.forEach(bucket('locs'));wh.forEach(bucket('wh'));scans.forEach(bucket('scans'));events.forEach(bucket('events'));
+    var list=[];
+    Object.keys(by).forEach(function(id){
+      var c=us3DeviceConflicts(by[id]);
+      if(!c.length)return;
+      var jobs={};c.forEach(function(x){(x.jobs||[]).forEach(function(j){if(j&&j!=='(no job)')jobs[j]=1;});});
+      list.push({device_id:id,jobs:Object.keys(jobs),reasons:c.map(function(x){return x.type;})});
+    });
+    list.sort(function(a,b){return String(a.device_id).localeCompare(String(b.device_id),undefined,{numeric:true});});
+    LV.devConflicts=list;LV.devConflictsLoading=null;return list;
+  },function(e){LV.devConflictsLoading=null;throw e;});
+  return LV.devConflictsLoading;
 }
 function help(txt,pos){return '<span class="us3help'+(pos?' '+pos:'')+'" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">'+esc(txt)+'</span></span>';}
 function us3HelpTap(e,el){e.stopPropagation();var was=el.classList.contains('on');var all=document.querySelectorAll('.us3help.on');for(var i=0;i<all.length;i++)all[i].classList.remove('on');if(!was)el.classList.add('on');}
@@ -7475,8 +7625,9 @@ function ensureTourFab(){
   document.body.appendChild(b);
 }
 function jobRow(j,right){return '<div class="us3prow" onclick="US3.openProject(\''+js(j.job_number)+'\')"><div><b>'+esc(j.job_number||'—')+'</b> <span style="color:#8a97a8;font-size:13px;">'+esc(jobWho(j))+'</span></div>'+(right||'')+'</div>';}
-function paintDashboard(ops){
+function paintDashboard(ops,devConflicts){
   var LV=window.US3Live,jobs=LV.jobs;
+  devConflicts=devConflicts||LV.devConflicts||[];
   var inGroundJobs=jobs.filter(inGround), ongoingJobs=jobs.filter(ongoing);
   var todayStr=new Date().toISOString().slice(0,10);
   var ending=inGroundJobs.filter(function(j){var d=daysLeft(j);return d!=null&&d>=0;}).sort(function(a,b){return daysLeft(a)-daysLeft(b);}).slice(0,8);
@@ -7527,10 +7678,22 @@ function paintDashboard(ops){
   var noEnd=(typeof us3NoEndDateJobs==='function')?us3NoEndDateJobs():[];
   var noEndList=noEnd.map(function(x){return x.num;});
   var noEndPreview=noEndList.slice(0,6).join(' · ')+(noEndList.length>6?(' · +'+(noEndList.length-6)+' more'):'');
+  // Device location conflicts (data hygiene): units deployed on >1 job at once,
+  // or on the shelf yet a job still lists them deployed. Each row jumps to the
+  // device detail so Lenny can chase it in Airtable.
+  var dcShown=devConflicts.slice(0,15);
+  var dcRows=dcShown.map(function(d){
+    var jobs=(d.jobs||[]).slice(0,3).join(', ')+((d.jobs||[]).length>3?(' +'+((d.jobs.length)-3)):'');
+    return '<div class="us3prow" onclick="US3.openDevice(\''+js(d.device_id)+'\')"><div>⚠ <b>'+esc(d.device_id)+'</b> <span style="font-size:12px;color:#8a97a8;">'+(jobs?('vs '+esc(jobs)):'multiple deployments')+'</span></div><span style="color:#e8a020;white-space:nowrap;">chase ›</span></div>';
+  }).join('')+(devConflicts.length>15?('<div style="padding:6px 8px;font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;">+ '+(devConflicts.length-15)+' more</div>'):'');
+  var conflictsItem=devConflicts.length?
+    ('<div class="us3prow" style="cursor:default;"><div>🔀 <b>'+devConflicts.length+'</b> device location conflict'+(devConflicts.length>1?'s':'')+' — unit on the shelf but a job still lists it deployed, or deployed on two jobs at once</div></div>'+dcRows):
+    '<div class="us3prow"><div style="color:#2ecc71;">✓ No device-location conflicts</div></div>';
   var openItems='<div class="us3prow" onclick="US3.go(\'shop\')"><div>⚠ <b>'+overdue.length+'</b> job(s) overdue for equipment return</div><span style="color:#ED1C24;">review ›</span></div>'+
     '<div class="us3prow" onclick="US3.go(\'shop\')"><div>📦 <b>'+(ops.devices_out!=null?ops.devices_out:'—')+'</b> devices show as shipped-out with no return scan</div><span style="color:#8a97a8;">audit ›</span></div>'+
     (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>')+
-    (noEndList.length?('<div class="us3prow" onclick="US3.go(\'assetmap\')"><div>⚠ <b>'+noEndList.length+'</b> deployed job(s) with <b>no end date</b> (stuck deployed forever — add a de-install date in Airtable)<div style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;margin-top:2px;">'+esc(noEndPreview)+'</div></div><span style="color:#e8a020;white-space:nowrap;">fix ›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ Every deployed job has an end date</div></div>');
+    (noEndList.length?('<div class="us3prow" onclick="US3.go(\'assetmap\')"><div>⚠ <b>'+noEndList.length+'</b> deployed job(s) with <b>no end date</b> (stuck deployed forever — add a de-install date in Airtable)<div style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;margin-top:2px;">'+esc(noEndPreview)+'</div></div><span style="color:#e8a020;white-space:nowrap;">fix ›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ Every deployed job has an end date</div></div>')+
+    conflictsItem;
 
   document.getElementById('dashWrap').innerHTML=
     // ─── 0. Centered max-width content column (normal-site margins, not full-bleed) ───
@@ -7777,7 +7940,7 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,sampleReport:sampleReportOpen,sampleBack:sampleBackToProject,sampleDevice:sampleToDevice,sampleAssetMap:sampleToAssetMap,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,pageTour:pageTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,sampleReport:sampleReportOpen,sampleBack:sampleBackToProject,sampleDevice:sampleToDevice,sampleAssetMap:sampleToAssetMap,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,pageTour:pageTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});loadDeviceConflicts(true).catch(function(){});onHash();});},live:load};
 window.US3._dev=null;
 function downloadDevice(){
   var d=window.US3&&window.US3._dev;if(!d){alert('Open a device first.');return;}
