@@ -669,7 +669,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <!-- ASSET MAP -->
 <div class="page" id="page-assetmap">
   <div class="am-toolbar">
-    <div class="am-title">Asset Map <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Available = kits · Maintenance = red-tagged devices (live state-coloring coming)</span></div>
+    <div class="am-title">Asset Map<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">Every asset laid out on the warehouse floor plan. Each dot is a kit or device, colored by state — green available, amber reserved, blue deployed, red in maintenance. Use the filters to isolate one state; click a dot for its detail.</span></span> <span style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· Available = kits · Maintenance = red-tagged devices (live state-coloring coming)</span></div>
     <div class="am-filter active" onclick="amFilter('all',this)">All</div>
     <div class="am-filter" onclick="amFilter('available',this)">Available</div>
     <div class="am-filter" onclick="amFilter('reserved',this)">Reserved</div>
@@ -694,7 +694,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <!-- SCHEDULE -->
 <div class="page" id="page-sched">
   <div class="sch-toolbar">
-    <div class="sch-title">Schedule</div>
+    <div class="sch-title">Schedule<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">Reservation calendar for kits and devices. Each bar is a hold on a piece of equipment for a job over a date range — so you can see what's spoken for before you promise it. Use Prev/Next to move weeks; "+ Add Reservation" to book a hold.</span></span></div>
     <button class="sch-nav-btn" onclick="schNav(-1)">&larr; Prev</button>
     <div class="sch-period" id="schPeriod"></div>
     <button class="sch-nav-btn" onclick="schNav(1)">Next &rarr;</button>
@@ -706,7 +706,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- PROJECTS -->
 <div class="page" id="page-projects">
-  <div class="pj-inner"><div class="pj-title">Projects</div><div class="pj-sub">Quick access to all project portals</div><div class="pj-grid" id="pjGrid"></div></div>
+  <div class="pj-inner"><div class="pj-title">Projects<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">One tile per active project. Each is a portal into that job's sites, devices and equipment. Click a tile to open the project page; this is the fastest way to jump straight to the work for a specific customer or site.</span></span></div><div class="pj-sub">Quick access to all project portals</div><div class="pj-grid" id="pjGrid"></div></div>
 </div>
 
 <!-- PARTS -->
@@ -714,7 +714,7 @@ window.addEventListener('DOMContentLoaded',function(){
   <div style="padding:20px 24px;max-width:1200px;margin:0 auto;overflow-y:auto;height:100%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
-        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">🔧 Red Tag — Maintenance Shelf</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">🔧 Red Tag — Maintenance Shelf<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">Every device pulled from the field for repair lives here. Scan a shelf to tag a device red (broken, needs work) or green (fixed, ready to go back). The charts below mine these red tags for what's failing most and how fast it's coming back.</span></span></div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--muted);">Devices in maintenance (red shelf). Scan the shelves to tag devices green/red; manage and return them here.</div>
       </div>
       <div style="display:flex;gap:8px;"></div>
@@ -734,7 +734,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <div class="page" id="page-fleet">
   <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg);">
     <div style="display:flex;align-items:center;gap:12px;padding:8px 22px;border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;flex-wrap:wrap;">
-      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);display:flex;align-items:center;gap:8px;">Fleet Map</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);display:flex;align-items:center;gap:8px;">Fleet Map<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">Every device in the fleet on a timeline. "Availability by month" shows how many units are free vs. committed per month so you can spot crunches; "Device grid" plots one device per row across dates, colored by state. Use it to answer "do we have enough hardware for what's booked?"</span></span></div>
       <div id="fleetViewToggle" style="display:flex;margin-left:12px;border:1.5px solid var(--accent);border-radius:7px;overflow:hidden;flex-shrink:0;background:var(--card-bg);box-shadow:0 1px 4px rgba(0,0,0,.15);">
         <div id="fleetViewMonthBtn" onclick="setFleetView('month')" style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;user-select:none;transition:all .15s;">📊 Availability by month</div>
         <div id="fleetViewGridBtn" onclick="setFleetView('grid')" style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;user-select:none;border-left:1.5px solid var(--accent);transition:all .15s;">▦ Device timeline</div>
@@ -2052,7 +2052,7 @@ function renderFleetStatus(){
     '</tr>';
   }).join('');
   card.innerHTML=
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#0071BC;margin-bottom:8px;">Fleet Status</div>'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#0071BC;margin-bottom:8px;">Fleet Status'+houstonHelp('A live tally by product of how many units are deployed, on active jobs, and reserved — the quick at-a-glance read that overlays the map. Open Fleet Availability for the full free-vs-committed picture.','right')+'</div>'+
     '<table style="width:100%;border-collapse:collapse;">'+
       '<thead><tr style="border-bottom:1.5px solid #0071BC;">'+
         '<th style="padding:4px 8px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#666;">Product</th>'+
@@ -2952,7 +2952,7 @@ function failureAnalysisRender(){
     function kpi(n,l,c){return '<div style="flex:1;min-width:120px;background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:12px;padding:12px 14px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:30px;line-height:1;color:'+c+';">'+n+'</div><div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted);margin-top:4px;">'+l+'</div></div>';}
     host.innerHTML=
       '<div style="border:1px solid var(--borderb);border-radius:10px;padding:14px 16px;background:var(--panel-bg);">'+
-        '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">📊 Failure Database <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">maintenance + decommission · all products · auto-fed from Fulcrum + decommissions</span></div>'+
+        '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">📊 Failure Database <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">maintenance + decommission · all products · auto-fed from Fulcrum + decommissions</span>'+houstonHelp('The single source of truth for hardware failures — every maintenance event and decommission across all products, auto-fed from Fulcrum. The KPIs and Pareto below are built from this, so the numbers stay honest without manual entry.')+'</div>'+
         '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 14px;">'+kpi(total,'Total events','var(--text,#e8edf4)')+kpi(maint,'Maintenance','#e8a020')+kpi(dec,'Decommissioned','#ED1C24')+kpi(Object.keys(devs).length,'Distinct devices','#0071BC')+'</div>'+
         '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Pareto — top failure / decommission reasons</div>'+
         (bars||'<div style="color:var(--muted);font-family:Rajdhani,sans-serif;">No failure modes recorded yet.</div>')+
@@ -3024,7 +3024,7 @@ function renderPareto(returns){
 
   var html='<div style="padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'+
-      '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Failure Pareto Chart</div>'+
+      '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Failure Pareto Chart'+houstonHelp('Failure modes ranked by how often they happen, tallest bar first. The 80/20 view: the few categories on the left are causing most of your returns. Fix those and the maintenance shelf empties out.')+'</div>'+
       '<div style="display:flex;gap:14px;align-items:center;">'+
         '<div style="display:flex;align-items:center;gap:5px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);"><div style="width:14px;height:10px;border-radius:2px;background:#0071BC;"></div>Count</div>'+
         '<div style="display:flex;align-items:center;gap:5px;font-family:\'Rajdhani\',sans-serif;font-size:11px;color:var(--muted);"><div style="width:14px;height:3px;background:#ED1C24;border-radius:2px;"></div>Cumulative %</div>'+
@@ -3181,7 +3181,7 @@ function renderFishbone(returns){
   svg+='</svg>';
 
   div.innerHTML='<div style="max-width:1100px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;">Root Cause Analysis &mdash; Combined View</div>'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;">Root Cause Analysis &mdash; Combined View'+houstonHelp('Fishbone diagram grouping every logged failure by its underlying cause — battery, enclosure, sensor, install, etc. Where the Pareto tells you what fails most, this tells you why, so you can attack the source instead of the symptom.')+'</div>'+
     '<div style="font-family:\'Rajdhani\',sans-serif;font-size:13px;font-style:italic;color:var(--muted);margin-bottom:14px;">All failure causes across repair and decommission. Badges show prevalence in each pathway.</div>'+
     svg+
   '</div>';
@@ -3305,7 +3305,7 @@ function renderDecommPareto(){
   var demoNote='';
 
   return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Failure Mode Analysis</div>'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Failure Mode Analysis'+houstonHelp('Why devices got written off, ranked by frequency. Red bars are the reasons driving 80% of decommissions. If "Dead Battery" or "Water Damage" tops this list, that is your design or enclosure problem to fix on the next build.')+'</div>'+
     demoNote+
     '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
   '</div>';
@@ -3364,7 +3364,7 @@ function renderRepairPareto(){
   pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
 
   return '<div style="max-width:900px;margin:0 auto 16px auto;padding:16px;border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;">Repairable Return Analysis</div>'+
+    '<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;">Repairable Return Analysis'+houstonHelp('Of the devices that come back broken, which ones we actually repair and return to circulation — ranked by volume. Tells you where repair effort is paying off versus where units are just getting scrapped.')+'</div>'+
     '<div style="font-family:\'Rajdhani\',sans-serif;font-size:13px;font-style:italic;color:var(--muted);margin-bottom:14px;">What comes back to the shop and gets put back into circulation</div>'+
     '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
   '</div>';
@@ -3417,7 +3417,7 @@ function renderDecomm(){
   var tableRows=fil.slice(0,200).map(function(d){var dt=d.date?new Date(d.date):null;var q=dt?'Q'+(Math.floor(dt.getMonth()/3)+1)+' '+dt.getFullYear():'';return '<tr><td>'+d.id+'</td><td style="color:'+(typeColors[d.type]||'#888')+';font-weight:600">'+(typeLabels[d.type]||d.type)+'</td><td>'+(d.date||'')+'</td><td>'+q+'</td><td>'+(d.notes||'')+'</td></tr>';}).join('');
   if(fil.length>200)tableRows+='<tr><td colspan="5" style="text-align:center;opacity:.6">Showing 200 of '+fil.length+' \u2014 export CSV for full list</td></tr>';
   document.getElementById('dcInner').innerHTML=
-    '<div class="dc-title">Decommission Report</div>'+
+    '<div class="dc-title">Decommission Report'+houstonHelp('Every device permanently retired from the fleet \u2014 the write-off ledger. Filter by quarter and export the CSV that goes to Tony (CFO) for the books. The "this quarter" banner flags what still needs reporting.')+'</div>'+
     '<div class="dc-sub">Asset write-offs \u00B7 Quarterly reporting for Tony (CFO)</div>'+
     (thisQ.length>0?'<div class="cfto">\u26A0 '+thisQ.length+' write-off'+(thisQ.length!==1?'s':'')+' this quarter (Q'+cQ+' '+cY+') \u2014 export CSV for Tony</div>':'')+
     renderDecommPareto()+
@@ -3487,7 +3487,7 @@ function renderFleetOverview(){
   // centered host container (#avFleetCompany). No grid-span/maxWidth tricks \u2014
   // the host already caps + centers the width.
   host.innerHTML='<div class="av-card" style="overflow-x:auto;">'+
-    '<div class="av-card-head"><div class="av-card-icon">\u25C8</div><div class="av-card-name">Company-Wide</div></div>'+
+    '<div class="av-card-head"><div class="av-card-icon">\u25C8</div><div class="av-card-name">Company-Wide'+houstonHelp('Every product line in one table \u2014 total units and how they split across available, reserved, deployed and in-maintenance, plus active jobs. The fast answer to "what do we have, and what is free right now?"')+'</div></div>'+
     '<table class="av-table" style="width:100%;"><thead><tr>'+
       '<th>Product</th><th>Total</th><th>Avail</th><th>Resv</th><th>Depl</th><th>Maint</th><th>Jobs</th>'+
     '</tr></thead><tbody>'+rows+'</tbody></table></div>';
@@ -3691,7 +3691,7 @@ function houstonSetPage(p){houstonState.page=p;renderHoustonTable();}
 
 function renderHoustonImportPanel(){
   return '<div style="margin:0 0 16px 0;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Admin · Import Weekly Report (CSV)</div>'+
+    '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:10px;">Admin · Import Weekly Report (CSV)'+houstonHelp('Drop in the weekly Houston fleet CSV here and stamp it with the report date. This is what feeds every number on this tab — import it each Wednesday and the analytics, tiles and device table all refresh off it.')+'</div>'+
     '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;font-family:Rajdhani,sans-serif;">'+
       '<div><label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;">CSV File</label>'+
         '<input type="file" id="houstonFile" accept=".csv" onchange="houstonOnFilePick(event)" style="font-family:Rajdhani,sans-serif;color:var(--text);"></div>'+
@@ -3738,7 +3738,7 @@ function houstonLightsGrid(devices,reportDate){
     '<span>'+legendDot('#ED1C24')+'Silent 365+</span>'+
   '</div>';
   return '<div style="max-width:900px;margin:0 auto 16px auto;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Fleet Status Grid — '+devices.length+' devices at a glance</div>'+
+    '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Fleet Status Grid'+houstonHelp('Every Houston device as a single dot, colored by reporting health. Scan it for clusters of red — a block of silent devices usually means a regional outage or a bad install batch, not one-off failures.')+' — '+devices.length+' devices at a glance</div>'+
     '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;height:auto;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
     legend+
   '</div>';
@@ -3786,7 +3786,7 @@ function houstonHealthPareto(summary){
   svg+='<path d="'+d+'" stroke="#0071BC" stroke-width="2" fill="none"/>';
   pts.forEach(function(p){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0071BC"/>';});
   return '<div style="max-width:900px;margin:0 auto 16px auto;padding:14px;border:1px solid var(--borderb);border-radius:6px;background:var(--panel-bg);box-sizing:border-box;">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Houston Fleet Health Distribution</div>'+
+    '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;">Houston Fleet Health Distribution'+houstonHelp('How the fleet splits across reporting bands — fully reporting, slow, silent, long-dead. The shape tells you whether you have a healthy fleet with a few stragglers or a systemic reporting problem.')+'</div>'+
     '<svg viewBox="0 0 800 440" width="100%" style="display:block;max-height:440px;" preserveAspectRatio="xMidYMid meet">'+svg+'</svg>'+
   '</div>';
 }
@@ -4025,7 +4025,7 @@ function houstonUpsertWeekly(rows,today,cb){
   houstonChunkUpsert('houston_weekly_stats','week',out,cb,out.length+' weeks');
 }
 function houstonUploadRender(){var h=document.getElementById('houstonUploadPanel');if(h)h.innerHTML=houstonUploadBar();}
-function houstonHelp(t){return '<span class="us3help">?<span class="tip">'+houstonEsc(t)+'</span></span>';}
+function houstonHelp(t,pos){return '<span class="us3help'+(pos?' '+pos:'')+'" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">'+houstonEsc(t)+'</span></span>';}
 // Houston analytics: silent-duration buckets, repeat-offender devices, weekly maintenance trend.
 function houstonAnalyticsRender(){
   var host=document.getElementById('houstonAnalytics');if(!host||typeof supa==='undefined'||!supa)return;
@@ -4142,7 +4142,7 @@ function renderHouston(){
   var inner=document.getElementById('houstonInner');
   if(!inner)return;
   if(typeof injectCSS==='function')injectCSS();
-  var titleHtml='<div id="houstonUploadPanel"></div><div class="dc-title">Houston Fleet Health <span id="houstonLastUpd" style="display:none;font-family:Rajdhani,sans-serif;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;border-radius:20px;padding:3px 12px;vertical-align:middle;margin-left:8px;"></span></div><div class="dc-sub">Houston Fleet Upload · updated weekly (Wednesdays)</div>';
+  var titleHtml='<div id="houstonUploadPanel"></div><div class="dc-title">Houston Fleet Health'+houstonHelp('Live read on the Houston deployment: how many devices are reporting, how many have gone quiet, and the overall health from the latest weekly upload. The lights grid below is one dot per device — green reporting, amber slow, red long-silent.')+' <span id="houstonLastUpd" style="display:none;font-family:Rajdhani,sans-serif;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;border-radius:20px;padding:3px 12px;vertical-align:middle;margin-left:8px;"></span></div><div class="dc-sub">Houston Fleet Upload · updated weekly (Wednesdays)</div>';
   setTimeout(function(){houstonUploadRender();},0);
   if(typeof supa==='undefined'||!supa){
     inner.innerHTML=titleHtml+'<div style="padding:32px;text-align:center;color:var(--muted);font-family:Rajdhani,sans-serif;font-size:15px;border:1px dashed var(--borderb);border-radius:8px;margin:24px 0;">Offline — Houston Fleet Health needs the server connection.</div>';
@@ -5152,7 +5152,7 @@ function renderMCMobile(){
     offices.forEach(function(o){reserved+=gc(o,p.id,'reserved');});
     return '<div class="mc-mobile-row"><span style="color:'+p.color+';font-weight:600;">'+p.label+'</span><span><span class="mc-mobile-val" style="color:#0071BC;">'+deployed+'</span> dep &middot; <span class="mc-mobile-val">'+activeJobs+'</span> jobs &middot; <span class="mc-mobile-val" style="color:#4a5568;">'+reserved+'</span> res</span></div>';
   }).join('');
-  var html='<div class="mc-mobile-card"><h3>Fleet Status</h3>'+fleetRows+'</div>';
+  var html='<div class="mc-mobile-card"><h3>Fleet Status'+houstonHelp('Live count by product of what is deployed, on active jobs and reserved — the mobile read on where the fleet stands right now.')+'</h3>'+fleetRows+'</div>';
   // Office summary cards
   var officeList=[
     {id:'elcajon',label:'El Cajon',icon:'\uD83C\uDFED',products:['ff','cric','hach','rg']},
@@ -5369,7 +5369,7 @@ function renderScan(){
   var head;
   if(setup){
     head='<div class="us3b2-card">'+
-      '<div class="us3b2-h" style="font-size:18px;margin-bottom:4px;">📍 Set up this scanning station</div>'+
+      '<div class="us3b2-h" style="font-size:18px;margin-bottom:4px;">📍 Set up this scanning station'+houstonHelp('Name the bench and the tech working it once, and every scan from this device gets stamped with both. Do this first so the activity log shows real people and stations instead of anonymous scans.')+'</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);margin-bottom:12px;">Set this once per computer/bench. A USB scanner just plugs in and types into the box — no driver needed.</div>'+
       '<div class="us3b2-grid2">'+
         '<div><label class="us3b2-label">Station / Bench (fixed)</label><input id="scanStationInput" class="us3b2-input" placeholder="e.g. Bench 1 / Receiving" value="'+us3esc(station)+'"></div>'+
@@ -5387,7 +5387,7 @@ function renderScan(){
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
-      '<div class="us3b2-h" style="font-size:30px;">📲 Station Scanner</div>'+
+      '<div class="us3b2-h" style="font-size:30px;">📲 Station Scanner'+houstonHelp('Scan a device barcode at your bench and it logs who scanned what, where, and when. This is how a device moves between states — green/red tagging, kit builds and ship-outs all start with a scan here.')+'</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Scan a code → the device record pops up automatically.</div>'+
     '</div>'+
     head+
@@ -5402,7 +5402,7 @@ function renderScan(){
       '<div id="scanCamBox" style="display:none;margin-top:14px;"><div id="scanCamRegion"></div><div style="text-align:center;margin-top:8px;"><button class="us3b2-btn red" onclick="scanStopCamera()">Stop Camera</button></div></div>'+
     '</div>'+
     '<div class="us3b2-card">'+
-      '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)</div>'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)'+houstonHelp('A running list of what you have scanned since opening this station — your quick proof of work. Catch a mis-scan here before it propagates instead of hunting it down later.')+'</div>'+
       '<div id="scanRecent"></div>'+
     '</div>'+
     '<div class="us3b2-card"><div id="scanAnalytics"><div class="us3b2-empty">Loading analytics…</div></div></div>'))+
@@ -5666,9 +5666,9 @@ function renderKit(){
   var prodOpts=US3_KIT_PRODUCTS.map(function(p){return '<option value="'+p.id+'">'+us3esc(p.label)+'</option>';}).join('');
   inner.innerHTML=
   '<div class="us3b2-wrap">'+
-    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">📦 Build / Ship Kit</div>'+
+    '<div class="us3b2-h" style="font-size:30px;margin-bottom:14px;">📦 Build / Ship Kit'+houstonHelp('Where a pile of scanned devices becomes a deployable kit for a job. Build the kit, print its labels, reserve it against a job, and ship it — the whole assembly-to-doorstep flow lives on this page.')+'</div>'+
     '<div class="us3b2-card" style="border:1px solid #2b3a52;">'+
-      '<div class="us3b2-h" style="font-size:16px;margin-bottom:4px;">🔄 Kit Lifecycle <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">scan green devices → print labels → reserve → ship</span></div>'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:4px;">🔄 Kit Lifecycle'+houstonHelp('The guided build flow: scan in green (ready) devices, print their labels, reserve the kit for a job, then ship. Following these steps in order keeps every kit traceable from bench to field.')+' <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">scan green devices → print labels → reserve → ship</span></div>'+
       '<div style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;margin-bottom:8px;">Each device = 1 kit. Reserve/Ship update its status in the system and print a sticker for the tote.</div>'+
       '<textarea id="klIds" rows="4" placeholder="Scan or paste device IDs — one per line" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:14px;padding:8px;border:1px solid var(--borderb);border-radius:6px;background:var(--input-bg,#0e1420);color:var(--text);"></textarea>'+
       '<div class="us3b2-grid3" style="margin-top:8px;align-items:end;">'+
@@ -5684,7 +5684,7 @@ function renderKit(){
       '<div id="klMsg" style="margin-top:8px;font-size:13px;font-family:Rajdhani,sans-serif;color:var(--muted);"></div>'+
     '</div>'+
     '<div class="us3b2-card">'+
-      '<div class="us3b2-h" style="font-size:16px;margin-bottom:12px;">New Kit <span style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">(legacy kit records)</span></div>'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:12px;">New Kit'+houstonHelp('Manual kit entry for older records that predate the scan-based lifecycle. Use the Kit Lifecycle flow above for anything new; this is here so historical kits still have a home.')+' <span style="font-size:11px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">(legacy kit records)</span></div>'+
       '<div class="us3b2-grid2">'+
         '<div><label class="us3b2-label">Kit ID</label><input id="kitNewIdInput" class="us3b2-input" value="'+kitNewId()+'"></div>'+
         '<div><label class="us3b2-label">Product type</label><select id="kitNewProd" class="us3b2-select">'+prodOpts+'</select></div>'+
@@ -5695,7 +5695,7 @@ function renderKit(){
     '</div>'+
     '<div class="us3b2-card">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'+
-        '<div class="us3b2-h" style="font-size:16px;">Kits</div>'+
+        '<div class="us3b2-h" style="font-size:16px;">Kits'+houstonHelp('Every kit on record and its current status — building, reserved, shipped or returned. Your master list for "where is that kit and what is in it" without walking the warehouse.')+'</div>'+
         '<select id="kitFilter" class="us3b2-select" style="width:auto;" onchange="kitLoadList()"><option value="">All statuses</option><option value="building">Building</option><option value="shipped">Shipped</option><option value="returned">Returned</option></select>'+
       '</div>'+
       '<div id="kitList"><div class="us3b2-empty">Loading…</div></div>'+
@@ -6040,7 +6040,7 @@ function renderCount(){
   inner.innerHTML=
   '<div class="us3b2-wrap" style="max-width:920px;margin:0 auto;">'+
     '<div class="us3b2-h" style="font-size:26px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">📦 Inventory &amp; Kit Availability'+
-      '<span title="Available kits per office, computed automatically — a kit is only as available as its scarcest part (e.g. 10 FlexFlow RTUs + 5 sensors = 5 kits). This is the source of truth for company-wide kit availability. Edit the underlying component counts in the per-office section below; count one type at a time, blanks left alone." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
+      houstonHelp('Available kits per office, computed automatically — a kit is only as available as its scarcest part (10 RTUs + 5 sensors = 5 kits). This is the source of truth for company-wide kit availability. Edit the underlying component counts in the per-office section below.')+
     '</div>'+
     '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin-bottom:14px;">Available kits per office — computed from the scarcest part. Edit component counts below.</div>'+
     // ─── Dense product × office availability matrix (top, primary) ───
@@ -6087,7 +6087,7 @@ function countRenderBody(){
   }).join('');
   var totVar=totCnt-totExp;
   body.innerHTML=
-    '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">'+us3esc(office.label)+' — Kits on hand (reconciliation)</div>'+
+    '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">'+us3esc(office.label)+' — Kits on hand (reconciliation)'+houstonHelp('The hand-counted reality for this office, set against what the system thinks is on the shelf. Use it to reconcile — when the physical count and the computed availability disagree, fix the component numbers here.')+'</div>'+
     '<table class="us3b2-tbl"><thead><tr><th>Kit Type</th><th>Expected</th><th>Counted</th><th>Variance</th></tr></thead><tbody>'+rows+'</tbody></table>'+
     '<div class="us3b2-grid3" style="margin-top:16px;">'+
       '<div class="us3b2-kv"><b>Total expected</b><span style="font-size:22px;font-family:Oswald,sans-serif;">'+totExp+'</span></div>'+
@@ -6157,7 +6157,7 @@ function renderDevMap(){
   inner.innerHTML=
   '<div style="padding:14px 18px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'+
-      '<div class="us3b2-h" style="font-size:26px;">📍 Device Map</div>'+
+      '<div class="us3b2-h" style="font-size:26px;">📍 Device Map'+houstonHelp('Every device plotted on a real geographic map by where it is deployed. Use it to see field coverage at a glance, spot clusters, and tell active deployments from historical ones. Filter and click a pin for the device behind it.')+'</div>'+
       '<div id="devmapInfo" style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Loading…</div>'+
     '</div>'+
     '<div id="devmapControls">'+devMapControls()+'</div>'+
@@ -6318,7 +6318,7 @@ function renderViewer(){
   inner.innerHTML=
   '<div style="padding:14px 18px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'+
-      '<div class="us3b2-h" style="font-size:26px;">🧊 Product 3D</div>'+
+      '<div class="us3b2-h" style="font-size:26px;">🧊 Product 3D'+houstonHelp('A rotatable 3D model of the hardware — drag to orbit, scroll to zoom. Handy for showing a tech exactly which port or sensor you mean, and for sales walk-throughs without shipping a physical unit.')+'</div>'+
       '<div id="viewer3dInfo" style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;"></div>'+
     '</div>'+
     '<div id="viewer3dBox" style="height:calc(100vh - 170px);min-height:420px;width:100%;border:1px solid var(--borderb);border-radius:12px;overflow:hidden;background:var(--panel-bg);position:relative;"></div>'+
@@ -6561,10 +6561,13 @@ function injectCSS(){
   '.us3pack{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-family:Rajdhani,sans-serif;font-size:15px;}'+
   '.us3pack:hover{background:rgba(0,113,188,.08);}'+
   '.us3pack input{width:18px;height:18px;}'+
-  '.us3help{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid #8a97a8;color:#8a97a8;font-size:11px;font-family:Rajdhani,sans-serif;cursor:help;margin-left:6px;position:relative;font-weight:700;}'+
-  '.us3help:hover{border-color:#0071BC;color:#0071BC;}'+
-  '.us3help .tip{display:none;position:absolute;top:22px;left:50%;transform:translateX(-50%);width:240px;background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.45;font-weight:400;text-transform:none;letter-spacing:0;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.4);text-align:left;}'+
-  '.us3help:hover .tip{display:block;}'+
+  '.us3help{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;border:1.5px solid var(--muted,#8a97a8);color:var(--muted,#8a97a8);font-size:13px;line-height:1;font-family:Oswald,sans-serif;cursor:pointer;margin-left:7px;position:relative;font-weight:700;vertical-align:middle;transition:border-color .15s,color .15s,background .15s;flex:0 0 auto;}'+
+  '.us3help:hover,.us3help:focus,.us3help.on{border-color:var(--accent,#0071BC);color:#fff;background:var(--accent,#0071BC);outline:none;}'+
+  '.us3help .tip{display:none;position:absolute;top:27px;left:50%;transform:translateX(-50%);width:max-content;max-width:260px;background:var(--panel-bg,#0b0f17);color:var(--text,#e8edf4);border:1px solid var(--borderb,#243044);border-radius:9px;padding:11px 13px;font-size:13px;line-height:1.5;font-weight:400;text-transform:none;letter-spacing:0;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.45);text-align:left;white-space:normal;pointer-events:none;}'+
+  '.us3help .tip:before{content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%) rotate(45deg);width:11px;height:11px;background:var(--panel-bg,#0b0f17);border-left:1px solid var(--borderb,#243044);border-top:1px solid var(--borderb,#243044);}'+
+  '.us3help:hover .tip,.us3help:focus .tip,.us3help.on .tip{display:block;}'+
+  '.us3help.right .tip{left:auto;right:-6px;transform:none;}'+
+  '.us3help.right .tip:before{left:auto;right:9px;transform:rotate(45deg);}'+
   '.us3tour-back{position:fixed;inset:0;background:rgba(5,8,14,.78);z-index:5000;display:none;}'+
   '.us3tour-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:16px;padding:26px 28px;z-index:5001;font-family:Rajdhani,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);}'+
   '.us3tour-box h2{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:22px;margin:0 0 4px;}'+
@@ -6657,7 +6660,7 @@ function renderProjectPage(n){
     '<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><div class="us3w-h" style="font-size:16px;">Field Devices ('+fieldDevices.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">real serials from Fulcrum</span></div>'+
       (fieldDevices.length?('<button class="us3w-back" onclick="US3.mapJob(\''+js(n)+'\')">View on Map ›</button>'):'')+'</div>'+
       '<table class="us3w-tbl"><thead><tr><th>Device ID</th><th>Type</th><th>Site</th><th>City</th><th>Status</th></tr></thead><tbody>'+fdRows+'</tbody></table></div>'+
-    '<div class="us3w-card"><div class="us3w-h" style="font-size:16px;">Sites ('+sites.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">planned manholes from Airtable</span></div>'+
+    '<div class="us3w-card"><div class="us3w-h" style="font-size:16px;">Sites ('+sites.length+')'+help('Every monitoring site under this project and its planned device count. The job\'s footprint at a glance — how many locations and how much hardware it ties up.')+' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">planned manholes from Airtable</span></div>'+
       '<table class="us3w-tbl"><thead><tr><th>Site</th><th>MH #</th><th>City</th><th>System</th><th>Install</th><th>Device</th><th></th></tr></thead><tbody>'+srows+'</tbody></table>'+
       '<div style="margin-top:8px;font-size:12px;color:#5a6472;font-style:italic;">Device column is a best-effort name match to the Fulcrum devices above; the Field Devices table is the authoritative list.</div>'+
     '</div>';
@@ -6740,12 +6743,12 @@ function renderDevicePage(id){
         '<button class="us3w-back" onclick="US3.downloadDevice()">⬇ Download full history</button></div>'+
       '<div class="us3w-h" style="font-size:30px;margin-top:14px;">'+esc(id)+'</div>'+
       '<div style="color:#8a97a8;">Device record'+lastLine+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location</div>'+locHtml+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Current location'+help('Where this exact device is right now — a job site, a shelf, or in transit — based on its latest scan. The first thing to check when someone asks "where is unit X?"')+'</div>'+locHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📄 Install / Site-sheet records ('+siteRecs.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">every Fulcrum Site Sheet tied to this device</span></div>'+siteRecsHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔧 Field maintenance ('+maint.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">Fulcrum Site Maintenance visits</span></div>'+maintHtml+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📝 Notes ('+notes.length+')</div>'+notesHtml+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+') <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')</div>'+ev+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Movement history ('+scans.length+')'+help('Every leg of this device\'s travels — each ship-out and return, in order. The paper trail for how it got from the warehouse to wherever it is now.')+' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">ship / receive / inventory · out & in the door</span></div>'+mv+'</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Warehouse scan events ('+events.length+')'+help('Raw bench-level scans for this device — green/red tags, kit builds, station check-ins. Lower-level than Movement history; use it when you need the exact who/where/when of a single scan.')+'</div>'+ev+'</div>'+
       '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">Kit membership</div>'+kitHtml+'</div>'
     );
   },function(){showOverlay('<button class="us3w-back" onclick="US3.close()">‹ Back</button><div class="us3w-card us3w-empty">Couldn\'t load device record.</div>');});
@@ -6757,11 +6760,11 @@ window.renderProjects=function(){
   injectCSS();
   var page=document.getElementById('page-projects');if(!page)return;
   page.innerHTML='<div class="pj-inner" style="padding:18px 22px;overflow:auto;height:100%;box-sizing:border-box;">'+
-    '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">Projects</div>'+
+    '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">Projects'+help('Every live job pulled straight from the company database. Click one to drill into its sites, devices and equipment. The filter bar narrows by status so you can focus on what is active, permitting or wrapping up.')+'</div>'+
     '<div style="color:#8a97a8;font-size:14px;margin-bottom:10px;">Live jobs from the company database</div>'+
     '<div class="us3w-fbar" id="us3projFbar"></div>'+
     '<div id="us3projGrid"><div class="us3w-empty">Loading jobs…</div></div>'+
-    '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin-top:28px;">Portals</div>'+
+    '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin-top:28px;">Portals'+help('Shortcut links into the external customer portals (Houston, etc.) where the raw monitoring data lives. One-click jump out to the live dashboards without hunting for the URL.')+'</div>'+
     '<div class="pj-grid" id="pjGrid" style="margin-top:10px;"></div>'+
   '</div>';
   if(typeof PJ_LINKS!=='undefined'&&document.getElementById('pjGrid')){
@@ -6859,7 +6862,9 @@ function renderDashboard(){
   if(!w){page.innerHTML='<div id="dashWrap" class="us3dash-wrap"></div>';w=document.getElementById('dashWrap');w.innerHTML='<div class="us3w-empty">Loading operations…</div>';}
   Promise.all([load(),loadOps().catch(function(){return null;})]).then(function(res){paintDashboard(res[1]||{});},function(){var x=document.getElementById('dashWrap');if(x)x.innerHTML='<div class="us3w-empty">Offline — can\'t reach the database.</div>';});
 }
-function help(txt){return '<span class="us3help">?<span class="tip">'+esc(txt)+'</span></span>';}
+function help(txt,pos){return '<span class="us3help'+(pos?' '+pos:'')+'" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">'+esc(txt)+'</span></span>';}
+function us3HelpTap(e,el){e.stopPropagation();var was=el.classList.contains('on');var all=document.querySelectorAll('.us3help.on');for(var i=0;i<all.length;i++)all[i].classList.remove('on');if(!was)el.classList.add('on');}
+document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('.us3help'))return;var all=document.querySelectorAll('.us3help.on');for(var i=0;i<all.length;i++)all[i].classList.remove('on');});
 function kpi(n,label,sub,tab,tip){return '<div class="us3kpi" onclick="US3.go(\''+tab+'\')"><div class="n">'+n+'</div><div class="l">'+label+(tip?help(tip):'')+'</div>'+(sub?'<div class="s">'+sub+'</div>':'')+'</div>';}
 function panel(title,bodyHtml,sub,tip,opts){opts=opts||{};var open=opts.open!==false;var hcls='us3w-h us3coll-h'+(opts.warn?' warn':'');return '<div class="us3w-card us3coll'+(open?' open':'')+'">'+
   '<div class="'+hcls+'" style="font-size:15px;" onclick="us3ToggleColl(this)">'+
@@ -6984,20 +6989,20 @@ function paintDashboard(ops){
     // ─── 1. Centered title (RIR-style header) with unobtrusive top-right tour btn ───
     '<div style="position:relative;text-align:center;margin-bottom:2px;">'+
       '<button class="us3b2-btn alt" style="position:absolute;top:0;right:0;padding:6px 12px;" onclick="US3.startTour()">🧭 Take the tour</button>'+
-      '<div class="us3w-h" style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:.04em;">US3 OPERATIONS</div>'+
+      '<div class="us3w-h" style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:.04em;">US3 OPERATIONS'+help('Your morning command view. Pulls live from Airtable, Fulcrum and the scan log to answer one question fast: what needs attention today? Studies ending, overdue returns, upcoming jobs and data-hygiene flags are all surfaced below.')+'</div>'+
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:12px;letter-spacing:.04em;">live · Airtable + Fulcrum + scan log</div>'+
     '</div>'+
     // ─── 2. Centered stat line (no bordered box) ───
     statLine+
     // ─── 3. Fleet Availability section header (centered) ───
-    '<div class="us3w-h" style="text-align:center;font-size:22px;color:var(--text);margin:20px 0 10px;">Fleet Availability</div>'+
+    '<div class="us3w-h" style="text-align:center;font-size:22px;color:var(--text);margin:20px 0 10px;">Fleet Availability'+help('How much hardware is actually free to deploy right now, by product. This is the number to trust before promising equipment to a new job — it nets out what is already reserved, deployed or in maintenance.')+'</div>'+
     // ─── 4. Company-wide container — its OWN standalone container, centered. ───
     // #avail-stats-panel kept (renderMCPanel/renderStats reference it) but stays empty.
     '<div id="avail-stats-panel" style="display:none;"></div>'+
     '<div id="avFleetCompany" style="max-width:760px;margin:0 auto 16px;"></div>'+
     // ─── 5. Houston Level Project bar + the 6 collapsible dropdown panels ───
     '<div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 16px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:6px;flex-wrap:wrap;gap:8px;">'+
-      '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
+      '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project'+help('Houston is our biggest standing deployment, so it gets its own line on the dashboard. This bar links straight into the Houston portal; the full fleet-health breakdown lives on the Houston tab.')+'</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
     '</div>'+
     // ─── Collapsible detail panels (all collapsed by default) ───
@@ -7069,15 +7074,15 @@ function paintShop(ops){
   inner.innerHTML=
     '<div class="us3dash-wrap" style="padding:14px 18px 60px;">'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px;">'+
-      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Ship Station</div>'+
+      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">🏭 Ship Station'+help('The shipping desk: look up a device, build the day\'s shipment email, run the packing checklist, and watch what is going out and coming back in real time. Everything that crosses the dock gets logged here.')+'</div>'+
       '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">'+(ops.scans_total||0)+' scans · '+(ops.devices_seen||0)+' devices · live from the door scanners</div>'+
       '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     // device lookup
-    '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device</div>'+
+    '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">🔎 Look up a device'+help('Type or scan a device ID to pull its full history — where it has been, its current state, and which job it is tied to. Use it to confirm a unit before you ship it or to chase down where something went.')+'</div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;"><input id="shopSearchInput" class="us3b2-input" style="flex:1;min-width:220px;" placeholder="Type or scan a device ID → see full history &amp; notes" autocomplete="off" onkeydown="if(event.key===\'Enter\')US3.search()"><button class="us3b2-btn" onclick="US3.search()">Open device ›</button></div></div>'+
     // shipment composer
     '<div class="us3dash-grid" style="margin-top:14px;">'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📧 Build today\'s shipment email</div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📧 Build today\'s shipment email'+help('Auto-drafts the email to whoever is receiving today\'s shipment, listing exactly what is going out. Saves retyping the manifest and makes sure the receiving end knows what to expect.')+'</div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">'+
           '<input id="shipTo" class="us3b2-input" placeholder="To (recipient)" onkeyup="US3.shipGen()">'+
           '<input id="shipDate" class="us3b2-input" type="date" value="'+today+'" onchange="US3.shipGen()"></div>'+
@@ -7086,17 +7091,17 @@ function paintShop(ops){
         '<textarea id="shipIds" class="us3b2-input" style="height:120px;font-family:monospace;margin-top:6px;" placeholder="4941\n4962\n…" onkeyup="US3.shipGen()"></textarea>'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><label class="us3b2-label" style="margin:0;">Email text</label><button id="shipCopyBtn" class="us3b2-btn green" style="padding:5px 14px;font-size:12px;" onclick="US3.shipCopy()">Copy for email</button></div>'+
         '<textarea id="shipOutput" class="us3b2-input" style="height:130px;font-family:monospace;margin-top:6px;" readonly></textarea></div>'+
-      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📦 Packing checklist <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">eyeball each into the box</span></div>'+
+      '<div class="us3w-card"><div class="us3w-h" style="font-size:15px;">📦 Packing checklist'+help('Tick off each item as it physically goes in the box. The point is a deliberate pause to catch a missing sensor or cable before the box is sealed, not after the customer opens it.')+' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">eyeball each into the box</span></div>'+
         '<div id="shipChecklist" style="margin-top:8px;"><div class="us3w-empty">Add device IDs to build the checklist.</div></div></div>'+
     '</div>'+
     // station overview
-    '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin:20px 0 10px;">Stations</div>'+
+    '<div class="us3w-h" style="font-size:18px;color:var(--text,#e8edf4);margin:20px 0 10px;">Stations'+help('The live dock feed split three ways: what just shipped out, what just came back in, and a combined activity stream across every station. Your real-time pulse on equipment movement without walking the floor.')+'</div>'+
     '<div>'+tiles+'</div>'+
     '<div class="us3dash-grid" style="margin-top:14px;">'+
-      panel('🚪➡ Out the door',(outDoor.length?outDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent ships')+
-      panel('➡🚪 In the door',(inDoor.length?inDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent receives')+
+      panel('🚪➡ Out the door',(outDoor.length?outDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent ships','The last devices scanned as shipped out. If something here is wrong, catch it now — these are on a truck or about to be.')+
+      panel('➡🚪 In the door',(inDoor.length?inDoor.map(scanRow).join(''):'<div class="us3w-empty">Nothing recent.</div>'),'recent receives','The last devices scanned back in. Confirms returns actually hit the dock so a unit does not sit "out" forever in the system.')+
     '</div>'+
-    panel('📡 Live activity feed',(recent.length?recent.slice(0,30).map(scanRow).join(''):'<div class="us3w-empty">No scans.</div>'),'newest first, all stations')+
+    panel('📡 Live activity feed',(recent.length?recent.slice(0,30).map(scanRow).join(''):'<div class="us3w-empty">No scans.</div>'),'newest first, all stations','Every scan across every station, newest first. The single stream to watch when you want to know what is happening on the floor right now.')+
     '</div>';
   shipGen();
 }
