@@ -6588,6 +6588,9 @@ function injectCSS(){
   '.us3help:hover .tip,.us3help:focus .tip,.us3help.on .tip{display:block;}'+
   '.us3help.right .tip{left:auto;right:-6px;transform:none;}'+
   '.us3help.right .tip:before{left:auto;right:9px;transform:rotate(45deg);}'+
+  /* MOBILE: a "?" near the screen edge made the centered absolute tooltip clip off-screen. Pin it as a */
+  /* viewport-centered card (fixed, near-full-width, capped) so it can never be cut off; drop the arrow. */
+  '@media(max-width:768px){.us3help .tip,.us3help.right .tip{position:fixed;left:50%;right:auto;top:auto;bottom:18px;transform:translateX(-50%);width:calc(100vw - 24px);max-width:420px;z-index:9000;}.us3help .tip:before,.us3help.right .tip:before{display:none;}}'+
   // transparent click-catcher (closes the tour). Dimming is done by the spotlight shadow
   // when a target exists, or by .us3tour-back.dim for centered (no-target) steps.
   '.us3tour-back{position:fixed;inset:0;background:transparent;z-index:5000;display:none;}'+
