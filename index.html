@@ -6054,6 +6054,14 @@ function renderCount(){
     '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:13px;margin-bottom:14px;">Available kits per office — computed from the scarcest part. Edit component counts below.</div>'+
     // ─── Dense product × office availability matrix (top, primary) ───
     '<div id="invMatrix">'+invMatrixHtml()+'</div>'+
+    // ─── Scanned Devices (on the shelf) — live device-level inventory from warehouse_devices ───
+    '<div class="us3b2-card" style="margin-top:18px;">'+
+      '<div class="us3b2-h" style="font-size:16px;margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em;">📡 Scanned Devices (on the shelf)'+
+        houstonHelp('Your actual scanned units, built live from green/red-tagging at the Station Scanner. 🟢 green = tested &amp; Available · 🟠 red = in Maintenance. These are individual devices YOU scanned — separate from the kit-parts counts above (which are component quantities, not scanned serials). A ⚠ tag means a Fulcrum job still lists that unit deployed — chase it in Airtable.')+
+      '</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:12px;margin-bottom:10px;">Live from the green/red-tag scan ledger. Click any device to open its detail.</div>'+
+      '<div id="scannedDevicesCard"><div class="us3b2-empty">Loading scanned devices…</div></div>'+
+    '</div>'+
     // ─── Per-office component editor (secondary, collapsible — keeps the editable detail) ───
     '<details style="margin-top:16px;" open><summary style="cursor:pointer;font-family:Oswald,sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 0;">▾ Component counts &amp; editing (per office)</summary>'+
       '<div class="us3b2-card" style="margin-top:6px;">'+
@@ -6072,6 +6080,7 @@ function renderCount(){
   '</div>';
   countRenderBody();
   invLoadAndRender(countState.office);
+  renderScannedDevices();
 }
 function countSetOffice(id){countState.office=id;countSave();renderCount();}
 function countRenderBody(){
@@ -6118,6 +6127,76 @@ function countSaveSnapshot(){
   try{localStorage.setItem('us3_count_log',JSON.stringify(log));}catch(e){}
   alert('Count snapshot saved for '+office.label+'.');
 }
+
+// ═══ SCANNED DEVICES (on the shelf) ═══
+// Live device-level inventory built from the green/red-tag SCAN ledger
+// (warehouse_devices). Distinct from the kit-parts matrix above (inventory_components):
+// these are the owner's actual scanned units. green = tested/Available, red = Maintenance.
+// Grouped by product; each device id opens the device detail; a ⚠ tag flags any unit
+// that a Fulcrum job (device_locations) still lists deployed (reuses loadDeviceConflicts).
+function renderScannedDevices(){
+  var host=document.getElementById('scannedDevicesCard');if(!host)return;
+  if(typeof supa==='undefined'||!supa){host.innerHTML='<div class="us3b2-empty">Offline — scanned devices need Supabase.</div>';return;}
+  host.innerHTML='<div class="us3b2-empty">Loading scanned devices…</div>';
+  Promise.all([
+    supa.from('warehouse_devices').select('*').order('updated_at',{ascending:false}),
+    (typeof loadDeviceConflicts==='function'?loadDeviceConflicts():Promise.resolve([])).catch(function(){return [];})
+  ]).then(function(r){
+    var rows=(r[0]&&r[0].data)||[];
+    var conflicts=r[1]||[];
+    // device_id -> conflict jobs[] (units the warehouse holds yet a job still lists deployed)
+    var confMap={};(conflicts||[]).forEach(function(c){confMap[String(c.device_id)]={jobs:c.jobs||[]};});
+    // bucket: product -> { green:[rows], red:[rows] }; unknown/other product → 'unknown'
+    var prodOrder=Object.keys(US3_KIT_LABELS).concat(['unknown']);
+    var grp={};prodOrder.forEach(function(p){grp[p]={green:[],red:[]};});
+    var totG=0,totR=0;
+    rows.forEach(function(d){
+      var p=d.product&&grp[d.product]?d.product:'unknown';
+      if(d.status==='green'){grp[p].green.push(d);totG++;}
+      else if(d.status==='red'){grp[p].red.push(d);totR++;}
+    });
+    if(!totG&&!totR){
+      host.innerHTML='<div class="us3b2-empty" style="text-align:center;padding:24px 12px;">'+
+        '<div style="font-size:30px;margin-bottom:6px;">📡</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:14px;color:var(--text);margin-bottom:4px;">No devices scanned in yet</div>'+
+        '<div style="font-family:Rajdhani,sans-serif;font-size:13px;color:var(--muted);max-width:420px;margin:0 auto;">Green/red-tag devices at the Station Scanner to build your shelf inventory here.</div>'+
+      '</div>';
+      return;
+    }
+    function chip(d,kind){
+      var conf=confMap[String(d.device_id)];
+      var warn=conf?(' <span title="Also listed deployed on '+us3esc((conf.jobs||[]).join(', ')||'a job')+' — chase it in Airtable" style="font-family:Rajdhani,sans-serif;font-size:11px;color:#e8a020;white-space:nowrap;">⚠ deployed on '+us3esc((conf.jobs[0]||'a job'))+(conf.jobs.length>1?(' +'+(conf.jobs.length-1)):'')+'</span>'):'';
+      var col=kind==='green'?'#00c49a':'#ED1C24';
+      return '<span class="us3w-link" onclick="US3.openDevice(\''+js(d.device_id)+'\')" '+
+        'style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--borderb);border-left:3px solid '+col+';border-radius:5px;background:var(--panel-bg);font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--text);cursor:pointer;margin:3px 6px 3px 0;">'+
+        '<b>'+esc(d.device_id)+'</b>'+warn+'</span>';
+    }
+    var cards=prodOrder.filter(function(p){return grp[p].green.length||grp[p].red.length;}).map(function(p){
+      var g=grp[p],col=US3_PROD_COLORS[p]||'var(--text)';
+      var logo=(typeof prodLogoHtml==='function'&&p!=='unknown')?prodLogoHtml(p,18):'';
+      var greenSec=g.green.length?(
+        '<div style="margin-top:8px;"><div style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#00c49a;margin-bottom:4px;">🟢 Available <b>'+g.green.length+'</b></div>'+
+        '<div style="display:flex;flex-wrap:wrap;">'+g.green.map(function(d){return chip(d,'green');}).join('')+'</div></div>'):'';
+      var redSec=g.red.length?(
+        '<div style="margin-top:8px;"><div style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#e8a020;margin-bottom:4px;">🟠 Maintenance <b>'+g.red.length+'</b></div>'+
+        '<div style="display:flex;flex-wrap:wrap;">'+g.red.map(function(d){return chip(d,'red');}).join('')+'</div></div>'):'';
+      return '<div style="break-inside:avoid;background:var(--panel-bg);border:1px solid var(--borderb);border-left:3px solid '+col+';border-radius:6px;padding:10px 14px;margin-bottom:12px;">'+
+        '<div style="display:flex;align-items:center;gap:8px;">'+(logo||'')+
+          '<span style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;color:'+col+';text-transform:uppercase;letter-spacing:.04em;">'+us3esc(US3_KIT_LABELS[p]||US3_PROD_LABELS[p]||p)+'</span>'+
+          '<span style="margin-left:auto;font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">'+
+            (g.green.length?('🟢 '+g.green.length):'')+(g.green.length&&g.red.length?' · ':'')+(g.red.length?('🟠 '+g.red.length):'')+'</span>'+
+        '</div>'+greenSec+redSec+
+      '</div>';
+    }).join('');
+    host.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'+
+        '<span style="font-family:Rajdhani,sans-serif;font-size:13px;color:var(--muted);">'+
+          '<b style="color:#00c49a;">'+totG+'</b> available · <b style="color:#e8a020;">'+totR+'</b> in maintenance — your scanned units</span>'+
+        '<button class="us3b2-btn alt" style="margin-left:auto;padding:5px 11px;font-size:11px;" onclick="renderScannedDevices()">↻ Refresh</button>'+
+      '</div>'+
+      '<div style="column-gap:14px;">'+cards+'</div>';
+  },function(){host.innerHTML='<div class="us3b2-warn">Could not load scanned devices.</div>';});
+}
+window.renderScannedDevices=renderScannedDevices;
 
 // ═══ PHASE 4 — DEVICE MAP ═══
 // Data layer auto-switches: device_locations when populated (Fulcrum), else sites fallback.
@@ -7666,7 +7745,11 @@ function paintDashboard(ops,devConflicts){
       'Cricket <b style="color:var(--text);">'+by.cric+'</b> · '+
       'Hach <b style="color:var(--text);">'+by.hach+'</b> · '+
       'Rain Gauge <b style="color:var(--text);">'+by.rg+'</b>'+
-    '</div>';
+    '</div>'+
+    // Scanned shelf units (warehouse_devices): a clearly-labeled SEPARATE line so the
+    // owner's green/red-tagged serials are visible on the dashboard without mixing into
+    // the computed kit math above. Filled live by paintScannedSummary().
+    '<div id="dashScannedSummary" style="text-align:center;margin:0 0 4px;font-size:13px;'+statGray+'"></div>';
 
   var endingHtml=ending.length?ending.map(function(j){var d=daysLeft(j);var col=d<=7?'#ED1C24':d<=21?'#e8a020':'#2ecc71';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+col+';">'+d+'d left</span>');}).join(''):'<div class="us3w-empty">No active studies with an end date.</div>';
   var overdueHtml=overdue.length?overdue.slice().sort(function(a,b){return daysLeft(b)-daysLeft(a);}).map(function(j){var d=daysLeft(j);var ad=Math.abs(d);var bg=ad<=7?'#e8a020':'#ED1C24';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+bg+';">'+ad+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
@@ -7748,6 +7831,24 @@ function paintDashboard(ops,devConflicts){
     '</div>';// /.dash-inner
   if(typeof renderAvail==='function')renderAvail();
   loadEquipmentRequests();
+  paintScannedSummary();
+}
+// Dashboard scanned-units line. Reads warehouse_devices green/red counts and shows them
+// as a SEPARATE labeled line (clickable → Inventory ▸ Scanned Devices). Maintenance also
+// already feeds the Fleet Availability "Maint." column via liveStock.maint; this line just
+// surfaces the scanned shelf inventory at a glance without touching the kit math.
+function paintScannedSummary(){
+  var el=document.getElementById('dashScannedSummary');if(!el)return;
+  if(typeof supa==='undefined'||!supa)return;
+  supa.from('warehouse_devices').select('status').then(function(r){
+    var rows=(r&&r.data)||[];var g=0,red=0;
+    rows.forEach(function(d){if(d.status==='green')g++;else if(d.status==='red')red++;});
+    var el2=document.getElementById('dashScannedSummary');if(!el2)return;
+    if(!g&&!red){el2.innerHTML='';return;}
+    el2.innerHTML='<span style="cursor:pointer;" onclick="US3.go(\'count\')">Scanned shelf units · '+
+      '🟢 <b style="color:#00c49a;">'+g+'</b> available · '+
+      '🟠 <b style="color:#e8a020;">'+red+'</b> maintenance '+help('Individual devices you green/red-tagged at the Station Scanner (warehouse_devices). Separate from computed kit availability above. See Inventory ▸ Scanned Devices.')+'</span>';
+  },function(){});
 }
 
 // ═══ EQUIPMENT REQUESTS — live warehouse notification ═══
