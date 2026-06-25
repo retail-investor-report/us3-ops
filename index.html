@@ -3465,8 +3465,14 @@ function renderFleetOverview(){
     offices.forEach(function(o){avail+=liveCount(o,p.id,'available');reserved+=liveCount(o,p.id,'reserved');maint+=liveCount(o,p.id,'maintenance');});
     var total=avail+reserved+deployed+maint;
     var activeJobs=getActiveJobsForProduct(p.id).length;
+    // Restore the brand logo next to each product name (same PRODUCT_LOGOS assets
+    // used by the Fleet Map / Projects cards). Falls back to text-only if no logo.
+    var logo=(typeof prodLogoHtml==='function')?prodLogoHtml(p.id,20):'';
+    var nameCell=logo
+      ? '<span style="display:inline-flex;align-items:center;gap:8px;">'+logo+'<span>'+p.label+'</span></span>'
+      : p.label;
     return '<tr>'+
-      '<td>'+p.label+'</td>'+
+      '<td>'+nameCell+'</td>'+
       '<td>'+total+'</td>'+
       '<td class="available">'+avail+'</td>'+
       '<td class="reserved">'+reserved+'</td>'+
@@ -6453,6 +6459,12 @@ function injectCSS(){
   '.us3mcrow .n{font-family:Oswald,sans-serif;font-weight:700;font-size:14px;color:#fff;}'+
   '.us3mcrow .s{font-size:12px;color:#9fb0c4;}'+
   '.us3dash-wrap{height:100%;overflow-y:auto;padding:20px 26px 60px;box-sizing:border-box;}'+
+  /* Centered, max-width content column so the dashboard reads like a normal site */
+  /* (comfortable gutters on both ends instead of full-bleed edge-to-edge). */
+  '#page-mc .dash-inner{max-width:1200px;margin:0 auto;padding:4px clamp(8px,3vw,32px) 0;box-sizing:border-box;}'+
+  /* Dashboard BY OFFICE cards: flex-basis so they sit readable + centered (the */
+  /* #avGrid inline style flips this grid to a centered flex row). */
+  '#page-mc #avGrid .av-card{flex:0 1 300px;max-width:340px;}'+
   '.us3kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px;}'+
   '.us3kpi{background:var(--panel-bg,#121826);border:1px solid var(--borderb,#243044);border-radius:14px;padding:16px 18px;cursor:pointer;transition:.12s;}'+
   '.us3kpi:hover{border-color:#0071BC;transform:translateY(-2px);}'+
@@ -6885,6 +6897,8 @@ function paintDashboard(ops){
     (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>');
 
   document.getElementById('dashWrap').innerHTML=
+    // ─── 0. Centered max-width content column (normal-site margins, not full-bleed) ───
+    '<div class="dash-inner">'+
     // ─── 1. Centered title (RIR-style header) with unobtrusive top-right tour btn ───
     '<div style="position:relative;text-align:center;margin-bottom:2px;">'+
       '<button class="us3b2-btn alt" style="position:absolute;top:0;right:0;padding:6px 12px;" onclick="US3.startTour()">🧭 Take the tour</button>'+
@@ -6915,7 +6929,10 @@ function paintDashboard(ops){
     '</div>'+
     // ─── 6. The 3 office availability containers (El Cajon / Downey / Puerto Rico) — LAST ───
     '<div style="text-align:center;font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:22px 0 10px;">By Office</div>'+
-    '<div class="av-grid" id="avGrid"></div>';
+    // Office cards centered under the BY OFFICE header (flex + justify-center), not
+    // left-offset. Cards keep a sensible width so they sit symmetrical in the column.
+    '<div class="av-grid" id="avGrid" style="display:flex;justify-content:center;flex-wrap:wrap;gap:12px;"></div>'+
+    '</div>';// /.dash-inner
   if(typeof renderAvail==='function')renderAvail();
 }
 
