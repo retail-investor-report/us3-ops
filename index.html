@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>US3 Operations Platform</title>
+<title>US3 Equipment</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap');
 :root{
@@ -558,7 +558,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <div id="loginOverlay">
   <div class="login-card">
     <img id="loginLogo" src="" alt="US3 Logo">
-    <h1>US3 Operations Platform</h1>
+    <h1>US3 Equipment</h1>
     <div class="login-sub">Sign in with your US Cubed Google account</div>
     <button class="login-btn" id="loginGoogleBtn" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#202124;border:1px solid #dadce0;">
       <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
@@ -577,9 +577,9 @@ window.addEventListener('DOMContentLoaded',function(){
     <div style="text-align:center;margin-bottom:18px;"><img id="guideLogo" src="" alt="US3" style="height:36px;"></div>
     <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#fff;text-align:center;margin-bottom:20px;">Welcome to US3 Ops</div>
     <div class="guide-section"><h4>&#x1F4E6; Check What's Available</h4><p><span class="ga">&rarr;</span> <b>Availability</b> tab &mdash; see all kit counts by office<br><span class="ga">&rarr;</span> <b>Check Availability</b> &mdash; pick product, quantity &amp; dates</p></div>
-    <div class="guide-section"><h4>&#x1F4C5; Request Equipment</h4><p><span class="ga">&rarr;</span> <b>Schedule</b> tab &rarr; <b>Add Reservation</b><br><span class="ga">&rarr;</span> Fill in job details &rarr; Submit<br><span class="ga">&rarr;</span> Request goes to admin for approval (shows as &#x1F7E0; Pending)</p></div>
+    <div class="guide-section"><h4>&#x1F4C5; Request Equipment</h4><p><span class="ga">&rarr;</span> <b>Reservations</b> tab &rarr; <b>Add Reservation</b><br><span class="ga">&rarr;</span> Fill in job details &rarr; Submit<br><span class="ga">&rarr;</span> Request goes to admin for approval (shows as &#x1F7E0; Pending)</p></div>
     <div class="guide-section"><h4>&#x1F527; Log a Failed Device</h4><p><span class="ga">&rarr;</span> <b>Device Returns</b> tab &rarr; fill in Device ID, product &amp; failure type<br><span class="ga">&rarr;</span> Submits automatically &mdash; admin gets notified</p></div>
-    <div class="guide-section"><h4>&#x1F5FA;&#xFE0F; Quick Navigation</h4><p>&#x1F5FA; <b>Mission Control</b> &mdash; fleet overview<br>&#x1F4E6; <b>Availability</b> &mdash; warehouse counts<br>&#x1F6F0; <b>Fleet Map</b> &mdash; every unit &times; 52 weeks<br>&#x1F4C5; <b>Schedule</b> &mdash; active &amp; upcoming jobs<br>&#x1F4CA; <b>Decommission</b> &mdash; retired equipment</p></div>
+    <div class="guide-section"><h4>&#x1F5FA;&#xFE0F; Quick Navigation</h4><p>&#x1F5FA; <b>Mission Control</b> &mdash; fleet overview<br>&#x1F4E6; <b>Availability</b> &mdash; warehouse counts<br>&#x1F6F0; <b>Fleet Map</b> &mdash; every unit &times; 52 weeks<br>&#x1F4C5; <b>Reservations</b> &mdash; active &amp; upcoming jobs<br>&#x1F4CA; <b>Decommission</b> &mdash; retired equipment</p></div>
     <div class="guide-section"><h4>&#x2753; Need Help?</h4><p><span class="ga">&rarr;</span> Hit the <b>?</b> button in the top bar anytime<br><span class="ga">&rarr;</span> Send feedback or report issues from there</p></div>
     <button onclick="dismissWelcomeGuide()" style="width:100%;padding:12px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#0071BC;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-top:16px;transition:background .2s;">Got It</button>
   </div>
@@ -591,8 +591,8 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="fleet" onclick="sw('fleet',this)"><span class="ti">🛰</span>Fleet Map</div>
     <div class="ntab" data-page="assetmap" onclick="sw('assetmap',this)"><span class="ti">🔵</span>Asset Map</div>
     <div class="ntab" data-page="houston" onclick="sw('houston',this)"><span class="ti">🛢</span>Houston</div>
-    <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
-    <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
+    <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Reservations<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
+    <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Equipment by Job</div>
     <div class="ntab" data-page="devmap" onclick="sw('devmap',this)"><span class="ti">📍</span>Device Map</div>
     <div class="ntab" data-page="tech" onclick="swTech(this)"><span class="ti">🔧</span>Technicians Area<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <!-- Technicians Area sub-pages: hidden from top-level nav, reachable via the sub-tab bar (see #techSubBar). Kept in the DOM so perms/deep-links/sw() lookups still resolve them. Product 3D (viewer) is now one of them. -->
@@ -694,7 +694,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <!-- SCHEDULE -->
 <div class="page" id="page-sched">
   <div class="sch-toolbar">
-    <div class="sch-title">Schedule<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">Reservation calendar for kits and devices. Each bar is a hold on a piece of equipment for a job over a date range — so you can see what's spoken for before you promise it. Use Prev/Next to move weeks; "+ Add Reservation" to book a hold.</span></span></div>
+    <div class="sch-title">Reservations<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">Reservation calendar for kits and devices. Each bar is a hold on a piece of equipment for a job over a date range — so you can see what's spoken for before you promise it. Use Prev/Next to move weeks; "+ Add Reservation" to book a hold.</span></span></div>
     <button class="sch-nav-btn" onclick="schNav(-1)">&larr; Prev</button>
     <div class="sch-period" id="schPeriod"></div>
     <button class="sch-nav-btn" onclick="schNav(1)">Next &rarr;</button>
@@ -706,7 +706,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 <!-- PROJECTS -->
 <div class="page" id="page-projects">
-  <div class="pj-inner"><div class="pj-title">Projects<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">One tile per active project. Each is a portal into that job's sites, devices and equipment. Click a tile to open the project page; this is the fastest way to jump straight to the work for a specific customer or site.</span></span></div><div class="pj-sub">Quick access to all project portals</div><div class="pj-grid" id="pjGrid"></div></div>
+  <div class="pj-inner"><div class="pj-title">Equipment by Job<span class="us3help" tabindex="0" onclick="us3HelpTap(event,this)">?<span class="tip">One tile per active project. Each is a portal into that job's sites, devices and equipment. Click a tile to open the project page; this is the fastest way to jump straight to the work for a specific customer or site.</span></span></div><div class="pj-sub">Quick access to all project portals</div><div class="pj-grid" id="pjGrid"></div></div>
 </div>
 
 <!-- PARTS -->
@@ -7313,12 +7313,12 @@ var TOUR_PAGES={
 var TOUR_ORDER=['mc','fleet','assetmap','houston','sched','projects','devmap','scan','kit','count','shop','parts','viewer','decomm'];
 
 /* Friendly labels for the chapter line shown during the grand tour. */
-var TOUR_LABELS={mc:'Dashboard',fleet:'Fleet Map',assetmap:'Asset Map',houston:'Houston',sched:'Schedule',projects:'Projects',devmap:'Device Map',scan:'Station Scanner',kit:'Build Kit',count:'Inventory',shop:'Ship Station',parts:'Red Tag',viewer:'Product 3D',decomm:'Decommission'};
+var TOUR_LABELS={mc:'Dashboard',fleet:'Fleet Map',assetmap:'Asset Map',houston:'Houston',sched:'Reservations',projects:'Equipment by Job',devmap:'Device Map',scan:'Station Scanner',kit:'Build Kit',count:'Inventory',shop:'Ship Station',parts:'Red Tag',viewer:'Product 3D',decomm:'Decommission'};
 
 /* Build the flat grand-tour step list: intro → each page's steps (with a
    tab-switch on the first step of each page) → outro. */
 function buildGrandTour(){
-  var steps=[{center:true,h:'Welcome to US3 Operations',p:'This is your live operations hub — Airtable jobs, Fulcrum field devices and the warehouse scan log, all in one place, none of it typed by hand. I’ll walk you through every tab. Use Next / Back, or Skip to bail out any time.'}];
+  var steps=[{center:true,h:'Welcome to US3 Equipment',p:'This is your live equipment layer — fleet availability, equipment requests, Fulcrum field devices and the warehouse scan log, all in one place, none of it typed by hand. I’ll walk you through every tab. Use Next / Back, or Skip to bail out any time.'}];
   TOUR_ORDER.forEach(function(pg){
     var arr=TOUR_PAGES[pg]||[];
     arr.forEach(function(st,i){
@@ -7506,9 +7506,9 @@ function paintDashboard(ops){
   // (var(--text)). Never the old hardcoded near-white #8a97a8 that vanished on white.
   var statGray='color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:600;';
   var statNum='color:var(--text);font-family:Oswald,sans-serif;font-weight:700;';
+  // Warehouse view: lead with EQUIPMENT metrics, not Airtable's active-jobs count
+  // (that's Airtable's number). Devices deployed + per-type breakdown only.
   var statLine='<div style="text-align:center;margin:6px 0 4px;font-size:18px;line-height:1.5;">'+
-    '<span style="'+statNum+'">'+inGroundJobs.length+'</span> <span style="'+statGray+'">active jobs</span>'+
-    '<span style="'+statGray+'opacity:.5;margin:0 10px;">·</span>'+
     '<span style="'+statNum+'">'+(LV.deployedTotal||0)+'</span> <span style="'+statGray+'">devices deployed</span>'+
     '</div>'+
     // Deployed-by-type detail, dark + readable (no near-white on white).
@@ -7538,8 +7538,8 @@ function paintDashboard(ops){
     // ─── 1. Centered title (RIR-style header) with unobtrusive top-right tour btn ───
     '<div style="position:relative;text-align:center;margin-bottom:2px;">'+
       '<button id="dashTourBtn" class="us3b2-btn alt" style="position:absolute;top:0;right:0;padding:6px 12px;" onclick="US3.startTour()">🧭 Take the tour</button>'+
-      '<div class="us3w-h" style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:.04em;">US3 OPERATIONS'+help('Your morning command view. Pulls live from Airtable, Fulcrum and the scan log to answer one question fast: what needs attention today? Studies ending, overdue returns, upcoming jobs and data-hygiene flags are all surfaced below.')+'</div>'+
-      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:12px;letter-spacing:.04em;">live · Airtable + Fulcrum + scan log</div>'+
+      '<div class="us3w-h" style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:.04em;">US3 EQUIPMENT'+help('The warehouse view. What hardware is free to deploy right now, which equipment requests have come in, and what needs attention before it ships — fleet availability, device lifecycle and data-hygiene flags, all live.')+'</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:12px;letter-spacing:.04em;">Availability · Fleet · Device lifecycle</div>'+
     '</div>'+
     // ─── 2. Centered stat line (no bordered box) ───
     statLine+
@@ -7549,6 +7549,10 @@ function paintDashboard(ops){
     // #avail-stats-panel kept (renderMCPanel/renderStats reference it) but stays empty.
     '<div id="avail-stats-panel" style="display:none;"></div>'+
     '<div id="avFleetCompany" style="max-width:760px;margin:0 auto 16px;"></div>'+
+    // ─── 4b. Equipment Requests — the warehouse's primary live notification. ───
+    //     Front-and-center accent card, populated by loadEquipmentRequests() (live
+    //     Supabase read). Empty state shows "✓ No new equipment requests".
+    '<div id="equipReqContainer" style="max-width:760px;margin:0 auto 20px;"></div>'+
     // ─── 5. Houston Level Project bar + the 6 collapsible dropdown panels ───
     '<div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 16px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:6px;flex-wrap:wrap;gap:8px;">'+
       '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project'+help('Houston gets its own section. This bar links to the Houston portal, and View Fleet Health opens the full fleet-health breakdown on the Houston tab.')+'</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span><a href="#houston" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Fleet Health</a></div>'+
@@ -7581,6 +7585,72 @@ function paintDashboard(ops){
     '<div class="av-grid" id="avGrid" style="display:flex;justify-content:center;flex-wrap:wrap;gap:12px;"></div>'+
     '</div>';// /.dash-inner
   if(typeof renderAvail==='function')renderAvail();
+  loadEquipmentRequests();
+}
+
+// ═══ EQUIPMENT REQUESTS — live warehouse notification ═══
+// Reads equipment_requests from Supabase (anon). Shows OPEN requests only:
+// excludes rows whose status looks closed/complete/cancelled (case-insensitive)
+// and obvious test rows (requested_by starting "test"). Renders a prominent
+// accent notification card into #equipReqContainer. Empty / offline / error
+// all fall back to the clean "✓ No new equipment requests" state — never crashes.
+function loadEquipmentRequests(){
+  var host=document.getElementById('equipReqContainer');if(!host)return;
+  function emptyCard(){
+    return '<div style="border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);padding:16px 18px;">'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+        '<span style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text);">📥 Equipment Requests</span>'+
+        help('This is where equipment requests land. When the team submits the Airtable Equipment Request form, new requests show up here to prep &amp; ship.')+
+      '</div>'+
+      '<div style="margin-top:8px;font-family:Rajdhani,sans-serif;font-size:15px;color:#2ecc71;font-weight:600;">✓ No new equipment requests</div>'+
+    '</div>';
+  }
+  if(typeof supa==='undefined'||!supa){host.innerHTML=emptyCard();return;}
+  host.innerHTML='<div style="border:1px solid var(--borderb);border-radius:8px;background:var(--panel-bg);padding:16px 18px;color:var(--muted);font-family:Rajdhani,sans-serif;">Loading equipment requests…</div>';
+  supa.from('equipment_requests').select('*').then(function(r){
+    var rows=(r&&r.data)||[];
+    var open=rows.filter(function(x){
+      var st=String(x.status||'').toLowerCase();
+      if(/(close|complete|cancel|done|fulfil|ship)/.test(st))return false;
+      var rb=String(x.requested_by||'').toLowerCase();
+      if(rb.indexOf('test')===0)return false;
+      return true;
+    });
+    if(!open.length){host.innerHTML=emptyCard();return;}
+    // Build a short kit summary from the items {kit name: qty} JSONB map.
+    function kitSummary(it){
+      if(!it||typeof it!=='object')return '';
+      var parts=Object.keys(it).map(function(k){return esc(k)+' ×'+(Number(it[k])||0);});
+      var head=parts.slice(0,3).join(' · ');
+      if(parts.length>3)head+=' · +'+(parts.length-3)+' more';
+      return head;
+    }
+    var reqRows=open.map(function(x){
+      var items=x.items;
+      if(typeof items==='string'){try{items=JSON.parse(items);}catch(e){items=null;}}
+      var total=(x.item_total!=null)?x.item_total:(items&&typeof items==='object'?Object.keys(items).reduce(function(a,k){return a+(Number(items[k])||0);},0):'—');
+      var dateNeeded=x.date_needed||x.needed_by||x.date||'';
+      var summary=kitSummary(items);
+      return '<div style="padding:10px 0;border-top:1px solid var(--borderb);">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;">'+
+          '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:15px;color:var(--text);">'+esc(x.job_number||'—')+
+            ' <span style="font-family:Rajdhani,sans-serif;font-weight:600;font-size:13px;color:var(--muted);">'+esc(x.requested_by||'')+'</span></div>'+
+          '<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);white-space:nowrap;">'+
+            (dateNeeded?('needed '+esc(fmtDate(dateNeeded))+' · '):'')+
+            '<b style="font-family:\'IBM Plex Mono\',monospace;color:var(--text);">'+total+'</b> item'+(total===1?'':'s')+'</div>'+
+        '</div>'+
+        (summary?('<div style="margin-top:4px;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--text);">'+summary+'</div>'):'')+
+      '</div>';
+    }).join('');
+    host.innerHTML='<div style="border:1px solid var(--accent);border-radius:8px;background:rgba(0,113,188,.06);padding:16px 18px;box-shadow:0 2px 10px rgba(0,113,188,.08);">'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+        '<span style="font-family:Oswald,sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">📥 Equipment Requests</span>'+
+        '<span style="min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:#fff;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;text-align:center;line-height:20px;padding:0 6px;">'+open.length+'</span>'+
+        help('This is where equipment requests land. When the team submits the Airtable Equipment Request form, new requests show up here to prep &amp; ship.')+
+      '</div>'+
+      '<div style="margin-top:6px;">'+reqRows+'</div>'+
+    '</div>';
+  },function(){host.innerHTML=emptyCard();});
 }
 
 /* ════ SHOP FLOOR cockpit ════ */
@@ -7798,8 +7868,8 @@ var PAGES = [
   {id:'fleet',    label:'Fleet Map'},
   {id:'assetmap', label:'Asset Map'},
   {id:'houston',  label:'Houston'},
-  {id:'sched',    label:'Schedule'},
-  {id:'projects', label:'Projects'},
+  {id:'sched',    label:'Reservations'},
+  {id:'projects', label:'Equipment by Job'},
   {id:'parts',    label:'Red Tag'},
   {id:'scan',     label:'Station Scanner'},
   {id:'kit',      label:'Build Kit'},
@@ -8415,7 +8485,7 @@ function us3Icon(){
 function injectManifest(){
   if(document.getElementById('us3idManifest')) return;
   var icon=us3Icon();
-  var manifest={ name:'US3 Operations', short_name:'US3 Ops', start_url:location.origin+'/', scope:'/', display:'standalone', background_color:'#0a0e1a', theme_color:'#0071BC',
+  var manifest={ name:'US3 Equipment', short_name:'US3 Equip', start_url:location.origin+'/', scope:'/', display:'standalone', background_color:'#0a0e1a', theme_color:'#0071BC',
     icons:[{src:icon,sizes:'192x192',type:'image/svg+xml',purpose:'any'},{src:icon,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}] };
   var link=document.createElement('link'); link.id='us3idManifest'; link.rel='manifest';
   link.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));
