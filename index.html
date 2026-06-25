@@ -647,13 +647,54 @@ body.sidebar-open #page-fleet,body.sidebar-open #page-assetmap,body.sidebar-open
 const SUPABASE_URL='https://hnkcqsvnsreczmlgcaay.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhua2Nxc3Zuc3JlY3ptbGdjYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzAwNzIsImV4cCI6MjA5Mzc0NjA3Mn0.HIBkg7WizjU6vhof6FEDNSG7ZyHruSCakEhzhe7kbt4';
 let supa=null;
+// ═══ AUTH GATE ═══
+// Run `cb` exactly once, only when a logged-in Supabase session exists. This keeps every DB call from
+// firing as anon before the PKCE session is restored — so a later DB lockdown (anon removed) won't break
+// boot. If a session already exists, cb runs immediately. If not, we wait for onAuthStateChange to deliver
+// one. If the user never logs in, cb never runs and nothing errors. Safe to call before `supa` is created.
+let _us3AuthQueue=[];
+let _us3AuthWired=false;
+let _us3AuthDone=false;   // becomes true once a session has appeared (cb's have been flushed at least once)
+function _us3FlushAuthQueue(){
+  _us3AuthDone=true;
+  var q=_us3AuthQueue; _us3AuthQueue=[];
+  q.forEach(function(cb){ try{ cb(); }catch(e){ console.error('us3WhenAuthed callback error',e); } });
+}
+function _us3WireAuthWatch(){
+  if(_us3AuthWired)return;
+  // supa not created yet — retry until it is, then wire the watchers once.
+  if(typeof supa==='undefined'||!supa){ setTimeout(_us3WireAuthWatch,200); return; }
+  _us3AuthWired=true;
+  // 1) If a session is already restored, flush immediately.
+  try{
+    supa.auth.getSession().then(function(r){
+      if(r&&r.data&&r.data.session&&r.data.session.user){ _us3FlushAuthQueue(); }
+    },function(){});
+  }catch(e){}
+  // 2) Otherwise flush the first time a session appears (OAuth callback / async restore).
+  try{
+    supa.auth.onAuthStateChange(function(evt,session){
+      if(session&&session.user&&!_us3AuthDone){ _us3FlushAuthQueue(); }
+    });
+  }catch(e){}
+}
+function us3WhenAuthed(cb){
+  if(typeof cb!=='function')return;
+  // Session already confirmed earlier in this page life → run now.
+  if(_us3AuthDone){ try{ cb(); }catch(e){ console.error('us3WhenAuthed callback error',e); } return; }
+  _us3AuthQueue.push(cb);
+  _us3WireAuthWatch();
+}
+window.us3WhenAuthed=us3WhenAuthed;
 window.addEventListener('DOMContentLoaded',function(){
   if(window.supabase){
     // PKCE flow: the OAuth callback returns ?code=… in the QUERY string instead of #access_token in the
     // hash, so the app's hash router (#mc, #fleet, …) can't clobber it before the session is captured.
     supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
     console.log('Supabase connected');
-    if(typeof syncFromCloud==='function')syncFromCloud();
+    // Lockdown-safe boot: NEVER fire a DB call before the logged-in session exists (anon will be blocked).
+    // Gate the boot cloud sync behind a restored session instead of calling it unconditionally.
+    us3WhenAuthed(function(){ if(typeof syncFromCloud==='function')syncFromCloud(); });
   } else {
     console.error('Supabase library failed to load');
     if(typeof setCloudStatus==='function')setCloudStatus('offline');
@@ -1747,6 +1788,19 @@ function afterCloudSync(){
 }
 
 function _doCloudSync(){
+  // Lockdown guard: never touch kvstore as anon. If there's no session (user not logged in yet),
+  // skip quietly and leave the badge idle — "offline" must mean a genuine error WHILE authenticated,
+  // not "not signed in yet".
+  if(supa&&supa.auth&&supa.auth.getSession){
+    supa.auth.getSession().then(function(r){
+      if(r&&r.data&&r.data.session&&r.data.session.user){ _runCloudSync(); }
+      // else: no session — do nothing, leave badge neutral.
+    },function(){ /* getSession failed — stay neutral, don't flash offline */ });
+    return;
+  }
+  _runCloudSync();
+}
+function _runCloudSync(){
   setCloudStatus('syncing');
   supa.from('kvstore').select('key,value').then(function(res){
     if(res.error){
@@ -8841,16 +8895,21 @@ function maybeEnableAdminFromUrl(){
 function init(){
   injectCSS();patchMap();ensureTourFab();maybeEnableAdminFromUrl();
   window.addEventListener('hashchange',onHash);
-  load().then(function(){
-    // repaint whichever live tab is currently showing
-    var active=document.querySelector('.page.active');
-    if(active){if(active.id==='page-projects'&&typeof renderProjects==='function')renderProjects();if(active.id==='page-sched')paintSched();if(active.id==='page-mc')renderDashboard();if(active.id==='page-shop')renderShop();}
-    // First visit: auto-run just the Dashboard tutorial (not the whole grand tour — too jarring).
-    // The "Take the tour" button runs the full chained grand tour on demand.
-    try{if(!localStorage.getItem('us3_tour_seen')&&active&&active.id==='page-mc')setTimeout(function(){var lo=document.getElementById('loginOverlay');if(lo&&lo.style.display!=='none'&&!lo.classList.contains('fade-out'))return;pageTour('mc');},1100);}catch(e){}
-    repaintInventory();
-    onHash();
-  },function(){});
+  // Lockdown-safe: load() reads jobs/sites/device_locations from the DB. Defer the boot load until a
+  // session exists so it never fires as anon. On-demand US3.live() calls from render functions run after
+  // login (session live), so only this boot call needs gating.
+  (window.us3WhenAuthed||function(cb){cb();})(function(){
+    load().then(function(){
+      // repaint whichever live tab is currently showing
+      var active=document.querySelector('.page.active');
+      if(active){if(active.id==='page-projects'&&typeof renderProjects==='function')renderProjects();if(active.id==='page-sched')paintSched();if(active.id==='page-mc')renderDashboard();if(active.id==='page-shop')renderShop();}
+      // First visit: auto-run just the Dashboard tutorial (not the whole grand tour — too jarring).
+      // The "Take the tour" button runs the full chained grand tour on demand.
+      try{if(!localStorage.getItem('us3_tour_seen')&&active&&active.id==='page-mc')setTimeout(function(){var lo=document.getElementById('loginOverlay');if(lo&&lo.style.display!=='none'&&!lo.classList.contains('fade-out'))return;pageTour('mc');},1100);}catch(e){}
+      repaintInventory();
+      onHash();
+    },function(){});
+  });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
@@ -9189,6 +9248,21 @@ ID.addPerson=function(){
 
 // ═══ BIND MODAL (which bench is this computer) ═══
 function openBind(fromScan){
+  // The bench list is a DB read. If stations haven't loaded yet (session still restoring, or the picker
+  // was opened before init finished), don't render an empty list — show a loader and fetch once a session
+  // exists, then re-open. This guarantees stations are only queried when authenticated (lockdown-safe).
+  if(!ID.stations||!ID.stations.length){
+    modal(fromScan?'New computer — which bench is this?':'Which bench is this computer?',
+      '<div class="us3id-empty">Loading benches…</div>','');
+    (window.us3WhenAuthed||function(cb){cb();})(function(){
+      loadStations().then(function(){
+        // Only re-open if our loader modal is still the one showing (user didn't close it).
+        var ov=document.getElementById('us3idOverlay');
+        if(ov) { closeModal(); setTimeout(function(){ openBind(fromScan); },20); }
+      });
+    });
+    return;
+  }
   var byOffice={};
   ID.stations.filter(function(s){return s.active!==false;}).forEach(function(s){ (byOffice[s.office]=byOffice[s.office]||[]).push(s); });
   var groups=Object.keys(byOffice).map(function(off){
@@ -9638,15 +9712,19 @@ function init(){
   ensureChip();
   patchSw(); patchActions(); patchLogin();
   ['click','keydown'].forEach(function(ev){ document.addEventListener(ev,bumpIdle,{passive:true}); });
-  Promise.all([loadStations(),loadWorkers()]).then(function(){
-    return loadBinding();
-  }).then(function(){
-    ID.ready=true;
-    checkSetupLink();      // ?setup=<bench> emailed link → bind this computer to that bench
-    onLoginEmail();        // resolve the already-logged-in account → worker
-    renderChip();
-    applyPagePerms();
-    log('session_start',{});
+  // Lockdown-safe: stations/workers/bindings are DB reads — defer them until a session exists so they
+  // never fire as anon. If the user isn't logged in, this simply waits; nothing errors.
+  (window.us3WhenAuthed||function(cb){cb();})(function(){
+    Promise.all([loadStations(),loadWorkers()]).then(function(){
+      return loadBinding();
+    }).then(function(){
+      ID.ready=true;
+      checkSetupLink();      // ?setup=<bench> emailed link → bind this computer to that bench
+      onLoginEmail();        // resolve the already-logged-in account → worker
+      renderChip();
+      applyPagePerms();
+      log('session_start',{});
+    });
   });
 }
 
