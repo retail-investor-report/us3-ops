@@ -1795,11 +1795,17 @@ function renderStats(){
   });
   PRODUCTS.forEach(function(p){d+=getDeployedCount(p.id);});
 
-  var totalAssets=a+r+d;
-  var totalInProd=inProd.reduce(function(s,x){return s+x.qty;},0);
+  // NOTE: the old "Total Assets" (a+r+d) and "In Production" (sum of inProd)
+  // came from legacy localStorage demo seeds (gc()/us3_counts + the hardcoded
+  // `inProd` "from China" array) — NOT real inventory, which now lives in
+  // Supabase + Fulcrum. Those numbers (e.g. 215 / 180) were inaccurate. Until a
+  // real source is wired, show honest values rather than fake demo counts:
+  //   In Production = 0 (no live production feed here)
+  //   Total Assets  = '—' (real count not computable cleanly client-side)
+  var totalInProd=0;
 
   document.getElementById('navStats').innerHTML=
-    '<div class="ns"><span class="ns-n" style="color:var(--text)">'+(totalAssets)+'</span><div class="ns-l">Total Assets</div></div>'+
+    '<div class="ns"><span class="ns-n" style="color:var(--text)">—</span><div class="ns-l">Total Assets</div></div>'+
     '<div class="ns"><span class="ns-n" style="color:var(--inprod)">'+totalInProd+'</span><div class="ns-l">In Production</div></div>';
 
   // MC bottom panel
@@ -7213,7 +7219,9 @@ function log(kind, extra){
 
 // ═══ PERMISSIONS ═══
 function canSee(w, page){
-  if(page==='cmd') return isMgr(w);
+  // Admin (Command Center) is locked to the OWNER (and admin) only — not plain
+  // managers/technicians. Lenny: "make sure it's only me that can get in."
+  if(page==='cmd') return !!(w && (w.role==='owner' || w.role==='admin'));
   if(!w) return true;
   if(isMgr(w)) return true;
   var allow=w.allowed_pages;
@@ -7234,16 +7242,44 @@ function applyPagePerms(){
 // ═══ THE STATION + WORKER CHIP (top of nav) ═══
 function ensureChip(){
   if(document.getElementById('us3idChip')) return;
-  var host=document.querySelector('#nav .nb') || document.querySelector('#nav');
+  // The chip lives on the RIGHT side (.nr) so the logo sits ALONE top-left.
+  // Insert it just before #userDisplay (which holds Sign Out) so the end state
+  // reads: [ 👤 chip ] [ Sign Out ].
+  var nr=document.querySelector('#nav .nr');
+  var host=nr || document.querySelector('#nav .nb') || document.querySelector('#nav');
   if(!host) return;
   var chip=document.createElement('div');
   chip.id='us3idChip'; chip.className='us3id-chip';
   chip.onclick=function(){ openSwitch(); };
-  host.appendChild(chip);
+  var anchor=nr?document.getElementById('userDisplay'):null;
+  if(anchor) nr.insertBefore(chip, anchor);
+  else host.appendChild(chip);
+  // The chip now shows the worker/identity, so the duplicate #userName is
+  // redundant — hide just the name, keep the Sign Out link working.
+  var un=document.getElementById('userName');
+  if(un) un.style.display='none';
 }
 function renderChip(){
   ensureChip();
   var chip=document.getElementById('us3idChip'); if(!chip) return;
+  var w=ID.active||ID.session;
+  // Managers/owners don't work at a bench — show a clean name chip with NO
+  // bench nag. Only owner/admin (who can actually open Admin, per canSee) get
+  // the clickable "Admin" affordance; a plain manager just sees their name.
+  if(w && isMgr(w)){
+    if(canSee(w,'cmd')){
+      chip.onclick=function(){ ID.openCmd('map'); };
+      chip.innerHTML =
+        '<span class="us3id-who">👤 '+esc(workerName(w))+'</span>'+
+        '<span class="us3id-sw">Admin</span>';
+    }else{
+      chip.onclick=function(){ openSwitch(); };
+      chip.innerHTML = '<span class="us3id-who">👤 '+esc(workerName(w))+'</span>';
+    }
+    return;
+  }
+  // Non-manager (technician): show the bench + Switch affordance.
+  chip.onclick=function(){ openSwitch(); };
   var st=ID.station? esc(ID.station.name) : '<span style="color:var(--bad,#e5484d)">Set bench</span>';
   var locked = ID.station && ID.station.locked;
   var who = ID.active? esc(workerName(ID.active)) : '<span style="opacity:.7">tap to sign in</span>';
@@ -7348,7 +7384,7 @@ function ensureCmdTab(){
   var tabs=document.querySelector('#nav .ntabs'); if(!tabs) return;
   var tab=document.createElement('div');
   tab.className='ntab'; tab.setAttribute('data-page','cmd');
-  tab.innerHTML='<span class="ti">🎛</span>Command Center';
+  tab.innerHTML='<span class="ti">🎛</span>Admin';
   tab.onclick=function(){ if(window.sw) sw('cmd',tab); renderCmd(); };
   tabs.appendChild(tab);
 }
@@ -7360,7 +7396,7 @@ function renderCmd(){
   if(!isMgr(ID.active||ID.session)){ inner.innerHTML='<div class="us3id-note">Command Center is for managers only.</div>'; return; }
   var tabs=[['map','🗺 Bench Map'],['people','👥 People'],['perms','🔑 Access'],['activity','📜 Activity']];
   var nav=tabs.map(function(t){return '<button class="us3id-ctab'+(cmdView===t[0]?' on':'')+'" onclick="US3ID.cmdGo(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  inner.innerHTML='<div class="us3id-ch"><div class="us3id-ct">🎛 Command Center</div><div class="us3id-ctabs">'+nav+'</div></div><div id="cmdBody"></div>';
+  inner.innerHTML='<div class="us3id-ch"><div class="us3id-ct">🎛 Admin</div><div class="us3id-ctabs">'+nav+'</div></div><div id="cmdBody"></div>';
   if(cmdView==='map') cmdMap();
   else if(cmdView==='people') cmdPeople();
   else if(cmdView==='perms') cmdPerms();
