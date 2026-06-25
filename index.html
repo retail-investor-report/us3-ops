@@ -407,6 +407,14 @@ body.light .hamburger span{background:var(--text);}
   #page-shop input,#page-shop textarea{max-width:100% !important;box-sizing:border-box !important;}
   #page-shop [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important;}
   #page-shop [style*="justify-content:space-between"]{flex-wrap:wrap;}
+  /* Mobile dashboard: drop the big header, trim moved-out stats, borderless tight display */
+  .dash-mainhead{display:none !important;}
+  .us3sum-line.hide-mobile{display:none !important;}
+  .us3sum{border:none !important;background:transparent !important;padding:0 2px 6px !important;}
+  .us3sum-row{gap:4px !important;margin-bottom:8px !important;}
+  .us3sum-line{padding:7px 0 !important;}
+  .us3sum-h{padding-top:6px !important;}
+  #page-mc .us3dash-wrap{padding-top:10px !important;}
   .sch-table{font-size:10px;}
   .modal{max-width:95vw;padding:16px;}
   .exp-box{min-width:130px;}
@@ -6512,7 +6520,7 @@ function panel(title,bodyHtml,sub,tip,opts){opts=opts||{};var open=opts.open!==f
   '<div class="us3coll-body">'+bodyHtml+'</div></div>';}
 function us3ToggleColl(h){var c=h.parentNode;while(c&&c.className&&(''+c.className).indexOf('us3coll')<0&&(''+c.className).indexOf('us3grp')<0)c=c.parentNode;if(c)c.classList.toggle('open');}
 window.us3ToggleColl=us3ToggleColl;
-function us3SumLine(lab,val,sub,tab){return '<div class="us3sum-line"'+(tab?(' onclick="US3.go(\''+tab+'\')"'):'')+'><span class="lab">'+lab+(sub?'<span class="sub2">'+sub+'</span>':'')+'</span><span class="val">'+val+'</span></div>';}
+function us3SumLine(lab,val,sub,tab,cls){return '<div class="us3sum-line '+(cls||'')+'"'+(tab?(' onclick="US3.go(\''+tab+'\')"'):'')+'><span class="lab">'+lab+(sub?'<span class="sub2">'+sub+'</span>':'')+'</span><span class="val">'+val+'</span></div>';}
 function us3GroupScans(arr,labelKey){
   var groups={},order=[];
   arr.forEach(function(s){
@@ -6587,10 +6595,10 @@ function paintDashboard(ops){
 
   var kpis='<div class="us3sum-row">'+
     '<div class="us3sum"><div class="us3sum-h">📊 Operations</div>'+
-      us3SumLine('Jobs in the ground',inGroundJobs.length,ongoingJobs.length+' ongoing','sched')+
+      us3SumLine('Active jobs',inGroundJobs.length,ongoingJobs.length+' ongoing','sched')+
       us3SumLine('Devices deployed',(LV.deployedTotal||0),'FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap')+
-      us3SumLine('Out the door',(ops.devices_out!=null?ops.devices_out:'—'),'no return scan','shop')+
-      us3SumLine('Ship / Receive (7d)',(ops.ship_7d||0)+' / '+(ops.receive_7d||0),'this week','shop')+
+      us3SumLine('Out the door',(ops.devices_out!=null?ops.devices_out:'—'),'no return scan','shop',' hide-mobile')+
+      us3SumLine('Ship / Receive (7d)',(ops.ship_7d||0)+' / '+(ops.receive_7d||0),'this week','shop',' hide-mobile')+
     '</div>'+
     '<div class="us3sum"><div class="us3sum-h">🛰 Fleet Overview <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a97a8;">· deployed by type</span></div>'+
       us3SumLine('FlexFlow',by.ff,'','fleet')+
@@ -6610,8 +6618,8 @@ function paintDashboard(ops){
 
   document.getElementById('dashWrap').innerHTML=
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
-      '<div class="us3w-h" style="font-size:28px;color:var(--text,#e8edf4);">US3 Operations</div>'+
-      '<div style="display:flex;align-items:center;gap:12px;"><div style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
+      '<div class="us3w-h dash-mainhead" style="font-size:28px;color:var(--text,#e8edf4);">US3 Operations</div>'+
+      '<div style="display:flex;align-items:center;gap:12px;"><div class="dash-mainhead" style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
         '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
     kpis+
     '<div class="us3detail-grid">'+
