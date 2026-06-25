@@ -41,7 +41,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .ntab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(26,127,232,.05);}
 /* Technicians Area sub-tab bar */
 #techSubBar{position:fixed;top:62px;left:0;right:0;z-index:250;background:var(--bg);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.18);}
-body.tech-sub #page-parts,body.tech-sub #page-scan,body.tech-sub #page-kit,body.tech-sub #page-count,body.tech-sub #page-shop{top:116px !important;}
+body.tech-sub #page-parts,body.tech-sub #page-scan,body.tech-sub #page-kit,body.tech-sub #page-count,body.tech-sub #page-shop,body.tech-sub #page-viewer{top:116px !important;}
 #techSubBar .tsb-inner{display:flex;gap:8px;padding:8px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 #techSubBar .tsb-inner::-webkit-scrollbar{display:none;}
 .tsb-tab{display:flex;align-items:center;gap:6px;padding:7px 16px;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;border:1px solid var(--border);border-radius:5px;background:transparent;transition:all .18s;user-select:none;white-space:nowrap;}
@@ -593,15 +593,15 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="houston" onclick="sw('houston',this)"><span class="ti">🛢</span>Houston</div>
     <div class="ntab" data-page="sched" onclick="sw('sched',this)"><span class="ti">📅</span>Schedule<span id="schedBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="projects" onclick="sw('projects',this)"><span class="ti">📋</span>Projects</div>
+    <div class="ntab" data-page="devmap" onclick="sw('devmap',this)"><span class="ti">📍</span>Device Map</div>
     <div class="ntab" data-page="tech" onclick="swTech(this)"><span class="ti">🔧</span>Technicians Area<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
-    <!-- Technicians Area sub-pages: hidden from top-level nav, reachable via the sub-tab bar (see #techSubBar). Kept in the DOM so perms/deep-links/sw() lookups still resolve them. -->
+    <!-- Technicians Area sub-pages: hidden from top-level nav, reachable via the sub-tab bar (see #techSubBar). Kept in the DOM so perms/deep-links/sw() lookups still resolve them. Product 3D (viewer) is now one of them. -->
     <div class="ntab" data-page="parts" onclick="sw('parts',this)" style="display:none"><span class="ti">🔧</span>Red Tag</div>
     <div class="ntab" data-page="scan" onclick="sw('scan',this)" style="display:none"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="kit" onclick="sw('kit',this)" style="display:none"><span class="ti">📦</span>Build Kit</div>
     <div class="ntab" data-page="count" onclick="sw('count',this)" style="display:none"><span class="ti">🧮</span>Inventory</div>
     <div class="ntab" data-page="shop" onclick="sw('shop',this);if(window.US3)US3.renderShop()" style="display:none"><span class="ti">🏭</span>Ship Station</div>
-    <div class="ntab" data-page="devmap" onclick="sw('devmap',this)"><span class="ti">📍</span>Device Map</div>
-    <div class="ntab" data-page="viewer" onclick="sw('viewer',this)"><span class="ti">🧊</span>Product 3D</div>
+    <div class="ntab" data-page="viewer" onclick="sw('viewer',this)" style="display:none"><span class="ti">🧊</span>Product 3D</div>
     <div class="ntab" data-page="decomm" onclick="sw('decomm',this)"><span class="ti">📊</span>Decommission</div>
   </div>
   <div class="nr"><div class="nstats" id="navStats"></div><span id="cloudSync" style="display:none;align-items:center;font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);margin-left:10px;letter-spacing:.04em;white-space:nowrap;"></span><div class="admin-btn" id="themeBtn" onclick="toggleTheme()" style="margin-left:8px;font-size:14px;padding:6px 10px;cursor:pointer;" title="Toggle Light/Dark Mode">☼</div><div id="userDisplay" style="display:none;align-items:center;gap:8px;margin-left:8px;"><span id="userName" style="font-family:'Rajdhani',sans-serif;font-size:12px;color:var(--muted);"></span><a id="signOutLink" href="#" onclick="us3SignOut();return false;" style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--accent);text-decoration:none;letter-spacing:.06em;">Sign Out</a></div></div>
@@ -642,6 +642,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="tsb-tab" data-sub="count" onclick="sw('count',document.querySelector('[data-page=&quot;count&quot;]'))"><span class="ti">🧮</span>Inventory</div>
     <div class="tsb-tab" data-sub="shop"  onclick="sw('shop',document.querySelector('[data-page=&quot;shop&quot;]'))"><span class="ti">🏭</span>Ship Station</div>
     <div class="tsb-tab" data-sub="parts" onclick="sw('parts',document.querySelector('[data-page=&quot;parts&quot;]'))"><span class="ti">🔧</span>Red Tag</div>
+    <div class="tsb-tab" data-sub="viewer" onclick="sw('viewer',document.querySelector('[data-page=&quot;viewer&quot;]'))"><span class="ti">🧊</span>Product 3D</div>
   </div>
 </div>
 
@@ -1796,7 +1797,7 @@ function sw(id,el){
   if(id!=='scan'&&window.scanStopCamera)scanStopCamera();
   if(id!=='viewer'&&window.viewer3dStop)viewer3dStop();
   // ── Technicians Area: the 5 sub-pages share one main tab ("tech") + a sub-tab bar.
-  var TECH_PAGES=['scan','kit','count','shop','parts'];
+  var TECH_PAGES=['scan','kit','count','shop','parts','viewer'];
   var inTech=TECH_PAGES.indexOf(id)>=0;
   var bar=document.getElementById('techSubBar');
   if(bar){
@@ -7408,7 +7409,7 @@ function canSee(w, page){
 }
 function applyPagePerms(){
   var w=ID.active||ID.session;
-  var TECH_PAGES=['scan','kit','count','shop','parts'];
+  var TECH_PAGES=['scan','kit','count','shop','parts','viewer'];
   document.querySelectorAll('#nav .ntab[data-page]').forEach(function(t){
     var pg=t.getAttribute('data-page');
     // The 5 Technicians Area sub-pages are never shown as top-level tabs (only via the sub-tab bar).
@@ -7421,9 +7422,11 @@ function applyPagePerms(){
     }
     t.style.display = canSee(w,pg)? '' : 'none';
   });
-  // command-center tab visibility
+  // Admin (command center) is NEVER a visible top-level tab — it's reachable
+  // ONLY via the identity chip (owner/admin only). Keep its hidden .ntab hidden
+  // for everyone; the canSee(w,'cmd') owner/admin gate lives on the chip.
   var cmd=document.querySelector('#nav .ntab[data-page="cmd"]');
-  if(cmd) cmd.style.display = canSee(w,'cmd')? '' : 'none';
+  if(cmd) cmd.style.display = 'none';
 }
 
 // ═══ THE STATION + WORKER CHIP (top of nav) ═══
@@ -7567,16 +7570,21 @@ function ensureCmdPage(){
   pages.appendChild(div);
 }
 function ensureCmdTab(){
+  // Admin is NOT a visible top-level tab — it's reachable ONLY by clicking the
+  // identity chip (owner/admin only, see renderChip → ID.openCmd). We still keep
+  // a hidden cmd .ntab in the DOM so sw('cmd',tab) has an element to mark active
+  // and #page-cmd stays reachable via the chip / deep-links.
   if(document.querySelector('#nav .ntab[data-page="cmd"]')) return;
   var tabs=document.querySelector('#nav .ntabs'); if(!tabs) return;
   var tab=document.createElement('div');
   tab.className='ntab'; tab.setAttribute('data-page','cmd');
+  tab.style.display='none';
   tab.innerHTML='<span class="ti">🎛</span>Admin';
   tab.onclick=function(){ if(window.sw) sw('cmd',tab); renderCmd(); };
   tabs.appendChild(tab);
 }
 var cmdView='map';
-ID.openCmd=function(v){ closeModal(); cmdView=v||'map'; var tab=document.querySelector('#nav .ntab[data-page="cmd"]'); if(window.sw&&tab) sw('cmd',tab); renderCmd(); };
+ID.openCmd=function(v){ closeModal(); cmdView=v||'map'; ensureCmdTab(); var tab=document.querySelector('#nav .ntab[data-page="cmd"]'); if(window.sw&&tab) sw('cmd',tab); renderCmd(); };
 function renderCmd(){
   ensureCmdPage();
   var inner=document.getElementById('cmdInner'); if(!inner) return;
