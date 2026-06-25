@@ -6603,6 +6603,11 @@ function injectCSS(){
   '.us3tour-box .step{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;color:#0071BC;text-transform:uppercase;}'+
   '.us3tour-box .chap{font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.14em;color:#8a97a8;text-transform:uppercase;margin-bottom:2px;}'+
   '.us3tour-box p{font-size:15px;line-height:1.5;color:#cdd6e2;}'+
+  '.us3tour-btn{font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;background:var(--accent,#0071BC);color:#fff;border:none;border-radius:9px;padding:10px 22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,113,188,.4);transition:filter .15s,transform .1s,box-shadow .15s;}'+
+  '.us3tour-btn:hover{filter:brightness(1.1);box-shadow:0 6px 18px rgba(0,113,188,.5);}'+
+  '.us3tour-btn:active{transform:translateY(1px);}'+
+  '.us3tour-ghost{font-family:Oswald,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:12px;background:transparent;color:#9fb0c6;border:1px solid #33455f;border-radius:9px;padding:9px 16px;cursor:pointer;transition:color .15s,border-color .15s;}'+
+  '.us3tour-ghost:hover{color:#fff;border-color:var(--accent,#0071BC);}'+
   '.us3tour-fab{position:fixed;right:18px;bottom:18px;z-index:4900;width:46px;height:46px;border-radius:50%;border:1px solid var(--accent,#0071BC);background:#0b0f17;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s;}'+
   '.us3tour-fab:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,113,188,.4);}'+
   'body.light .us3tour-fab{background:#fff;color:#0071BC;}'+
@@ -7248,7 +7253,7 @@ var TOUR_PAGES={
   mc:[
     {sel:'#dashWrap .us3w-h',h:'Dashboard = morning command view',p:'Your first stop each day. Everything here is live — pulled automatically from Airtable (jobs), Fulcrum (field devices) and the warehouse door-scan log. Nothing is typed by hand. It answers one question fast: what needs attention today?'},
     {sel:'#avFleetCompany',h:'Fleet Availability',p:'Company-wide, how much hardware is actually free to deploy right now, by product. This is the number to trust before you promise equipment to a new job — it nets out what is reserved, deployed or in maintenance.'},
-    {sel:'#houstonInfoBar',h:'Houston level project',p:'Houston is our biggest standing deployment (~3,000 Cricket), so it gets its own line. This bar links straight into the Houston portal; the full fleet-health breakdown lives on the Houston tab.'},
+    {sel:'#houstonInfoBar',h:'Houston level project',p:'Houston gets its own section. This bar links straight into the Houston portal, and View Fleet Health opens the full fleet-health breakdown on the Houston tab.'},
     {sel:'.us3detail-grid',h:'The attention panels',p:'Six collapsible panels: studies ending soon, equipment overdue for return, upcoming jobs, data-hygiene alerts, and recent shipments/returns. Every row is clickable — it jumps you to the job or device.'},
     {sel:'#avGrid',h:'By office',p:'The same availability, broken out per office — El Cajon, Downey, Puerto Rico, Houston. Use it to see where the free hardware physically is before you plan a shipment.'}
   ],
@@ -7379,13 +7384,13 @@ function renderTourStep(step){
   var chap=step.chapter?('<div class="chap">'+esc(step.chapter)+'</div>'):'';
   box.innerHTML=chap+'<div class="step">Step '+(tourI+1)+' of '+total+'</div><h2>'+esc(step.h)+'</h2><p>'+esc(step.p)+'</p>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;">'+
-      '<button class="us3w-back" onclick="US3.tour(\'end\')">Skip</button>'+
-      '<div style="display:flex;gap:8px;">'+(tourI>0?'<button class="us3w-back" onclick="US3.tour(\'prev\')">‹ Back</button>':'')+
-      '<button class="us3b2-btn" onclick="US3.tour(\''+(tourI<total-1?'next':'end')+'\')">'+(tourI<total-1?'Next ›':'Done')+'</button></div></div>';
+      '<button class="us3tour-ghost" onclick="US3.tour(\'end\')">Skip</button>'+
+      '<div style="display:flex;gap:8px;">'+(tourI>0?'<button class="us3tour-ghost" onclick="US3.tour(\'prev\')">‹ Back</button>':'')+
+      '<button class="us3tour-btn" onclick="US3.tour(\''+(tourI<total-1?'next':'end')+'\')">'+(tourI<total-1?'Next ›':'Done')+'</button></div></div>';
   var el=(!step.center&&step.sel)?document.querySelector(step.sel):null;
   if(el&&el.getClientRects().length){
     back.classList.remove('dim');           // spotlight shadow provides the dim
-    try{el.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
+    try{el.scrollIntoView({block:(window.innerWidth<=768?'start':'center'),behavior:'smooth'});}catch(e){}
     // spotlight once, then re-measure after the smooth-scroll settles so the
     // hole lands on the element's final on-screen position.
     setTimeout(function(){spotlight(el);},step.sw?60:0);
@@ -7422,6 +7427,17 @@ function positionTour(){
   var sr={left:parseFloat(spot.style.left),top:parseFloat(spot.style.top),w:parseFloat(spot.style.width),h:parseFloat(spot.style.height)};
   var below=sr.top+sr.h+14, above=sr.top-bh-14;
   var top,left;
+  if(vw<=768){
+    // MOBILE: place the card on whichever side of the target has MORE room, so it never covers the
+    // part of the target being described. (A target taller than the screen can't be fully cleared, but
+    // its nearest edge — the heading we're pointing at — stays visible above/below the card.)
+    left=Math.max(12,(vw-bw)/2);
+    var roomAbove=sr.top, roomBelow=vh-(sr.top+sr.h);
+    if(roomBelow>=roomAbove)top=Math.min(sr.top+sr.h+12,vh-bh-12); // below the target
+    else top=Math.max(12,sr.top-bh-12);                           // above the target
+    box.style.left=left+'px';box.style.top=Math.max(12,top)+'px';
+    return;
+  }
   if(below+bh<=vh-12)top=below;            // prefer below the target
   else if(above>=12)top=above;             // else above it
   else{
@@ -7535,7 +7551,7 @@ function paintDashboard(ops){
     '<div id="avFleetCompany" style="max-width:760px;margin:0 auto 16px;"></div>'+
     // ─── 5. Houston Level Project bar + the 6 collapsible dropdown panels ───
     '<div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 16px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:6px;flex-wrap:wrap;gap:8px;">'+
-      '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project'+help('Houston is our biggest standing deployment, so it gets its own line on the dashboard. This bar links straight into the Houston portal; the full fleet-health breakdown lives on the Houston tab.')+'</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project'+help('Houston gets its own section. This bar links to the Houston portal, and View Fleet Health opens the full fleet-health breakdown on the Houston tab.')+'</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span><a href="#houston" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Fleet Health</a></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
     '</div>'+
     // ─── Detail panels. Desktop = 3 fixed columns (always-open, 4-row cap + scroll,
@@ -7559,7 +7575,7 @@ function paintDashboard(ops){
       '</div>'+
     '</div>'+
     // ─── 6. The 3 office availability containers (El Cajon / Downey / Puerto Rico) — LAST ───
-    '<div style="text-align:center;font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:22px 0 10px;">By Office</div>'+
+    '<div style="text-align:center;font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:22px 0 10px;">Availability by Office</div>'+
     // Office cards centered under the BY OFFICE header (flex + justify-center), not
     // left-offset. Cards keep a sensible width so they sit symmetrical in the column.
     '<div class="av-grid" id="avGrid" style="display:flex;justify-content:center;flex-wrap:wrap;gap:12px;"></div>'+
