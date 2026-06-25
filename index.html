@@ -401,9 +401,10 @@ body.light .hamburger span{background:var(--text);}
   .dc-table{font-size:11px;}
   .dc-table th,.dc-table td{padding:6px 8px;}
   .am-toolbar,.sch-toolbar,.fm-toolbar{flex-wrap:wrap;gap:8px;}
-  #fleetCanvasRow,.fleet-zoom,.fleet-axis{display:none !important;}
-  #fleetMobileSummary{display:flex !important;flex-direction:column;}
-  #fleetFilters{flex-wrap:wrap;}
+  /* Mobile defaults to the month bars; applyFleetViewVisibility() (inline, non-!important) can override to show the grid if the user picks Device timeline. */
+  #fleetCanvasRow,.fleet-zoom,.fleet-axis,.fleet-legend{display:none;}
+  #fleetMobileSummary{display:flex;flex-direction:column;}
+  #fleetFilters,#fleetViewToggle{flex-wrap:wrap;}
   /* Ship Station: kill the sideways scroll — stack everything, constrain inputs */
   #page-shop .us3dash-wrap{padding-left:12px !important;padding-right:12px !important;overflow-x:hidden;}
   #page-shop .us3dash-grid{grid-template-columns:1fr !important;}
@@ -702,13 +703,17 @@ window.addEventListener('DOMContentLoaded',function(){
   <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg);">
     <div style="display:flex;align-items:center;gap:12px;padding:8px 22px;border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;flex-wrap:wrap;">
       <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);display:flex;align-items:center;gap:8px;">Fleet Map <span title="A planning view for sales, booking & scheduling. Every device the company owns is one row (device ID on the left); the columns run left-to-right across the next 52 weeks (time). Each dot shows whether that unit is available, deployed, reserved, or in maintenance that week — so you can see what's free to book at any time of year. A deployed (blue) device turns green once its job's end-date passes and it frees up. Stock you haven't entered yet won't appear as available." style="cursor:help;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--muted);color:var(--muted);font-size:11px;font-weight:700;flex-shrink:0;">?</span><span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· green = available · blue = deployed (turns green after job ends) · amber = maintenance</span></div>
+      <div id="fleetViewToggle" style="display:flex;margin-left:12px;border:1.5px solid var(--accent);border-radius:7px;overflow:hidden;flex-shrink:0;background:var(--card-bg);box-shadow:0 1px 4px rgba(0,0,0,.15);">
+        <div id="fleetViewMonthBtn" onclick="setFleetView('month')" style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;user-select:none;transition:all .15s;">📊 Availability by month</div>
+        <div id="fleetViewGridBtn" onclick="setFleetView('grid')" style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;user-select:none;border-left:1.5px solid var(--accent);transition:all .15s;">▦ Device timeline</div>
+      </div>
       <div id="fleetFilters" style="display:flex;gap:8px;margin-left:12px;"></div>
       <div class="fleet-zoom" style="display:flex;align-items:center;gap:6px;margin-left:16px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--card-bg);">
         <div onclick="fleetZoom(-2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">−</div>
         <div id="fleetSizeLabel" style="font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:var(--text);min-width:42px;text-align:center;"></div>
         <div onclick="fleetZoom(2)" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--text);border-radius:3px;user-select:none;transition:background .15s;" onmouseover="this.style.background='rgba(26,127,232,.15)'" onmouseout="this.style.background='transparent'">+</div>
       </div>
-      <div style="display:flex;gap:20px;margin-left:16px;align-items:center;">
+      <div class="fleet-legend" style="display:flex;gap:20px;margin-left:16px;align-items:center;">
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--available)"></div>Available</div>
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--reserved)"></div>Reserved</div>
         <div style="display:flex;align-items:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:.06em;"><div style="width:14px;height:14px;border-radius:50%;background:var(--deployed);box-shadow:0 0 8px var(--deployed)"></div>Deployed</div>
@@ -4202,6 +4207,29 @@ function renderHouston(){
 // ═══ FLEET MAP — EXPERIMENTAL ═══
 var fleetProduct='hach';
 var fleetAvailNowOn=false; // when true, show all-products "available now" snapshot instead of one product's timeline
+var fleetViewMode='month'; // 'month' = green free-by-month bars (#fleetMobileSummary); 'grid' = dot-grid timeline (#fleetCanvasRow)
+
+function setFleetView(mode){
+  fleetViewMode=(mode==='grid')?'grid':'month';
+  renderFleet();
+}
+
+// Enforce single-view visibility: show ONLY the month bars OR the dot grid, never both.
+// 'month' mode (or the all-products "Available now" snapshot) → green bars on desktop AND mobile.
+// 'grid' mode → dot grid + its axis caption, zoom control and colored legend.
+function applyFleetViewVisibility(){
+  var showGrid=(fleetViewMode==='grid')&&!fleetAvailNowOn;
+  var msum=document.getElementById('fleetMobileSummary');
+  var canvasRow=document.getElementById('fleetCanvasRow');
+  var axis=document.querySelector('#page-fleet .fleet-axis');
+  var zoom=document.querySelector('#page-fleet .fleet-zoom');
+  var legend=document.querySelector('#page-fleet .fleet-legend');
+  if(msum){msum.style.display=showGrid?'none':'flex';if(!showGrid)msum.style.flexDirection='column';}
+  if(canvasRow)canvasRow.style.display=showGrid?'flex':'none';
+  if(axis)axis.style.display=showGrid?'block':'none';
+  if(zoom)zoom.style.display=showGrid?'flex':'none';
+  if(legend)legend.style.display=showGrid?'flex':'none';
+}
 var fleetCellSize=18; // user-controlled dot size
 var _fleetAssets=[];
 var _fleetWeekStatus=[];
@@ -4292,6 +4320,21 @@ function renderFleet(){
     anBtn.className='fleet-btn-text';
     anBtn.onclick=function(){fleetAvailNowOn=true;renderFleet();};
     filDiv.appendChild(anBtn);
+  })();
+
+  // Big segmented view toggle: month bars vs device-timeline grid. "Available now" forces the month/summary surface.
+  (function(){
+    var gridActive=(fleetViewMode==='grid')&&!fleetAvailNowOn;
+    var monthBtn=document.getElementById('fleetViewMonthBtn');
+    var gridBtn=document.getElementById('fleetViewGridBtn');
+    if(monthBtn){
+      monthBtn.style.color=gridActive?'var(--muted)':'#ffffff';
+      monthBtn.style.background=gridActive?'transparent':'var(--accent)';
+    }
+    if(gridBtn){
+      gridBtn.style.color=gridActive?'#ffffff':'var(--muted)';
+      gridBtn.style.background=gridActive?'var(--accent)':'transparent';
+    }
   })();
 
   // Houston banner removed — shown on Availability tab info bar only
@@ -4456,10 +4499,7 @@ function renderFleet(){
   var canvasRow=document.getElementById('fleetCanvasRow');
   if(fleetAvailNowOn){
     var msumA=document.getElementById('fleetMobileSummary');
-    if(canvasRow)canvasRow.style.display='none';
     if(msumA){
-      msumA.style.display='flex';
-      msumA.style.flexDirection='column';
       var snapTotAvail=0,snapTotDep=0;
       var snapRows=PRODUCTS.map(function(pp){
         var av=0;
@@ -4486,14 +4526,13 @@ function renderFleet(){
         '</div>';
     }
     // skip the per-product timeline rendering below — snapshot mode is active
+    applyFleetViewVisibility();
     return;
   }
-  if(canvasRow)canvasRow.style.display='flex';
 
   // ── Mobile-friendly summary: available units of this product, by month ──
   var msum=document.getElementById('fleetMobileSummary');
   if(msum){
-    msum.style.display='';
     var months=[],seen={};
     for(var mc=0;mc<numCols;mc++){
       var dt=weeks[mc],mkey=dt.getFullYear()+'-'+dt.getMonth(),av=0;
@@ -4568,6 +4607,9 @@ function renderFleet(){
       }
     }
   },{passive:false});
+
+  // Final pass: enforce single-view visibility (month bars XOR dot grid) on desktop and mobile.
+  applyFleetViewVisibility();
 }
 
 function fmtShort(dateStr){
