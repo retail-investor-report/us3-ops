@@ -5343,6 +5343,13 @@ function us3b2InjectCSS(){
   ".us3b2-warn{background:rgba(237,28,36,.12);border:1.5px solid #ED1C24;color:var(--text);border-radius:10px;padding:12px 14px;font-weight:600;}"+
   ".us3b2-empty{text-align:center;color:var(--muted);font-size:16px;padding:34px 16px;}"+
   "#scanCamRegion{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;}"+
+  // ── Bulk scan ──
+  ".us3bulk-chips{display:flex;gap:8px;flex-wrap:wrap;}"+
+  ".us3bulk-chip{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;padding:8px 14px;border-radius:6px;border:1.5px solid var(--borderb);background:transparent;cursor:pointer;}"+
+  ".us3bulk-act{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:15px;padding:14px 18px;border-radius:6px;border:2px solid var(--borderb);background:transparent;color:var(--muted);cursor:pointer;flex:1;min-width:200px;}"+
+  ".us3bulk-act.on.grn{background:#00c49a;border-color:#00c49a;color:#06281f;}"+
+  ".us3bulk-act.on.red{background:#ED1C24;border-color:#ED1C24;color:#fff;}"+
+  ".us3bulk-warn{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;color:#e8a020;margin-left:8px;}"+
   "@media(max-width:640px){.us3b2-grid2,.us3b2-grid3{grid-template-columns:1fr;}}";
   var st=document.createElement('style');st.id='us3build2css';st.textContent=css;document.head.appendChild(st);
 }
@@ -5400,23 +5407,30 @@ function renderScan(){
       '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:14px;">Scan a code → the device record pops up automatically.</div>'+
     '</div>'+
     head+
-    (setup?'':
-    ('<div class="us3b2-card">'+
-      '<label class="us3b2-label">Scan or type Device ID</label>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
-        '<input id="scanManualInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:220px;" autocomplete="off" placeholder="Scan barcode / QR or type, then Enter" onkeydown="if(event.key===\'Enter\'){event.preventDefault();scanManualSubmit();}">'+
-        '<button class="us3b2-btn" onclick="scanManualSubmit()">Look Up</button>'+
-        '<button class="us3b2-btn alt" id="scanCamBtn" onclick="scanToggleCamera()">📷 Camera</button>'+
+    (setup?'':(
+      // ── Mode toggle: single-device look-up vs rapid bulk-into-inventory ──
+      '<div class="us3b2-card" style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;">'+
+        '<button class="us3b2-btn'+(scanBulkMode?' alt':'')+'" style="flex:1;min-width:160px;" onclick="scanSetMode(false)">📲 Single Scan</button>'+
+        '<button class="us3b2-btn'+(scanBulkMode?'':' alt')+'" style="flex:1;min-width:160px;" onclick="scanSetMode(true)">⚡ Bulk Scan'+houstonHelp('Standing at a shelf with a barcode gun? Bulk mode lets you set the product + green/red ONCE, then fire scans continuously into a list with zero clicks, and commit the whole batch in one shot. No per-device dialogs or labels.')+'</button>'+
       '</div>'+
-      '<div id="scanCamBox" style="display:none;margin-top:14px;"><div id="scanCamRegion"></div><div style="text-align:center;margin-top:8px;"><button class="us3b2-btn red" onclick="scanStopCamera()">Stop Camera</button></div></div>'+
-    '</div>'+
-    '<div class="us3b2-card">'+
-      '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)'+houstonHelp('A running list of what you have scanned since opening this station — your quick proof of work. Catch a mis-scan here before it propagates instead of hunting it down later.')+'</div>'+
-      '<div id="scanRecent"></div>'+
-    '</div>'+
-    '<div class="us3b2-card"><div id="scanAnalytics"><div class="us3b2-empty">Loading analytics…</div></div></div>'))+
+      (scanBulkMode?'<div id="scanBulkPanel"></div>':
+      ('<div class="us3b2-card">'+
+        '<label class="us3b2-label">Scan or type Device ID</label>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
+          '<input id="scanManualInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:220px;" autocomplete="off" placeholder="Scan barcode / QR or type, then Enter" onkeydown="if(event.key===\'Enter\'){event.preventDefault();scanManualSubmit();}">'+
+          '<button class="us3b2-btn" onclick="scanManualSubmit()">Look Up</button>'+
+          '<button class="us3b2-btn alt" id="scanCamBtn" onclick="scanToggleCamera()">📷 Camera</button>'+
+        '</div>'+
+        '<div id="scanCamBox" style="display:none;margin-top:14px;"><div id="scanCamRegion"></div><div style="text-align:center;margin-top:8px;"><button class="us3b2-btn red" onclick="scanStopCamera()">Stop Camera</button></div></div>'+
+      '</div>'+
+      '<div class="us3b2-card">'+
+        '<div class="us3b2-h" style="font-size:16px;margin-bottom:10px;">Recent Scans (this session)'+houstonHelp('A running list of what you have scanned since opening this station — your quick proof of work. Catch a mis-scan here before it propagates instead of hunting it down later.')+'</div>'+
+        '<div id="scanRecent"></div>'+
+      '</div>'+
+      '<div class="us3b2-card"><div id="scanAnalytics"><div class="us3b2-empty">Loading analytics…</div></div></div>'))))+
   '</div>';
   if(setup){setTimeout(function(){var i=document.getElementById('scanStationInput');if(i)i.focus();},60);}
+  else if(scanBulkMode){scanRenderBulk();}
   else{scanRenderRecent();evtAnalyticsLoad();setTimeout(function(){var i=document.getElementById('scanManualInput');if(i)i.focus();},60);}
 }
 function scanRenderRecent(){
@@ -5426,6 +5440,141 @@ function scanRenderRecent(){
     scanState.recent.map(function(r){return '<tr><td><b>'+us3esc(r.code)+'</b></td><td>'+us3fmtTs(r.ts)+'</td><td>'+r.count+'</td><td><button class="us3b2-btn alt" style="padding:5px 12px;font-size:12px;" onclick="scanLookup(\''+us3esc(r.code).replace(/'/g,"")+'\')">Open</button></td></tr>';}).join('')+
     '</tbody></table>';
 }
+// ═══ BULK SCAN MODE — rapid rack-into-inventory ═══
+// Set product + green/red ONCE, then fire scans continuously into a list (zero clicks,
+// input stays focused, Enter appends + re-focuses), and commit the whole batch in TWO
+// round-trips (one warehouse_devices.upsert + one device_events.insert). No per-device
+// confirm/label. Conflict heads-up is one batch query at commit time against device_locations.
+var scanBulkMode=false;
+var scanBulk={prod:'ff',action:'green',ids:[]}; // ids: array of {id} in scan order (newest pushed last; rendered newest-first)
+function scanSetMode(on){
+  scanBulkMode=!!on;
+  if(!scanBulkMode){scanStopCamera();}
+  renderScan();
+}
+window.scanSetMode=scanSetMode;
+function scanBulkSetProd(p){scanBulk.prod=p;scanRenderBulkControls();var i=document.getElementById('scanBulkInput');if(i)i.focus();}
+window.scanBulkSetProd=scanBulkSetProd;
+function scanBulkSetAction(a){scanBulk.action=a;scanRenderBulkControls();var i=document.getElementById('scanBulkInput');if(i)i.focus();}
+window.scanBulkSetAction=scanBulkSetAction;
+// Whole-panel render (controls + input + list). Called on mode switch.
+function scanRenderBulk(){
+  var panel=document.getElementById('scanBulkPanel');if(!panel)return;
+  panel.innerHTML=
+    '<div class="us3b2-card" id="scanBulkControls"></div>'+
+    '<div class="us3b2-card">'+
+      '<label class="us3b2-label">Scan device after device — fires straight into the list</label>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'+
+        '<input id="scanBulkInput" class="us3b2-input us3b2-scanin" style="flex:1;min-width:220px;" autocomplete="off" placeholder="Scan… (Enter adds &amp; re-focuses)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();scanBulkAdd();}">'+
+        '<button class="us3b2-btn alt" onclick="scanBulkClear()">Clear all</button>'+
+      '</div>'+
+      '<div id="scanBulkFlash" style="min-height:18px;margin-top:8px;font-family:Rajdhani,sans-serif;font-weight:600;font-size:14px;"></div>'+
+    '</div>'+
+    '<div class="us3b2-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'+
+        '<div class="us3b2-h" style="font-size:16px;">Scanned this batch '+houstonHelp('Each scan appends here, newest on top. A repeat of an ID already in the list is ignored (flagged, not double-added). Hit × to drop a mis-scan before you commit.')+'</div>'+
+        '<button class="us3b2-btn green" id="scanBulkCommit" style="font-size:16px;" onclick="scanBulkCommit()">Commit 0 devices →</button>'+
+      '</div>'+
+      '<div id="scanBulkList"></div>'+
+    '</div>';
+  scanRenderBulkControls();
+  scanRenderBulkList();
+  setTimeout(function(){var i=document.getElementById('scanBulkInput');if(i)i.focus();},60);
+}
+window.scanRenderBulk=scanRenderBulk;
+// Product chips + green/red action toggle (the one thing that determines the whole batch).
+function scanRenderBulkControls(){
+  var el=document.getElementById('scanBulkControls');if(!el)return;
+  var prodChips=PRODUCTS.map(function(p){
+    var on=scanBulk.prod===p.id;var col=US3_PROD_COLORS[p.id]||p.color||'#0071BC';
+    return '<button class="us3bulk-chip'+(on?' on':'')+'" style="'+(on?('background:'+col+';border-color:'+col+';color:#fff;'):('color:'+col+';border-color:'+col+';'))+'" onclick="scanBulkSetProd(\''+p.id+'\')">'+us3esc(p.label)+'</button>';
+  }).join('');
+  var grn=scanBulk.action==='green';
+  el.innerHTML=
+    '<label class="us3b2-label">Product (whole batch)</label>'+
+    '<div class="us3bulk-chips">'+prodChips+'</div>'+
+    '<label class="us3b2-label" style="margin-top:14px;">Action (whole batch) — this is what every scan becomes</label>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
+      '<button class="us3bulk-act'+(grn?' on grn':'')+'" onclick="scanBulkSetAction(\'green\')">🟢 Green-tag → Available</button>'+
+      '<button class="us3bulk-act'+(!grn?' on red':'')+'" onclick="scanBulkSetAction(\'red\')">🟠 Red-tag → Maintenance</button>'+
+    '</div>';
+}
+window.scanRenderBulkControls=scanRenderBulkControls;
+// Add a scanned ID: dedupe, append, re-focus. (Handheld guns send code+Enter.)
+function scanBulkAdd(){
+  var inp=document.getElementById('scanBulkInput');if(!inp)return;
+  var v=us3ApplyAliases(inp.value.trim());inp.value='';inp.focus();
+  if(!v)return;
+  var flash=document.getElementById('scanBulkFlash');
+  var dup=scanBulk.ids.some(function(r){return r.id.toLowerCase()===v.toLowerCase();});
+  if(dup){
+    if(flash){flash.style.color='#e8a020';flash.textContent='↺ '+v+' already in this batch — ignored.';}
+    return;
+  }
+  scanBulk.ids.push({id:v});
+  if(flash){flash.style.color='#00c49a';flash.textContent='＋ '+v+' added ('+scanBulk.ids.length+' scanned)';}
+  scanRenderBulkList();
+}
+window.scanBulkAdd=scanBulkAdd;
+function scanBulkRemove(idx){scanBulk.ids.splice(idx,1);scanRenderBulkList();var i=document.getElementById('scanBulkInput');if(i)i.focus();}
+window.scanBulkRemove=scanBulkRemove;
+function scanBulkClear(){
+  if(scanBulk.ids.length&&!confirm('Clear all '+scanBulk.ids.length+' scanned IDs? (Nothing has been committed yet.)'))return;
+  scanBulk.ids=[];scanRenderBulkList();var i=document.getElementById('scanBulkInput');if(i)i.focus();
+}
+window.scanBulkClear=scanBulkClear;
+function scanRenderBulkList(){
+  var el=document.getElementById('scanBulkList');
+  var btn=document.getElementById('scanBulkCommit');
+  var n=scanBulk.ids.length;
+  if(btn){btn.textContent='Commit '+n+' device'+(n===1?'':'s')+' →';btn.disabled=!n;btn.style.opacity=n?'1':'.5';btn.style.cursor=n?'pointer':'default';}
+  if(!el)return;
+  if(!n){el.innerHTML='<div class="us3b2-empty" style="padding:14px;">Nothing scanned yet. Set product + action above, then fire the gun.</div>';return;}
+  // newest on top → iterate from the end
+  var rows='';
+  for(var i=n-1;i>=0;i--){
+    var r=scanBulk.ids[i];
+    var warn=r.conflict?(' <span class="us3bulk-warn" title="'+us3esc(r.conflict)+'">⚠ '+us3esc(r.conflict)+'</span>'):'';
+    rows+='<tr><td style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;">'+us3esc(r.id)+warn+'</td>'+
+      '<td style="text-align:right;"><button class="us3b2-btn alt" style="padding:4px 11px;font-size:13px;" onclick="scanBulkRemove('+i+')" title="Remove">×</button></td></tr>';
+  }
+  el.innerHTML='<table class="us3b2-tbl"><tbody>'+rows+'</tbody></table>';
+}
+window.scanRenderBulkList=scanRenderBulkList;
+// Commit the WHOLE batch: one upsert + one events insert. Then a batch conflict check.
+function scanBulkCommit(){
+  if(typeof supa==='undefined'||!supa){alert('Offline — Supabase not connected.');return;}
+  var n=scanBulk.ids.length;if(!n)return;
+  var btn=document.getElementById('scanBulkCommit');if(btn){btn.disabled=true;btn.textContent='Committing '+n+'…';}
+  scanSaveTechStation();
+  var tech=scanGetTech()||null,station=scanGetStation()||null,now=new Date().toISOString();
+  var status=scanBulk.action==='green'?'green':'red';
+  var evType=scanBulk.action==='green'?'green-tag':'red-tag';
+  var evStatus=scanBulk.action==='green'?'Available':'Maintenance';
+  var prod=scanBulk.prod||null;
+  var devRows=scanBulk.ids.map(function(r){return {device_id:r.id,status:status,product:prod,updated_by:tech,updated_at:now};});
+  var evRows=scanBulk.ids.map(function(r){return {device_id:r.id,event_type:evType,status:evStatus,tech:tech,station:station};});
+  supa.from('warehouse_devices').upsert(devRows).then(function(res){
+    if(res&&res.error){
+      if(btn){btn.disabled=false;btn.textContent='Commit '+n+' devices →';}
+      alert('Commit failed — nothing cleared, your list is safe:\n'+res.error.message);
+      return;
+    }
+    supa.from('device_events').insert(evRows); // log; don't block the success path on it
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
+    // Batch conflict heads-up: how many of these are still listed deployed in Fulcrum?
+    var ids=scanBulk.ids.map(function(r){return r.id;});
+    supa.from('device_locations').select('device_id').eq('status','deployed').in('device_id',ids).then(function(cf){
+      var m=(cf&&cf.data)?cf.data.length:0;
+      toast('✅ '+n+' device'+(n===1?'':'s')+' tagged as '+evStatus);
+      if(m>0){setTimeout(function(){toast('⚠ '+m+' of these still listed deployed in Fulcrum — chase in Airtable');},900);}
+    });
+    // success: clear the list, keep product + action selected for the next shelf
+    scanBulk.ids=[];scanRenderBulkList();
+    var i=document.getElementById('scanBulkInput');if(i)i.focus();
+  });
+}
+window.scanBulkCommit=scanBulkCommit;
 function scanManualSubmit(){
   var inp=document.getElementById('scanManualInput');if(!inp)return;
   var v=inp.value.trim();inp.value='';inp.focus();
