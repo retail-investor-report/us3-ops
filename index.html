@@ -2271,9 +2271,10 @@ function renderAvail(){
     grid.appendChild(card);
   });
 
-  // Prepend the compact Company-Wide Fleet Overview card so it leads the same
-  // flex-wrap row as the office cards. renderStats()/renderMCPanel above ran
-  // before the grid was rebuilt, so render it again here against the live grid.
+  // Company-Wide Fleet Overview now renders into its OWN standalone container
+  // (#avFleetCompany), NOT into #avGrid. #avGrid holds only the office cards above.
+  // renderStats()/renderMCPanel ran before this; re-render the overview now so it's
+  // live against the current data (it no-ops gracefully if the container is absent).
   if(typeof renderFleetOverview==='function')renderFleetOverview();
 
   // NOTE: company-wide Deployed + Kit Availability used to render as their own
@@ -3393,11 +3394,11 @@ function saveAddDc(){
 
 // ═══ PROJECTS ═══
 function renderFleetOverview(){
-  // Company-Wide Fleet Overview now renders as a compact av-card (matching the
-  // El Cajon / Downey / Puerto Rico office cards) prepended into #avGrid, so all
-  // four cards flow together in one flex-wrap row instead of a full-width banner.
-  var grid=document.getElementById('avGrid');
-  if(!grid)return;
+  // Company-Wide Fleet Overview renders as its OWN standalone, centered container
+  // (#avFleetCompany) above the Houston bar / dropdowns — NOT mixed into #avGrid
+  // (which now holds only the 3 office cards). Guard if the container is absent.
+  var host=document.getElementById('avFleetCompany');
+  if(!host)return;
   var products=[
     {id:'ff',label:'FlexFlow',color:'#0071BC'},
     {id:'cric',label:'Cricket',color:'#e8a020'},
@@ -3421,23 +3422,14 @@ function renderFleetOverview(){
       '<td class="maintenance">'+maint+'</td>'+
       '<td>'+activeJobs+'</td></tr>';
   }).join('');
-  // Remove any prior company-wide card before re-prepending (renderAvail rebuilds
-  // the grid, but this guards against double-render when called independently).
-  var existing=document.getElementById('avFleetOverviewCard');
-  if(existing)existing.parentNode.removeChild(existing);
-  var card=document.createElement('div');
-  card.className='av-card';
-  card.id='avFleetOverviewCard';
-  // Slightly wider than office cards (7 data columns vs 4): let it span up to two
-  // grid tracks so the tight columns breathe, but cap it so it stays a compact
-  // sibling and never a full-width banner.
-  card.style.gridColumn='span 2';
-  card.style.maxWidth='480px';
-  card.innerHTML='<div class="av-card-head"><div class="av-card-icon">\u25C8</div><div class="av-card-name">Company-Wide</div></div>'+
-    '<table class="av-table"><thead><tr>'+
+  // Render the company-wide overview as a single full-width card filling its
+  // centered host container (#avFleetCompany). No grid-span/maxWidth tricks \u2014
+  // the host already caps + centers the width.
+  host.innerHTML='<div class="av-card" style="overflow-x:auto;">'+
+    '<div class="av-card-head"><div class="av-card-icon">\u25C8</div><div class="av-card-name">Company-Wide</div></div>'+
+    '<table class="av-table" style="width:100%;"><thead><tr>'+
       '<th>Product</th><th>Total</th><th>Avail</th><th>Resv</th><th>Depl</th><th>Maint</th><th>Jobs</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table>';
-  grid.insertBefore(card,grid.firstChild);
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 
 function renderProjects(){
@@ -6806,12 +6798,24 @@ function paintDashboard(ops){
   var notReturned=outList.filter(function(d){var j=LV.jobByNum[d.job_number];return j&&(j.project_status==='Project Completed'||j.project_status==='Removal Complete');});
   function scanRow(s){return '<div class="us3prow" onclick="US3.openDevice(\''+js(s.device_id)+'\')"><div><b>'+esc(s.device_id)+'</b> <span style="color:#8a97a8;font-size:12px;">'+esc(s.location||s.note||s.client_name||'')+'</span></div><div style="text-align:right;">'+dirChip(s.direction)+'<div style="font-size:11px;color:#8a97a8;">'+fmtDate(s.scanned_at)+'</div></div></div>';}
 
-  var kpis='<div class="us3sum-row">'+
-    '<div class="us3sum"><div class="us3sum-h">📊 Operations</div>'+
-      us3SumLine('Active jobs',inGroundJobs.length,ongoingJobs.length+' ongoing','sched')+
-      us3SumLine('Devices deployed',(LV.deployedTotal||0),'FF '+by.ff+' · Cric '+by.cric+' · Hach '+by.hach+' · RG '+by.rg,'devmap')+
+  // Clean centered stat line (no bordered box). Numbers bold + dark (var(--text)),
+  // words in a readable medium gray. Replaces the old boxed Operations us3sum card.
+  // statGray = theme-aware readable medium gray (var(--muted)); statNum = bold dark
+  // (var(--text)). Never the old hardcoded near-white #8a97a8 that vanished on white.
+  var statGray='color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:600;';
+  var statNum='color:var(--text);font-family:Oswald,sans-serif;font-weight:700;';
+  var statLine='<div style="text-align:center;margin:6px 0 4px;font-size:18px;line-height:1.5;">'+
+    '<span style="'+statNum+'">'+inGroundJobs.length+'</span> <span style="'+statGray+'">active jobs</span>'+
+    '<span style="'+statGray+'opacity:.5;margin:0 10px;">·</span>'+
+    '<span style="'+statNum+'">'+(LV.deployedTotal||0)+'</span> <span style="'+statGray+'">devices deployed</span>'+
     '</div>'+
-  '</div>';
+    // Deployed-by-type detail, dark + readable (no near-white on white).
+    '<div style="text-align:center;margin:0 0 4px;font-size:13px;'+statGray+'">'+
+      'FlexFlow <b style="color:var(--text);">'+by.ff+'</b> · '+
+      'Cricket <b style="color:var(--text);">'+by.cric+'</b> · '+
+      'Hach <b style="color:var(--text);">'+by.hach+'</b> · '+
+      'Rain Gauge <b style="color:var(--text);">'+by.rg+'</b>'+
+    '</div>';
 
   var endingHtml=ending.length?ending.map(function(j){var d=daysLeft(j);var col=d<=7?'#ED1C24':d<=21?'#e8a020':'#2ecc71';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+col+';">'+d+'d left</span>');}).join(''):'<div class="us3w-empty">No active studies with an end date.</div>';
   var overdueHtml=overdue.length?overdue.slice().sort(function(a,b){return daysLeft(b)-daysLeft(a);}).map(function(j){var d=daysLeft(j);var ad=Math.abs(d);var bg=ad<=7?'#e8a020':'#ED1C24';return jobRow(j,'<span class="us3badge" style="color:#fff;background:'+bg+';">'+ad+'d overdue</span>');}).join(''):'<div class="us3w-empty" style="color:#2ecc71;">✓ Nothing overdue for return.</div>';
@@ -6822,23 +6826,25 @@ function paintDashboard(ops){
     (notReturned.length?('<div class="us3prow" onclick="US3.go(\'shop\')"><div>🧯 <b>'+notReturned.length+'</b> device(s) out on a job already marked complete — likely not scanned back in</div><span style="color:#ED1C24;">›</span></div>'):'<div class="us3prow"><div style="color:#2ecc71;">✓ No completed-job devices left un-scanned</div></div>');
 
   document.getElementById('dashWrap').innerHTML=
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'+
-      '<div class="us3w-h dash-mainhead" style="font-size:28px;color:var(--text,#e8edf4);">US3 Operations</div>'+
-      '<div style="display:flex;align-items:center;gap:12px;"><div class="dash-mainhead" style="font-family:Rajdhani,sans-serif;color:#8a97a8;font-size:13px;">live · Airtable + Fulcrum + scan log</div>'+
-        '<button class="us3b2-btn alt" style="padding:7px 14px;" onclick="US3.startTour()">🧭 Take the tour</button></div></div>'+
-    kpis+
-    // ─── Availability section (dense fleet super-display) — moved to TOP ───
-    '<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:18px 0 10px;">'+
-      '<div class="us3w-h" style="font-size:22px;color:var(--text,#e8edf4);">Fleet Availability</div>'+
+    // ─── 1. Centered title (RIR-style header) with unobtrusive top-right tour btn ───
+    '<div style="position:relative;text-align:center;margin-bottom:2px;">'+
+      '<button class="us3b2-btn alt" style="position:absolute;top:0;right:0;padding:6px 12px;" onclick="US3.startTour()">🧭 Take the tour</button>'+
+      '<div class="us3w-h" style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:.04em;">US3 OPERATIONS</div>'+
+      '<div style="font-family:Rajdhani,sans-serif;color:var(--muted);font-size:12px;letter-spacing:.04em;">live · Airtable + Fulcrum + scan log</div>'+
     '</div>'+
-    // #avail-stats-panel kept (renderMCPanel/renderStats reference it) but now empty —
-    // the Company-Wide Fleet Overview renders as a compact card inside #avGrid below.
+    // ─── 2. Centered stat line (no bordered box) ───
+    statLine+
+    // ─── 3. Fleet Availability section header (centered) ───
+    '<div class="us3w-h" style="text-align:center;font-size:22px;color:var(--text);margin:20px 0 10px;">Fleet Availability</div>'+
+    // ─── 4. Company-wide container — its OWN standalone container, centered. ───
+    // #avail-stats-panel kept (renderMCPanel/renderStats reference it) but stays empty.
     '<div id="avail-stats-panel" style="display:none;"></div>'+
+    '<div id="avFleetCompany" style="max-width:760px;margin:0 auto 16px;"></div>'+
+    // ─── 5. Houston Level Project bar + the 6 collapsible dropdown panels ───
     '<div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 16px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:6px;flex-wrap:wrap;gap:8px;">'+
       '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
     '</div>'+
-    '<div class="av-grid" id="avGrid"></div>'+
     // ─── Collapsible detail panels (all collapsed by default) ───
     '<div class="us3detail-grid" style="margin-top:18px;">'+
       panel('⏳ Studies ending soon',endingHtml,'days until de-install','Active in-the-ground jobs sorted by their Airtable de-install date. Counts down days remaining; red = within a week.',{open:false})+
@@ -6847,7 +6853,10 @@ function paintDashboard(ops){
       panel('🩺 Open items',openItems,'data hygiene &amp; alerts','Auto-detected issues: overdue returns, devices shipped with no return scan, and devices still "out" on jobs already marked complete (likely never scanned back into recirculation).',{open:false})+
       panel('🚚 Recent shipments',us3GroupRows(recent.filter(function(s){return s.direction==='Ship';}),'to'),'grouped by day &amp; destination','Recent "Ship" door-scans, grouped — e.g. "30 devices to Houston on May 22". Click a group to see the devices.',{open:false})+
       panel('📥 Recent returns',us3GroupRows(recent.filter(function(s){return s.direction==='Receive';}),'from'),'grouped by day &amp; origin','Recent "Receive" door-scans, grouped by day and where they came back from. Click a group to see the devices.',{open:false})+
-    '</div>';
+    '</div>'+
+    // ─── 6. The 3 office availability containers (El Cajon / Downey / Puerto Rico) — LAST ───
+    '<div style="text-align:center;font-family:Oswald,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:22px 0 10px;">By Office</div>'+
+    '<div class="av-grid" id="avGrid"></div>';
   if(typeof renderAvail==='function')renderAvail();
 }
 
