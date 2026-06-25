@@ -573,7 +573,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="ntab" data-page="parts" onclick="sw('parts',this)"><span class="ti">🔧</span>Red Tag<span id="partsBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#ED1C24;color:#fff;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;text-align:center;line-height:16px;padding:0 4px;margin-left:6px;"></span></div>
     <div class="ntab" data-page="scan" onclick="sw('scan',this)"><span class="ti">📲</span>Station Scanner</div>
     <div class="ntab" data-page="kit" onclick="sw('kit',this)"><span class="ti">📦</span>Build Kit</div>
-    <div class="ntab" data-page="count" onclick="sw('count',this)"><span class="ti">🧮</span>Warehouse Count</div>
+    <div class="ntab" data-page="count" onclick="sw('count',this)"><span class="ti">🧮</span>Inventory</div>
     <div class="ntab" data-page="shop" onclick="sw('shop',this);if(window.US3)US3.renderShop()"><span class="ti">🏭</span>Ship Station</div>
     <div class="ntab" data-page="devmap" onclick="sw('devmap',this)"><span class="ti">📍</span>Device Map</div>
     <div class="ntab" data-page="viewer" onclick="sw('viewer',this)"><span class="ti">🧊</span>Product 3D</div>
@@ -5659,9 +5659,10 @@ function invComputeKits(office){
 function invKitSummaryHtml(office){
   var k=invComputeKits(office);
   return Object.keys(US3_KIT_LABELS).map(function(p){
-    return '<div style="flex:1;min-width:120px;background:var(--panel-bg,#121826);border:1px solid '+US3_PROD_COLORS[p]+';border-radius:12px;padding:12px 14px;">'+
-      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:34px;line-height:1;color:'+US3_PROD_COLORS[p]+';">'+k[p]+'</div>'+
-      '<div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted);margin-top:4px;">'+US3_KIT_LABELS[p]+' kits</div>'+
+    var c=US3_PROD_COLORS[p];
+    return '<div style="flex:1 1 0;min-width:130px;display:flex;align-items:center;gap:10px;background:var(--panel-bg,#121826);border:1px solid var(--borderb);border-left:4px solid '+c+';border-radius:5px;padding:8px 12px;">'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:30px;line-height:1;color:'+c+';min-width:36px;">'+k[p]+'</div>'+
+      '<div style="font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.03em;font-size:11px;font-weight:600;line-height:1.15;color:var(--muted);">'+US3_KIT_LABELS[p]+'<br><span style="font-size:9px;opacity:.75;">kits</span></div>'+
     '</div>';
   }).join('');
 }
@@ -5679,14 +5680,14 @@ function invRender(office){
       return '<tr><td><b>'+us3esc(c.label)+'</b>'+(c.serial?' <span style="font-size:11px;color:#8a97a8;">(serial)</span>':'')+flag+'</td>'+
         '<td style="text-align:right;"><input class="us3b2-input" style="width:90px;text-align:center;" inputmode="numeric" value="'+invQty(office,c.key)+'" onchange="invSetQty(\''+office+'\',\''+c.key+'\',this.value)"></td></tr>';
     }).join('');
-    return '<div style="margin-bottom:10px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;color:'+US3_PROD_COLORS[p]+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">'+US3_KIT_LABELS[p]+'</div>'+
+    return '<div style="break-inside:avoid;background:var(--panel-bg,#121826);border:1px solid var(--borderb);border-left:3px solid '+US3_PROD_COLORS[p]+';border-radius:5px;padding:8px 12px;margin-bottom:10px;"><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:13px;color:'+US3_PROD_COLORS[p]+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">'+US3_KIT_LABELS[p]+'</div>'+
       '<table class="us3b2-tbl" style="width:100%;"><tbody>'+rows+'</tbody></table></div>';
   }).join('');
   card.innerHTML=
     '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;">Available kits <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">computed — limited by the scarcest part</span></div>'+
-    '<div id="invKitSummary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+invKitSummaryHtml(office)+'</div>'+
+    '<div id="invKitSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">'+invKitSummaryHtml(office)+'</div>'+
     '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;">Component counts <span style="font-size:12px;color:var(--muted);font-family:Rajdhani,sans-serif;font-weight:400;">count one type at a time — blanks left alone</span></div>'+
-    groups+
+    '<div style="column-width:340px;column-gap:14px;">'+groups+'</div>'+
     '<div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="us3b2-btn green" onclick="invSave(\''+office+'\',this)">Save inventory</button></div>';
 }
 function invSetQty(office,key,val){
@@ -5712,7 +5713,7 @@ function renderCount(){
   var offBtns=offices.map(function(o){return '<button class="us3b2-btn '+(o.id===countState.office?'':'alt')+'" onclick="countSetOffice(\''+o.id+'\')">'+us3esc(o.label)+'</button>';}).join('');
   var inner=document.getElementById('countInner');if(!inner)return;
   inner.innerHTML=
-  '<div class="us3b2-wrap">'+
+  '<div class="us3b2-wrap" style="max-width:1480px;">'+
     '<div class="us3b2-h" style="font-size:30px;margin-bottom:4px;">📦 Inventory &amp; Kit Availability'+
       '<span title="Count components (RTUs + sensors + parts) per office. AVAILABLE KITS are computed automatically — a kit is only as available as its scarcest part (e.g. 10 FlexFlow RTUs + 5 sensors = 5 kits). This feeds company-wide kit availability. Count one type at a time; blanks are left alone. RTUs are serial devices — a ⚠ flag shows until their serial numbers are scanned/entered (coming in the Build Kit + Red Tag scanning step)." style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid #8a97a8;color:#8a97a8;font-size:14px;margin-left:10px;cursor:help;vertical-align:middle;">?</span>'+
     '</div>'+
