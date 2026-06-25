@@ -1799,7 +1799,11 @@ function renderStats(){
 function renderMCPanel(){
   var panel=document.getElementById('avail-stats-panel');
   if(!panel)return; // only present once the dashboard (which now hosts Availability) is rendered
-  panel.innerHTML='<div id="fleetOverviewPanel"></div>';
+  // The Company-Wide Fleet Overview now renders as a compact av-card prepended
+  // into #avGrid (so it flows in the same flex-wrap row as the office cards),
+  // not as a full-width banner in this panel. Keep #avail-stats-panel empty but
+  // present so this + renderStats stay wired without error.
+  panel.innerHTML='';
   renderFleetOverview();
 }
 
@@ -2250,6 +2254,11 @@ function renderAvail(){
     card.innerHTML='<div class="av-card-head"><div class="av-card-icon">'+off.icon+'</div><div class="av-card-name">'+off.label+'</div><button class="av-edit-btn" onclick="openEditOffice(\''+off.id+'\')">✎ Edit</button></div><table class="av-table"><thead><tr>'+heads+'</tr></thead><tbody>'+rows+'</tbody></table>';
     grid.appendChild(card);
   });
+
+  // Prepend the compact Company-Wide Fleet Overview card so it leads the same
+  // flex-wrap row as the office cards. renderStats()/renderMCPanel above ran
+  // before the grid was rebuilt, so render it again here against the live grid.
+  if(typeof renderFleetOverview==='function')renderFleetOverview();
 
   // NOTE: company-wide Deployed + Kit Availability used to render as their own
   // cards here, but they duplicated the dense Fleet super-display table above
@@ -3366,8 +3375,11 @@ function saveAddDc(){
 
 // ═══ PROJECTS ═══
 function renderFleetOverview(){
-  var container=document.getElementById('fleetOverviewPanel');
-  if(!container)return;
+  // Company-Wide Fleet Overview now renders as a compact av-card (matching the
+  // El Cajon / Downey / Puerto Rico office cards) prepended into #avGrid, so all
+  // four cards flow together in one flex-wrap row instead of a full-width banner.
+  var grid=document.getElementById('avGrid');
+  if(!grid)return;
   var products=[
     {id:'ff',label:'FlexFlow',color:'#0071BC'},
     {id:'cric',label:'Cricket',color:'#e8a020'},
@@ -3382,29 +3394,32 @@ function renderFleetOverview(){
     offices.forEach(function(o){avail+=liveCount(o,p.id,'available');reserved+=liveCount(o,p.id,'reserved');maint+=liveCount(o,p.id,'maintenance');});
     var total=avail+reserved+deployed+maint;
     var activeJobs=getActiveJobsForProduct(p.id).length;
-    var logoHtml=prodLogoHtml(p.id,32);
-    if(!logoHtml)logoHtml='<span style="font-size:14px;font-weight:700;color:'+p.color+'">'+p.label+'</span>';
-    return '<tr style="border-bottom:1px solid rgba(255,255,255,.06);">'+
-      '<td style="padding:6px 12px;">'+logoHtml+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;color:var(--text);font-weight:700;font-size:17px;">'+total+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;color:#00c49a;font-weight:700;font-size:17px;">'+avail+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;color:#4a5568;font-weight:700;font-size:17px;">'+reserved+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;color:#0071BC;font-weight:700;font-size:17px;">'+deployed+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;color:#e8a020;font-weight:700;font-size:17px;">'+maint+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;color:var(--text);font-weight:700;font-size:17px;">'+activeJobs+'</td></tr>';
+    return '<tr>'+
+      '<td>'+p.label+'</td>'+
+      '<td>'+total+'</td>'+
+      '<td class="available">'+avail+'</td>'+
+      '<td class="reserved">'+reserved+'</td>'+
+      '<td class="deployed">'+deployed+'</td>'+
+      '<td class="maintenance">'+maint+'</td>'+
+      '<td>'+activeJobs+'</td></tr>';
   }).join('');
-  container.innerHTML=
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:4px;">\u25C8 Fleet Overview <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">Company-Wide</span></div>'+
-    '<table style="width:100%;border-collapse:collapse;font-family:\'Rajdhani\',sans-serif;">'+
-    '<thead><tr style="border-bottom:2px solid var(--accent);">'+
-      '<th style="padding:5px 12px;text-align:left;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Product</th>'+
-      '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Total</th>'+
-      '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#00c49a;">Avail</th>'+
-      '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#4a5568;">Resv</th>'+
-      '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#0071BC;">Depl</th>'+
-      '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#e8a020;">Maint</th>'+
-      '<th style="padding:5px 8px;text-align:center;font-family:\'Oswald\',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text);">Jobs</th>'+
+  // Remove any prior company-wide card before re-prepending (renderAvail rebuilds
+  // the grid, but this guards against double-render when called independently).
+  var existing=document.getElementById('avFleetOverviewCard');
+  if(existing)existing.parentNode.removeChild(existing);
+  var card=document.createElement('div');
+  card.className='av-card';
+  card.id='avFleetOverviewCard';
+  // Slightly wider than office cards (7 data columns vs 4): let it span up to two
+  // grid tracks so the tight columns breathe, but cap it so it stays a compact
+  // sibling and never a full-width banner.
+  card.style.gridColumn='span 2';
+  card.style.maxWidth='480px';
+  card.innerHTML='<div class="av-card-head"><div class="av-card-icon">\u25C8</div><div class="av-card-name">Company-Wide</div></div>'+
+    '<table class="av-table"><thead><tr>'+
+      '<th>Product</th><th>Total</th><th>Avail</th><th>Resv</th><th>Depl</th><th>Maint</th><th>Jobs</th>'+
     '</tr></thead><tbody>'+rows+'</tbody></table>';
+  grid.insertBefore(card,grid.firstChild);
 }
 
 function renderProjects(){
@@ -6749,7 +6764,9 @@ function paintDashboard(ops){
     '<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:18px 0 10px;">'+
       '<div class="us3w-h" style="font-size:22px;color:var(--text,#e8edf4);">Fleet Availability</div>'+
     '</div>'+
-    '<div id="avail-stats-panel" style="margin-bottom:12px;background:var(--panel-bg);padding:8px 16px;display:flex;flex-direction:column;gap:6px;border-radius:6px;border:1px solid var(--borderb);"></div>'+
+    // #avail-stats-panel kept (renderMCPanel/renderStats reference it) but now empty —
+    // the Company-Wide Fleet Overview renders as a compact card inside #avGrid below.
+    '<div id="avail-stats-panel" style="display:none;"></div>'+
     '<div id="houstonInfoBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 16px;background:var(--panel-bg);border:1px solid var(--borderb);border-radius:6px;flex-wrap:wrap;gap:8px;">'+
       '<div style="display:flex;align-items:center;gap:14px;"><span style="font-family:Oswald,sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);">◈ Houston Level Project</span><span style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">~3,000 Cricket Deployed</span></div>'+
       '<a href="https://houstontx.uscubed.com/login.aspx" target="_blank" style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);text-decoration:none;padding:5px 12px;border:1px solid var(--accent);border-radius:6px;">View Portal →</a>'+
