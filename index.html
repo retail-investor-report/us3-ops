@@ -4170,6 +4170,10 @@ function renderHouston(){
     // map Supabase rows → the device shape every render helper already expects
     var devices=rawDevs.map(function(d){
       var pct=(d.pct_total==null?0:Number(d.pct_total));if(isNaN(pct))pct=0;
+      // The weekly upload stores "% total" as a 0–1 FRACTION (1.0 = 100%, values run 0–1.1). The health
+      // buckets/grid expect a 0–100 scale, so a 110% device (1.1) was read as "1.1%" → everything painted
+      // unhealthy/yellow. Scale fractions up to a real percent (guard so an already-0–100 upload isn't doubled).
+      if(pct>0&&pct<=2)pct=pct*100;
       return {
         siteId:d.site_id,
         siteName:d.site_name,
