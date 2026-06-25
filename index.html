@@ -3569,6 +3569,22 @@ function houstonComputeSummary(devices,reportDate){
   return summary;
 }
 
+// Supabase/PostgREST caps a single response at 1000 rows regardless of .limit() — so page through
+// houston_device_status in 1000-row chunks to load the WHOLE Houston fleet (~2,615), not just the first 1000.
+function houstonFetchAllDevices(){
+  var cols='site_id,site_name,device_id,description,last_sample,install_date,expected,total_messages,pct_total,report_date';
+  var all=[];
+  function page(from){
+    return supa.from('houston_device_status').select(cols).range(from,from+999).then(function(r){
+      var rows=(r&&r.data)||[];
+      all=all.concat(rows);
+      if(rows.length===1000)return page(from+1000);
+      return all;
+    });
+  }
+  return page(0);
+}
+
 function parseHoustonCSV(csvText,reportDate){
   var lines=csvText.replace(/\r\n/g,'\n').split('\n').filter(function(l){return l.length>0;});
   if(lines.length===0)return {error:'Empty CSV.'};
@@ -4013,11 +4029,11 @@ function houstonHelp(t){return '<span class="us3help">?<span class="tip">'+houst
 function houstonAnalyticsRender(){
   var host=document.getElementById('houstonAnalytics');if(!host||typeof supa==='undefined'||!supa)return;
   Promise.all([
-    supa.from('houston_device_status').select('last_sample,total_messages,pct_total,report_date'),
-    supa.from('houston_alerts').select('device_id,alert,device_type'),
+    houstonFetchAllDevices(),
+    supa.from('houston_alerts').select('device_id,alert,device_type').limit(5000),
     supa.from('houston_weekly_stats').select('*').order('week_date',{ascending:true})
   ]).then(function(r){
-    var devs=(r[0]&&r[0].data)||[],alerts=(r[1]&&r[1].data)||[],weeks=(r[2]&&r[2].data)||[];
+    var devs=r[0]||[],alerts=(r[1]&&r[1].data)||[],weeks=(r[2]&&r[2].data)||[];
     if(!devs.length&&!alerts.length&&!weeks.length){host.innerHTML='';return;}
     var now=Date.now();
     // silent-duration buckets
@@ -4133,11 +4149,11 @@ function renderHouston(){
   }
   inner.innerHTML=titleHtml+'<div id="houstonLoading" style="padding:32px;text-align:center;color:var(--muted);font-family:Rajdhani,sans-serif;font-size:15px;">Loading Houston fleet…</div>';
   Promise.all([
-    supa.from('houston_device_status').select('site_id,site_name,device_id,description,last_sample,install_date,expected,total_messages,pct_total,report_date'),
+    houstonFetchAllDevices(),
     supa.from('houston_alerts').select('device_id',{count:'exact'}).eq('alert_status','Active'),
     supa.from('houston_weekly_stats').select('*').order('week_date',{ascending:false}).limit(1)
   ]).then(function(r){
-    var rawDevs=(r[0]&&r[0].data)||[];
+    var rawDevs=r[0]||[];
     var alertCount=(r[1]&&r[1].count)||0;
     var wk=((r[2]&&r[2].data)||[])[0]||null;
     // newest report_date across the upload = the "as of" date for day-silent math
@@ -4174,8 +4190,8 @@ function houstonRenderBody(inner,titleHtml,latest){
     return;
   }
   var s=latest.summary;
-  // ONE silent/reporting definition across the page: silent = 0 messages OR 0% reporting (matches the table + analytics).
-  var silentCnt=(latest.devices||[]).filter(function(d){return (d.totalMessages===0||d.totalMessages==null)||d.pctTotal===0;}).length;
+  // ONE silent/reporting definition across the page: a device is REPORTING if it sent any messages this week (total_messages>0); silent otherwise.
+  var silentCnt=(latest.devices||[]).filter(function(d){return (d.totalMessages==null||d.totalMessages===0);}).length;
   var reportingCnt=s.totalDevices-silentCnt;
   var silent365=(s.recencyBuckets&&s.recencyBuckets.silent365plus)||0;
   var totalDev=s.totalDevices||1;
