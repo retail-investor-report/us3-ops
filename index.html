@@ -7097,7 +7097,7 @@ ID.addPerson=function(){
 };
 
 // ═══ BIND MODAL (which bench is this computer) ═══
-function openBind(){
+function openBind(fromScan){
   var byOffice={};
   ID.stations.filter(function(s){return s.active!==false;}).forEach(function(s){ (byOffice[s.office]=byOffice[s.office]||[]).push(s); });
   var groups=Object.keys(byOffice).map(function(off){
@@ -7109,7 +7109,11 @@ function openBind(){
     return '<div class="us3id-offg"><div class="us3id-offh">'+esc(off)+'</div><div class="us3id-benchgrid">'+rows+'</div></div>';
   }).join('');
   var foot = isMgr(ID.active||ID.session)? '<button class="us3id-btn" onclick="US3ID.openCmd(\'people\')">Manage workers & benches →</button>' : '';
-  modal('Which bench is this computer?', '<div class="us3id-sub">This sets it once. The computer remembers — a manager can reassign it from the Command Center.</div>'+groups, foot);
+  var title = fromScan ? 'New computer — which bench is this?' : 'Which bench is this computer?';
+  var sub = fromScan
+    ? 'You just scanned, but we don\'t recognize this computer yet. Pick its bench so work gets logged to the right place. Just checking in from a phone? <button class="us3id-btn ghost" style="margin-top:6px;" onclick="US3ID.closeModal()">Skip — I\'m just viewing</button>'
+    : 'This sets it once. The computer remembers — a manager can reassign it from the Command Center.';
+  modal(title, '<div class="us3id-sub">'+sub+'</div>'+groups, foot);
 }
 ID.doBind=function(id){ bindStation(id).then(function(){ closeModal(); toast('This computer is now '+(stationById(id)||{}).name); openSwitch(); }); };
 ID.openBind=function(){ closeModal(); setTimeout(openBind,50); };
@@ -7123,7 +7127,7 @@ function modal(title, body, foot){
     '<div class="us3id-mb">'+body+'</div>'+(foot?'<div class="us3id-mf">'+foot+'</div>':'')+'</div>';
   document.body.appendChild(ov);
 }
-function closeModal(){ var o=document.getElementById('us3idOverlay'); if(o) o.remove(); }
+function closeModal(){ var o=document.getElementById('us3idOverlay'); if(o) o.remove(); ID._bindPrompting=false; }
 ID.closeModal=closeModal;
 function toast(msg){
   var t=document.createElement('div'); t.className='us3id-toast'; t.textContent=msg;
@@ -7352,11 +7356,18 @@ function patchSw(){
   };
   window.sw._us3id=true;
 }
+var SCAN_ACTIONS={scan_lookup:1,green_tag:1,red_tag:1};
+function promptBindOnScan(){
+  if(ID.station || ID._bindPrompting) return;   // already bound, or modal already up
+  ID._bindPrompting=true;
+  openBind(true);                               // true = scan-context copy
+}
 function patchAction(name, action, targetArgIdx){
   var orig=window[name];
   if(typeof orig!=='function' || orig._us3id) return;
   window[name]=function(){
     try{ log('action',{action:action, target: (arguments[targetArgIdx]!=null?String(arguments[targetArgIdx]):null)}); }catch(e){}
+    if(SCAN_ACTIONS[action] && !ID.station){ try{ promptBindOnScan(); }catch(e){} }
     return orig.apply(this,arguments);
   };
   window[name]._us3id=true;
@@ -7393,7 +7404,9 @@ function onLoginEmail(){
     var saved=savedId?workerById(savedId):null;
     setActive(saved&&saved.active!==false? saved : (w.is_shared? null : w), {log:false});
     log('login',{detail:{session:w.email}});
-    if(!ID.station){ setTimeout(openBind,400); }
+    // NOTE: do NOT prompt for a bench on login — managers/viewers (Sheila, Mark, phones)
+    // shouldn't be asked "which bench is this". We only ask the first time the SCANNER is
+    // actually used on an unrecognized computer (see promptBindOnScan in patchAction).
   });
 }
 
