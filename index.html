@@ -5227,6 +5227,7 @@ function us3ShowUser(email){
   var ud=document.getElementById('userDisplay');
   var un=document.getElementById('userName');
   if(ud&&un){ud.style.display='flex';un.textContent=name;}
+  try{if(typeof us3ScanRenderBadge==='function')us3ScanRenderBadge();}catch(e){}
 }
 function us3SignOut(){
   localStorage.removeItem('us3_user_email');
@@ -6941,8 +6942,293 @@ function viewer3dInit(){
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  SCAN-ANYWHERE DEVICE DESK (Build 21 — idle global barcode listener)
+//  A logged-in tech can leave any page idle and fire a barcode/QR gun at any
+//  device; a Device Desk popup opens with its location, conflicts, history
+//  and one-tap actions. The listener is HARD-GUARDED so it never fires while
+//  a field is focused (so the Station Scanner / Bulk Scan inputs and ALL
+//  normal typing keep working unchanged) and never while an overlay is up.
+// ═══════════════════════════════════════════════════════════════════════
+var us3ScanArmed=true;            // ON by default once logged in
+var _us3scanBuf='';               // accumulated scanner characters
+var _us3scanLastTs=0;             // ts of previous keystroke
+var _us3scanGaps=[];              // inter-key gaps for the current burst
+var _us3scanInit=false;          // listener attached once
+var US3_SCAN_MAXGAP=40;          // ms — keystrokes farther apart than this = human, reset
+var US3_SCAN_AVGGAP=40;          // ms — burst's avg gap must be under this to count as a scan
+var US3_SCAN_MINLEN=3;           // min chars for a real device code
+
+// Is the user actively in a typing context? If so the global listener stays out of the way.
+function us3ScanFieldFocused(){
+  var el=document.activeElement;
+  if(!el)return false;
+  var tag=(el.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select')return true;
+  if(el.isContentEditable)return true;
+  return false;
+}
+// Is a blocking overlay (login / tour / a modal) currently up? Don't catch scans behind it.
+function us3ScanOverlayUp(){
+  try{
+    var lo=document.getElementById('loginOverlay');
+    if(lo&&lo.style.display!=='none'&&!lo.classList.contains('fade-out'))return true;
+    // an open camera-scan overlay owns the scanner already
+    var cam=document.querySelector('.us3cam-ov.open');if(cam)return true;
+    // a tour spotlight, if the tour module is present
+    if(document.querySelector('.us3tour-overlay,.tour-overlay,.pt-overlay'))return true;
+  }catch(e){}
+  return false;
+}
+function us3ScanLoggedIn(){
+  try{var e=localStorage.getItem('us3_user_email');return !!(e&&typeof us3EmailOk==='function'&&us3EmailOk(e));}catch(_e){return false;}
+}
+function us3ScanResetBuf(){_us3scanBuf='';_us3scanGaps=[];}
+function us3GlobalScanInit(){
+  if(_us3scanInit)return;_us3scanInit=true;
+  document.addEventListener('keydown',function(e){
+    // ── Hard guards: never interfere with typing, fields, modifiers, overlays ──
+    if(!us3ScanArmed||!us3ScanLoggedIn())return;
+    if(us3ScanFieldFocused())return;            // #1 risk: any field focused → hands off
+    if(us3ScanOverlayUp())return;               // login / tour / camera up → hands off
+    if(e.ctrlKey||e.metaKey||e.altKey)return;   // shortcuts aren't scans
+
+    var now=Date.now();
+    var gap=now-_us3scanLastTs;
+    _us3scanLastTs=now;
+
+    if(e.key==='Enter'){
+      var buf=_us3scanBuf;
+      var gaps=_us3scanGaps.slice();
+      us3ScanResetBuf();
+      if(buf.length<US3_SCAN_MINLEN)return;     // too short to be a device code
+      // Require a genuine fast burst: at least one measured gap and a fast average.
+      if(!gaps.length)return;                    // single keypress + Enter = not a gun
+      var avg=gaps.reduce(function(a,b){return a+b;},0)/gaps.length;
+      if(avg>=US3_SCAN_AVGGAP)return;            // human-paced → ignore
+      e.preventDefault();
+      var code=buf.trim();
+      if(code)us3DeviceDesk(code);
+      return;
+    }
+
+    // Only printable single characters feed the buffer.
+    if(e.key&&e.key.length===1){
+      // A slow gap means a human is typing somewhere off-field — start the burst fresh.
+      if(_us3scanBuf&&gap>US3_SCAN_MAXGAP){us3ScanResetBuf();}
+      else if(_us3scanBuf){_us3scanGaps.push(gap);}
+      _us3scanBuf+=e.key;
+      if(_us3scanBuf.length>64)us3ScanResetBuf(); // runaway guard
+    }else if(e.key!=='Shift'&&e.key!=='CapsLock'){
+      // Any non-character, non-Enter key (arrows, Tab, F-keys…) breaks a scan burst.
+      us3ScanResetBuf();
+    }
+  },true); // capture phase: see the keys before page handlers, but guards keep us inert in fields
+  us3ScanRenderBadge();
+}
+function us3ScanToggle(){
+  us3ScanArmed=!us3ScanArmed;
+  us3ScanResetBuf();
+  us3ScanRenderBadge();
+  if(typeof toast==='function')toast(us3ScanArmed?'🔫 Scan-ready — fire at any device':'Scan-ready off');
+}
+// ── Subtle armed badge (bottom-left). Click toggles armed on/off. ──
+function us3ScanRenderBadge(){
+  var b=document.getElementById('us3ScanBadge');
+  var show=us3ScanLoggedIn();
+  if(!show){if(b)b.style.display='none';return;}
+  if(!b){
+    b=document.createElement('div');
+    b.id='us3ScanBadge';
+    b.title='Scan-ready: fire a barcode gun at any device from any screen. Click to toggle.';
+    b.onclick=us3ScanToggle;
+    b.style.cssText='position:fixed;left:14px;bottom:14px;z-index:8500;display:flex;align-items:center;gap:7px;'+
+      'font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:11px;'+
+      'padding:7px 11px;border-radius:6px;cursor:pointer;user-select:none;border:1px solid var(--borderb,#243044);'+
+      'background:rgba(10,14,22,.78);backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.4);transition:opacity .2s;';
+    document.body.appendChild(b);
+  }
+  b.style.display='flex';
+  var on=us3ScanArmed;
+  b.style.opacity=on?'0.92':'0.5';
+  b.style.color=on?'#e8edf4':'#7a8494';
+  var dot='<span style="width:8px;height:8px;border-radius:50%;background:'+(on?'#00c49a':'#5a6472')+';'+(on?'box-shadow:0 0 7px #00c49a;':'')+'display:inline-block;"></span>';
+  b.innerHTML=dot+'<span>🔫 '+(on?'Scan-ready':'Scan off')+'</span>';
+}
+
+// ── Device Desk popup ──────────────────────────────────────────────────
+function us3DeskBtn(emoji,label,sub,cls,onclick){
+  return '<button class="us3b2-btn'+(cls?' '+cls:'')+'" style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:104px;padding:11px 14px;line-height:1.15;" onclick="'+onclick+'">'+
+    '<span style="font-size:19px;">'+emoji+'</span><span>'+label+'</span>'+
+    (sub?('<span style="font-weight:400;font-size:10px;opacity:.8;letter-spacing:.02em;text-transform:none;font-family:Rajdhani,sans-serif;">'+sub+'</span>'):'')+
+  '</button>';
+}
+function us3DeskSafe(code){return us3esc(code).replace(/'/g,'').replace(/\\/g,'');}
+function us3DeviceDesk(code){
+  code=(code||'').trim();if(!code)return;
+  if(typeof us3b2InjectCSS==='function')us3b2InjectCSS();
+  var head='<div class="us3b2-mhead"><div><div style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#0071BC;">⟢ Scan</div><div class="us3b2-h" style="font-size:26px;line-height:1.05;">'+us3esc(code)+'</div></div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div>';
+  us3b2OpenModal(head+'<div class="us3b2-mbody"><div class="us3b2-empty">Loading device desk…</div></div>');
+  if(typeof supa==='undefined'||!supa){
+    us3b2OpenModal(head+'<div class="us3b2-mbody"><div class="us3b2-warn">Offline — Supabase not connected. Can\'t load this device.</div></div>');
+    return;
+  }
+  Promise.all([
+    supa.from('device_events').select('*').eq('device_id',code).order('created_at',{ascending:false}).limit(60),
+    supa.from('device_locations').select('*').eq('device_id',code),
+    supa.from('sites').select('*').eq('device_sn',code).limit(1),
+    supa.from('device_scans').select('*').eq('device_id',code).order('scanned_at',{ascending:false}).limit(60),
+    supa.from('warehouse_devices').select('*').eq('device_id',code)
+  ]).then(function(res){
+    var events=(res[0]&&res[0].data)||[];
+    var locs=(res[1]&&res[1].data)||[];
+    var site=((res[2]&&res[2].data)||[])[0]||null;
+    var scans=(res[3]&&res[3].data)||[];
+    var wh=(res[4]&&res[4].data)||[];
+    us3DeskRender(code,{events:events,locs:locs,site:site,scans:scans,wh:wh});
+  },function(){
+    us3b2OpenModal(head+'<div class="us3b2-mbody"><div class="us3b2-warn">Couldn\'t load this device — network error. Try again.</div></div>');
+  });
+}
+function us3DeskRender(code,src){
+  var safe=us3DeskSafe(code);
+  var prod='';
+  try{var nl=(src.locs||[]).slice().sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));})[0];if(nl)prod=us3ProductFromSensorType(nl.sensor_type)||'';if(!prod&&src.wh&&src.wh[0]&&src.wh[0].product)prod=src.wh[0].product;}catch(e){}
+  // Current location verdict
+  var tl=(typeof us3DeviceTimeline==='function')?us3DeviceTimeline(src):[];
+  var cur=(typeof us3CurrentLocation==='function')?us3CurrentLocation(tl):null;
+  var locHtml;
+  if(cur){
+    locHtml='<div style="display:flex;align-items:center;gap:12px;border:1px solid var(--borderb);border-left:4px solid '+cur.color+';border-radius:8px;padding:12px 14px;background:var(--panel-bg);">'+
+      '<div><div style="font-family:Oswald,sans-serif;font-weight:700;font-size:18px;color:'+cur.color+';">'+us3esc(cur.label)+'</div>'+
+      (cur.detail?('<div style="font-family:Rajdhani,sans-serif;font-size:14px;color:var(--text);">'+us3esc(cur.detail)+'</div>'):'')+
+      (cur.ts?('<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">as of '+us3fmtTs(cur.ts)+'</div>'):'')+'</div></div>';
+  }else{
+    locHtml='<div class="us3b2-empty" style="padding:14px;">No datable location signal yet — its history still logs below.</div>';
+  }
+  // Conflict banner
+  var conflicts=(typeof us3DeviceConflicts==='function')?us3DeviceConflicts(src):[];
+  var hasReturnable=conflicts.some(function(c){return c.type==='returned-but-deployed';});
+  var conflictHtml='';
+  if(conflicts.length){
+    conflictHtml='<div class="us3b2-warn" style="margin:12px 0 0;">'+conflicts.map(function(c){return '⚠ '+us3esc(c.msg);}).join('<br>')+'</div>';
+  }
+  // History — warehouse events + movement scans, compact, reusing the scanLookup style.
+  var events=src.events||[],scans=src.scans||[];
+  var evHist=events.length?
+    ('<table class="us3b2-tbl"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Notes</th><th>Tech</th></tr></thead><tbody>'+
+      events.map(function(e){return '<tr><td>'+us3fmtTs(e.created_at)+'</td><td>'+us3esc(e.event_type||'')+'</td><td>'+(e.status?us3StatusPill(e.status):'—')+'</td><td>'+us3esc(e.notes||'')+'</td><td>'+us3esc(e.tech||'')+'</td></tr>';}).join('')+
+      '</tbody></table>')
+    :'<div class="us3b2-empty">No prior warehouse events.</div>';
+  function dirChip(d){var s=(d||'').toLowerCase();var c=s==='ship'?'#e8a020':s==='receive'?'#2ecc71':s==='inventory'?'#0071BC':'#5a6472';return '<span class="us3b2-pill" style="background:'+c+';color:#fff;">'+us3esc(d||'—')+'</span>';}
+  var mvHist=scans.length?
+    ('<table class="us3b2-tbl"><thead><tr><th>When</th><th>Direction</th><th>Location</th><th>Job</th></tr></thead><tbody>'+
+      scans.map(function(s){return '<tr><td>'+us3fmtTs(s.scanned_at)+'</td><td>'+dirChip(s.direction)+'</td><td>'+us3esc(s.location||'—')+'</td><td>'+us3esc(s.job_number||'')+'</td></tr>';}).join('')+
+      '</tbody></table>')
+    :'<div class="us3b2-empty">No ship / receive scans.</div>';
+  // Action row
+  var actions=
+    us3DeskBtn('🟢','Green-tag','tested → Available','green',"us3DeskGreen('"+safe+"','"+prod+"')")+
+    us3DeskBtn('🔴','Red-tag','→ Maintenance','red',"us3DeskRed('"+safe+"','"+prod+"')")+
+    us3DeskBtn('🛠','Log work','add a work note','alt',"us3DeskLog('"+safe+"','work')")+
+    us3DeskBtn('🗒','Add note','jot a note','alt',"us3DeskLog('"+safe+"','note')")+
+    (hasReturnable?us3DeskBtn('📥','Receive back','clear the conflict','',"us3DeskReceive('"+safe+"')"):'')+
+    us3DeskBtn('⬛','Decommission','retire device','alt',"us3DeskDecomm('"+safe+"')");
+  var head='<div class="us3b2-mhead"><div><div style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#0071BC;">⟢ Scan</div><div class="us3b2-h" style="font-size:26px;line-height:1.05;">'+us3esc(code)+'</div></div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div>';
+  var html=head+
+  '<div class="us3b2-mbody">'+
+    '<div class="us3b2-label">Current location</div>'+locHtml+conflictHtml+
+    '<div class="us3b2-label" style="margin-top:18px;">Actions</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+actions+'</div>'+
+    '<div class="us3b2-label" style="margin-top:18px;">Warehouse events ('+events.length+')</div><div style="max-height:200px;overflow:auto;">'+evHist+'</div>'+
+    '<div class="us3b2-label" style="margin-top:16px;">Movement — ship / receive ('+scans.length+')</div><div style="max-height:200px;overflow:auto;">'+mvHist+'</div>'+
+    '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">'+
+      '<button class="us3b2-btn alt" onclick="us3b2CloseModal()">Close</button>'+
+      '<button class="us3b2-btn alt" onclick="us3b2CloseModal();if(window.US3)US3.openDevice(\''+safe+'\')">Open full page ↗</button>'+
+    '</div>'+
+  '</div>';
+  us3b2OpenModal(html);
+}
+// ── Desk actions — each writes, toasts, refreshes the desk, never blocks on error ──
+function us3DeskTech(){return scanGetTech()||((localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;}
+function us3DeskGreen(code,prod){
+  if(typeof supa==='undefined'||!supa){toast('Offline — can\'t save.');return;}
+  var tech=us3DeskTech(),station=scanGetStation()||null,now=new Date().toISOString();
+  var doIt=function(p){
+    supa.from('warehouse_devices').upsert([{device_id:code,status:'green',product:p||prod||null,updated_by:tech,updated_at:now}]).then(function(r){
+      if(r&&r.error){toast('Green-tag failed: '+r.error.message);return;}
+      supa.from('device_events').insert({device_id:code,event_type:'green-tag',status:'Available',tech:tech,station:station});
+      if(typeof liveStockRefresh==='function')liveStockRefresh();
+      toast('🟢 '+code+' green — Available');
+      us3DeviceDesk(code);
+    },function(){toast('Green-tag failed — network');});
+  };
+  // best-effort product backfill, never blocks
+  if(prod){doIt(prod);}else{us3ResolveProducts([code]).then(function(m){doIt(m&&m[String(code)]);},function(){doIt(null);});}
+}
+function us3DeskRed(code,prod){
+  if(typeof supa==='undefined'||!supa){toast('Offline — can\'t save.');return;}
+  var tech=us3DeskTech(),station=scanGetStation()||null,now=new Date().toISOString();
+  var doIt=function(p){
+    supa.from('warehouse_devices').upsert([{device_id:code,status:'red',product:p||prod||null,updated_by:tech,updated_at:now}]).then(function(r){
+      if(r&&r.error){toast('Red-tag failed: '+r.error.message);return;}
+      supa.from('device_events').insert({device_id:code,event_type:'red-tag',status:'Maintenance',tech:tech,station:station});
+      if(typeof liveStockRefresh==='function')liveStockRefresh();
+      toast('🔴 '+code+' red — Maintenance');
+      us3DeviceDesk(code);
+    },function(){toast('Red-tag failed — network');});
+  };
+  if(prod){doIt(prod);}else{us3ResolveProducts([code]).then(function(m){doIt(m&&m[String(code)]);},function(){doIt(null);});}
+}
+function us3DeskLog(code,kind){
+  var label=kind==='work'?'work note':'note';
+  var note=prompt('Log a '+label+' for '+code+':','');
+  if(note===null)return;note=note.trim();if(!note)return;
+  if(typeof supa==='undefined'||!supa){toast('Offline — can\'t save.');return;}
+  supa.from('device_events').insert({device_id:code,event_type:kind,notes:note,tech:us3DeskTech(),station:scanGetStation()||null}).then(function(r){
+    if(r&&r.error){toast('Save failed: '+r.error.message);return;}
+    toast((kind==='work'?'🛠 Work logged':'🗒 Note added')+' on '+code);
+    us3DeviceDesk(code);
+  },function(){toast('Save failed — network');});
+}
+function us3DeskReceive(code){
+  if(typeof supa==='undefined'||!supa){toast('Offline — can\'t save.');return;}
+  if(!confirm('Receive '+code+' back to the warehouse? This logs it as back on the shelf and resolves the deployed conflict.'))return;
+  var tech=us3DeskTech(),station=scanGetStation()||null,now=new Date().toISOString();
+  // Log a receive scan (shelf custody) + a device_event so it reads as returned everywhere.
+  supa.from('device_scans').insert({device_id:code,direction:'receive',location:'Warehouse',note:'Received via scan desk',scanned_at:now}).then(function(){},function(){});
+  supa.from('device_events').insert({device_id:code,event_type:'receive',status:'Available',notes:'Received back to warehouse',tech:tech,station:station}).then(function(r){
+    if(r&&r.error){toast('Receive logged (event note failed: '+r.error.message+')');}
+    else toast('📥 '+code+' received back to the shelf');
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
+    us3DeviceDesk(code);
+  },function(){toast('📥 Receive scan logged');us3DeviceDesk(code);});
+}
+function us3DeskDecomm(code){
+  if(typeof supa==='undefined'||!supa){toast('Offline — can\'t save.');return;}
+  if(!confirm('Decommission '+code+'? This retires the device. This is deliberate and hard to undo.'))return;
+  var tech=us3DeskTech(),now=new Date().toISOString();
+  // Mirror redTagSetStatus(decommissioned): set warehouse_devices + failure_log, plus a timeline event.
+  supa.from('warehouse_devices').upsert([{device_id:code,status:'decommissioned',updated_by:tech,updated_at:now}]).then(function(r){
+    if(r&&r.error){toast('Decommission failed: '+r.error.message);return;}
+    supa.from('failure_log').upsert([{source_ref:'decomm_wd_'+code,device_id:code,event_kind:'decommission',source:'scan_desk',occurred_at:now}],{onConflict:'source_ref',ignoreDuplicates:true});
+    supa.from('device_events').insert({device_id:code,event_type:'decommission',status:'Maintenance',notes:'Decommissioned via scan desk',tech:tech,station:scanGetStation()||null});
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
+    toast('⬛ '+code+' decommissioned');
+    us3DeviceDesk(code);
+  },function(){toast('Decommission failed — network');});
+}
+// Expose for inline onclick + boot.
+window.us3GlobalScanInit=us3GlobalScanInit;
+window.us3ScanToggle=us3ScanToggle;
+window.us3DeviceDesk=us3DeviceDesk;
+window.us3DeskGreen=us3DeskGreen;window.us3DeskRed=us3DeskRed;window.us3DeskLog=us3DeskLog;
+window.us3DeskReceive=us3DeskReceive;window.us3DeskDecomm=us3DeskDecomm;
+
 // Login gate
 us3CheckLogin();
+us3GlobalScanInit();                 // arm the idle scanner once (no-op until logged in)
+try{us3ScanRenderBadge();}catch(e){}
 document.getElementById('loginBtn').addEventListener('click',us3Login);
 (function(){var le=document.getElementById('loginEmail');if(le)le.addEventListener('keydown',function(e){if(e.key==='Enter')us3Login();});})();
 (function(){var g=document.getElementById('loginGoogleBtn');if(g)g.addEventListener('click',us3GoogleSignIn);})();
