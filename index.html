@@ -158,6 +158,10 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Oswald',sans-serif
 .am-section{margin-bottom:26px;}
 .am-section-title{font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
 .am-section-line{flex:1;height:1px;background:var(--border);}
+.am-prodgrid{display:flex;flex-wrap:wrap;gap:8px;}
+.am-prodcard{border:1px solid var(--border);border-radius:5px;padding:8px 10px;}
+.am-prodcard .am-dots{max-width:200px;}
+.am-prodcard .am-dot{width:28px;height:28px;}
 .am-dots{display:flex;flex-wrap:wrap;gap:8px;}
 .am-dot{width:var(--am-dot-size,44px);height:var(--am-dot-size,44px);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;position:relative;border:2px solid transparent;font-family:'Rajdhani',sans-serif;font-size:8px;}
 .am-dot:hover{transform:scale(1.18);z-index:10;}
@@ -2310,10 +2314,11 @@ function renderAssetMap(){
       if(!off.products)return;
       var sec=document.createElement('div');sec.className='am-section';
       sec.innerHTML='<div class="am-section-title"><span>'+off.icon+' '+off.label+'</span><div class="am-section-line"></div></div>';
+      var prodGrid=document.createElement('div');prodGrid.className='am-prodgrid';
 
       (off.products||[]).forEach(function(pid){
         var p=PRODUCTS.find(function(x){return x.id===pid;});
-        var dotsWrap=document.createElement('div');dotsWrap.style.marginBottom='10px';
+        var dotsWrap=document.createElement('div');dotsWrap.className='am-prodcard';
         var prodLabel=document.createElement('div');
         prodLabel.style.cssText="font-family:'Rajdhani',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:6px;font-weight:600;";
         prodLabel.textContent=p.label;
@@ -2344,8 +2349,9 @@ function renderAssetMap(){
             dots.appendChild(dot);
           }
         });
-        if(dots.children.length){dotsWrap.appendChild(dots);sec.appendChild(dotsWrap);}
+        if(dots.children.length){dotsWrap.appendChild(dots);prodGrid.appendChild(dotsWrap);}
       });
+      if(prodGrid.children.length)sec.appendChild(prodGrid);
       canvas.appendChild(sec);
     });
   }
