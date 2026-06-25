@@ -1777,8 +1777,11 @@ function sw(id,el){
     if(showSidebar&&!sidebar.classList.contains('collapsed')){document.body.classList.add('sidebar-open');}
     else{document.body.classList.remove('sidebar-open');}
   }
-  if(history.replaceState){
-    history.replaceState(null,'','#'+id);
+  if(history.pushState){
+    // PUSH (not replace) so the browser Back button steps back through tabs, not off the site.
+    // Guard: skip when the hash already matches (e.g. when this sw() call came FROM a hashchange/back),
+    // so we don't add duplicate history entries or loop.
+    if(location.hash!=='#'+id){ history.pushState(null,'','#'+id); }
   }else{
     location.hash='#'+id;
   }
@@ -5207,14 +5210,14 @@ function dismissWelcomeGuide(){
 // ═══ BOOT ═══
 loadStorage();processExpiredJobs();applyTheme();renderStats();updateHelpBadge();updateTabBadges();
 (function(){
-  var validTabs=['mc','avail','fleet','assetmap','houston','sched','projects','parts','decomm'];
+  var validTabs=['mc','avail','fleet','assetmap','houston','sched','projects','parts','decomm','scan','kit','count','shop','devmap','viewer','cmd'];
   var hashTab=location.hash.replace('#','').toLowerCase();
   var initialTab=validTabs.indexOf(hashTab)!==-1?hashTab:'mc';
   sw(initialTab,document.querySelector('[data-page="'+initialTab+'"]'));
 })();
 window.addEventListener('hashchange',function(){
   var hashTab=location.hash.replace('#','').toLowerCase();
-  var validTabs=['mc','avail','fleet','assetmap','houston','sched','projects','parts','decomm'];
+  var validTabs=['mc','avail','fleet','assetmap','houston','sched','projects','parts','decomm','scan','kit','count','shop','devmap','viewer','cmd'];
   if(validTabs.indexOf(hashTab)!==-1){
     sw(hashTab,document.querySelector('[data-page="'+hashTab+'"]'));
   }
