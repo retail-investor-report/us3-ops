@@ -2965,7 +2965,7 @@ function redTagRender(){
   if(typeof supa==='undefined'||!supa){host.innerHTML='<div class="us3b2-warn" style="padding:12px;border:1px solid var(--borderb);border-radius:8px;">Offline — Red Tag needs Supabase.</div>';return;}
   var offices=(typeof OFFICES!=='undefined'?OFFICES:[]).filter(function(o){return o.products&&o.products.length;});
   var offOpts=offices.map(function(o){return '<option value="'+o.id+'">'+us3esc(o.label)+'</option>';}).join('');
-  var prodOpts='<option value="">Product (optional)</option>'+US3_DEV_PRODUCTS.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>';}).join('');
+  var prodOpts='<option value="">✨ Auto-detect from history</option>'+US3_DEV_PRODUCTS.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>';}).join('');
   host.innerHTML=
   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+
     '<div style="border:1px solid var(--borderb);border-radius:10px;padding:14px 16px;background:var(--panel-bg);">'+
@@ -3018,22 +3018,37 @@ function redTagApply(tag){
   var ids=(ta.value||'').split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
   var msg=document.getElementById('rtScanMsg');
   if(!ids.length){if(msg)msg.textContent='Enter at least one device ID.';return;}
-  var prod=us3v('rtProd')||null,office=us3v('rtOffice')||null;
+  var manualProd=us3v('rtProd')||null,office=us3v('rtOffice')||null;
   var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
   var now=new Date().toISOString();
-  // de-dupe within the batch
-  var seen={},rows=[];ids.forEach(function(id){if(seen[id])return;seen[id]=1;rows.push({device_id:id,status:tag,product:prod,office:office,updated_by:by,updated_at:now});});
-  supa.from('warehouse_devices').upsert(rows).then(function(r){
-    if(r.error){if(msg)msg.textContent='Save failed: '+r.error.message;return;}
-    if(msg)msg.textContent='✓ '+rows.length+' device'+(rows.length===1?'':'s')+' '+tag+'-tagged.';
-    if(typeof liveStockRefresh==='function')liveStockRefresh();
-    ta.value='';redTagLoad();
+  // de-dupe within the batch (keep scan order)
+  var seen={},uniq=[];ids.forEach(function(id){if(seen[id])return;seen[id]=1;uniq.push(id);});
+  if(msg)msg.textContent=manualProd?'':'Detecting products from history…';
+  // No product picked → Auto: resolve each device's product from field history. Resolver never
+  // rejects; guard anyway so a hiccup falls back to null (unknown) and the commit still runs.
+  var prodMapP=manualProd?Promise.resolve(null):us3ResolveProducts(uniq).catch(function(){return {};});
+  prodMapP.then(function(pmap){
+    var rows=uniq.map(function(id){
+      var prod=manualProd||(pmap?(pmap[String(id)]||null):null);
+      return {device_id:id,status:tag,product:prod,office:office,updated_by:by,updated_at:now};
+    });
+    supa.from('warehouse_devices').upsert(rows).then(function(r){
+      if(r.error){if(msg)msg.textContent='Save failed: '+r.error.message;return;}
+      if(msg)msg.textContent='✓ '+rows.length+' device'+(rows.length===1?'':'s')+' '+tag+'-tagged'+(manualProd?'':' (product auto-detected)')+'.';
+      if(typeof liveStockRefresh==='function')liveStockRefresh();
+      ta.value='';redTagLoad();
+    });
   });
 }
 function redTagSetStatus(deviceId,status){
   if(typeof supa==='undefined'||!supa)return;
   var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
-  supa.from('warehouse_devices').update({status:status,updated_by:by,updated_at:new Date().toISOString()}).eq('device_id',deviceId).then(function(r){
+  var upd={status:status,updated_by:by,updated_at:new Date().toISOString()};
+  // Promoting red→green is a good moment to backfill a missing product from field history.
+  // Best-effort: if we can detect one, stamp it; never block the status change on the lookup.
+  var prePatch=(status==='green')?us3ResolveProducts([deviceId]).then(function(pm){var p=pm&&pm[String(deviceId)];if(p)upd.product=p;}).catch(function(){}):Promise.resolve();
+  prePatch.then(function(){
+  supa.from('warehouse_devices').update(upd).eq('device_id',deviceId).then(function(r){
     if(r.error){alert('Update failed: '+r.error.message);return;}
     if(status==='decommissioned'){
       supa.from('failure_log').upsert([{source_ref:'decomm_wd_'+deviceId,device_id:deviceId,event_kind:'decommission',source:'red_tag',occurred_at:new Date().toISOString()}],{onConflict:'source_ref',ignoreDuplicates:true});
@@ -3041,6 +3056,7 @@ function redTagSetStatus(deviceId,status){
     if(typeof liveStockRefresh==='function')liveStockRefresh();
     redTagLoad();
   });
+  }); // end prePatch.then
 }
 // ═══ FAILURE DATABASE ANALYSIS (Phase 4) — Pareto + meta over failure_log ═══
 function failureAnalysisRender(){
@@ -5413,16 +5429,63 @@ var US3_STATUS_COLORS={available:'#2ecc71',reserved:'#A7A9AC',deployed:'#0071BC'
 var US3_PROD_COLORS={ff:'#0071BC',ffpr:'#9b59b6',cric:'#e8a020',hach:'#9aa3b2',rg:'#44bb88',unknown:'#5a6472'};
 var US3_PROD_LABELS={ff:'FlexFlow',ffpr:'PR FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge',unknown:'Other / Unknown'};
 // Fulcrum sensor_type string -> product id. Shared by computeDeployed() and the map/schedule colorers.
-function US3_SENSOR_PRODUCT(stype){
-  var s=(stype||'').toLowerCase();
+// Reusable sensor_type -> product mapper. Single source of truth for "what product is
+// this device" from its field history. A device with no recognizable history → null (unknown).
+function us3ProductFromSensorType(s){
+  s=(s||'').toLowerCase();
   if(!s)return null;
   if(s.indexOf('flexflow')>=0||s.indexOf('flex flow')>=0)return 'ff';
-  if(s.indexOf('hach')>=0||s.indexOf('flodar')>=0||s.indexOf('flo-dar')>=0)return 'hach';
+  if(s.indexOf('hach')>=0||s.indexOf('flo-dar')>=0||s.indexOf('flodar')>=0)return 'hach';
   if(s.indexOf('rain')>=0)return 'rg';
-  if(s.indexOf('radar')>=0||s.indexOf('level')>=0||s.indexOf('pressure')>=0||s.indexOf('cricket')>=0)return 'cric';
+  if(s.indexOf('radar')>=0||s.indexOf('level')>=0||s.indexOf('pressure')>=0||s.indexOf('float')>=0||s.indexOf('cricket')>=0)return 'cric';
   return null;
 }
+window.us3ProductFromSensorType=us3ProductFromSensorType;
+// Back-compat alias used by computeDeployed() and the map/schedule colorers — same logic.
+function US3_SENSOR_PRODUCT(stype){return us3ProductFromSensorType(stype);}
 function US3_SENSOR_COLOR(stype){return US3_PROD_COLORS[US3_SENSOR_PRODUCT(stype)||'unknown'];}
+// Batch product resolver — given device_ids, returns {device_id: 'ff'|'hach'|'cric'|'rg'|null}
+// using each device's MOST-RECENT device_locations.sensor_type as the field-truth authority,
+// falling back to any prior warehouse_devices.product when a device has no field history.
+// Resolves (never rejects): on any query error it returns a best-effort/empty map so a commit
+// can still proceed with null (unknown) products — scanning must never break on the lookup.
+function us3ResolveProducts(ids){
+  var out={};
+  ids=(ids||[]).filter(Boolean);
+  if(!ids.length)return Promise.resolve(out);
+  if(typeof supa==='undefined'||!supa)return Promise.resolve(out);
+  // Chunk the .in() so a big shelf doesn't blow the URL/IN limit.
+  var CH=150,chunks=[];
+  for(var i=0;i<ids.length;i+=CH)chunks.push(ids.slice(i,i+CH));
+  function q(table,sel){
+    return Promise.all(chunks.map(function(c){
+      return supa.from(table).select(sel).in('device_id',c).then(function(r){return (r&&r.data)||[];},function(){return [];});
+    })).then(function(parts){return parts.reduce(function(a,b){return a.concat(b);},[]);}).catch(function(){return [];});
+  }
+  // 1) device_locations is the field-truth authority — newest sensor_type per device wins.
+  return q('device_locations','device_id,sensor_type,updated_at').then(function(loc){
+    var newest={};
+    loc.forEach(function(d){
+      var id=String(d.device_id);
+      var prev=newest[id];
+      // pick the row with the latest updated_at (undefined sorts oldest)
+      if(!prev||String(d.updated_at||'')>String(prev.updated_at||''))newest[id]=d;
+    });
+    Object.keys(newest).forEach(function(id){out[id]=us3ProductFromSensorType(newest[id].sensor_type);});
+    // 2) Fallback: any device still unresolved (no history or unknown sensor_type) → prior
+    //    warehouse_devices.product if one exists.
+    var missing=ids.filter(function(id){return !out[String(id)];});
+    if(!missing.length)return out;
+    return q('warehouse_devices','device_id,product').then(function(wd){
+      wd.forEach(function(d){
+        var id=String(d.device_id);
+        if(!out[id]&&d.product)out[id]=d.product;
+      });
+      return out;
+    });
+  }).catch(function(){return out;});
+}
+window.us3ResolveProducts=us3ResolveProducts;
 // Scanner status options — NO "Decommissioned": decommission is the sacred deliberate flow.
 var US3_SCAN_STATUSES=['Available','Reserved','Deployed','Maintenance','In Production'];
 var US3_KIT_PRODUCTS=[{id:'FF',label:'FlexFlow (FF)'},{id:'Cricket',label:'Cricket'},{id:'Hach',label:'Hach'},{id:'RG',label:'Rain Gauge (RG)'}];
@@ -5581,7 +5644,7 @@ function scanRenderRecent(){
 // round-trips (one warehouse_devices.upsert + one device_events.insert). No per-device
 // confirm/label. Conflict heads-up is one batch query at commit time against device_locations.
 var scanBulkMode=false;
-var scanBulk={prod:'ff',action:'green',ids:[]}; // ids: array of {id} in scan order (newest pushed last; rendered newest-first)
+var scanBulk={prod:'auto',action:'green',ids:[]}; // prod 'auto' = detect per-device from history at commit. ids: array of {id} in scan order (newest pushed last; rendered newest-first)
 function scanSetMode(on){
   scanBulkMode=!!on;
   if(!scanBulkMode){scanStopCamera();}
@@ -5621,13 +5684,17 @@ window.scanRenderBulk=scanRenderBulk;
 // Product chips + green/red action toggle (the one thing that determines the whole batch).
 function scanRenderBulkControls(){
   var el=document.getElementById('scanBulkControls');if(!el)return;
-  var prodChips=PRODUCTS.map(function(p){
+  // "Auto" chip first — the default. Detects each device's product from its field history at commit.
+  var autoOn=scanBulk.prod==='auto';
+  var autoCol='#00c49a';
+  var autoChip='<button class="us3bulk-chip'+(autoOn?' on':'')+'" style="'+(autoOn?('background:'+autoCol+';border-color:'+autoCol+';color:#04130f;'):('color:'+autoCol+';border-color:'+autoCol+';'))+'" onclick="scanBulkSetProd(\'auto\')" title="Detect each device&#39;s product from its field history — works on a mixed shelf">✨ Auto (from history)</button>';
+  var prodChips=autoChip+PRODUCTS.map(function(p){
     var on=scanBulk.prod===p.id;var col=US3_PROD_COLORS[p.id]||p.color||'#0071BC';
     return '<button class="us3bulk-chip'+(on?' on':'')+'" style="'+(on?('background:'+col+';border-color:'+col+';color:#fff;'):('color:'+col+';border-color:'+col+';'))+'" onclick="scanBulkSetProd(\''+p.id+'\')">'+us3esc(p.label)+'</button>';
   }).join('');
   var grn=scanBulk.action==='green';
   el.innerHTML=
-    '<label class="us3b2-label">Product (whole batch)</label>'+
+    '<label class="us3b2-label">Product (whole batch) — leave on <b>Auto</b> for a mixed shelf; pick one to force it</label>'+
     '<div class="us3bulk-chips">'+prodChips+'</div>'+
     '<label class="us3b2-label" style="margin-top:14px;">Action (whole batch) — this is what every scan becomes</label>'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
@@ -5695,8 +5762,16 @@ function scanBulkCommit(){
   var status=scanBulk.action==='green'?'green':'red';
   var evType=scanBulk.action==='green'?'green-tag':'red-tag';
   var evStatus=scanBulk.action==='green'?'Available':'Maintenance';
-  var prod=scanBulk.prod||null;
-  var devRows=scanBulk.ids.map(function(r){return {device_id:r.id,status:status,product:prod,updated_by:tech,updated_at:now};});
+  var ids=scanBulk.ids.map(function(r){return r.id;});
+  var manualProd=(scanBulk.prod&&scanBulk.prod!=='auto')?scanBulk.prod:null;
+  // Auto mode → resolve each device's product from its field history first; manual → force it.
+  // Resolver never rejects, but guard anyway so a lookup hiccup falls back to null (unknown).
+  var prodMapP=manualProd?Promise.resolve(null):us3ResolveProducts(ids).catch(function(){return {};});
+  prodMapP.then(function(pmap){
+  var devRows=scanBulk.ids.map(function(r){
+    var prod=manualProd||(pmap?(pmap[String(r.id)]||null):null);
+    return {device_id:r.id,status:status,product:prod,updated_by:tech,updated_at:now};
+  });
   var evRows=scanBulk.ids.map(function(r){return {device_id:r.id,event_type:evType,status:evStatus,tech:tech,station:station};});
   supa.from('warehouse_devices').upsert(devRows).then(function(res){
     if(res&&res.error){
@@ -5707,7 +5782,6 @@ function scanBulkCommit(){
     supa.from('device_events').insert(evRows); // log; don't block the success path on it
     if(typeof liveStockRefresh==='function')liveStockRefresh();
     // Batch conflict heads-up: how many of these are still listed deployed in Fulcrum?
-    var ids=scanBulk.ids.map(function(r){return r.id;});
     supa.from('device_locations').select('device_id').eq('status','deployed').in('device_id',ids).then(function(cf){
       var m=(cf&&cf.data)?cf.data.length:0;
       toast('✅ '+n+' device'+(n===1?'':'s')+' tagged as '+evStatus);
@@ -5717,6 +5791,7 @@ function scanBulkCommit(){
     scanBulk.ids=[];scanRenderBulkList();
     var i=document.getElementById('scanBulkInput');if(i)i.focus();
   });
+  }); // end prodMapP.then
 }
 window.scanBulkCommit=scanBulkCommit;
 function scanManualSubmit(){
