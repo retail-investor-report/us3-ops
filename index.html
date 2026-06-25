@@ -6584,11 +6584,21 @@ function injectCSS(){
   '.us3help:hover .tip,.us3help:focus .tip,.us3help.on .tip{display:block;}'+
   '.us3help.right .tip{left:auto;right:-6px;transform:none;}'+
   '.us3help.right .tip:before{left:auto;right:9px;transform:rotate(45deg);}'+
-  '.us3tour-back{position:fixed;inset:0;background:rgba(5,8,14,.78);z-index:5000;display:none;}'+
-  '.us3tour-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:16px;padding:26px 28px;z-index:5001;font-family:Rajdhani,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);}'+
-  '.us3tour-box h2{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:22px;margin:0 0 4px;}'+
+  // transparent click-catcher (closes the tour). Dimming is done by the spotlight shadow
+  // when a target exists, or by .us3tour-back.dim for centered (no-target) steps.
+  '.us3tour-back{position:fixed;inset:0;background:transparent;z-index:5000;display:none;}'+
+  '.us3tour-back.dim{background:rgba(5,8,14,.78);}'+
+  // spotlight: a transparent window with a huge dark box-shadow that dims everything else
+  '.us3tour-spot{position:fixed;z-index:5001;border-radius:8px;display:none;pointer-events:none;box-shadow:0 0 0 4000px rgba(5,8,14,.78),0 0 0 2px var(--accent,#0071BC),0 0 22px rgba(0,113,188,.55);transition:left .22s,top .22s,width .22s,height .22s;}'+
+  '.us3tour-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);background:#0b0f17;color:#e8edf4;border:1px solid #243044;border-radius:16px;padding:22px 24px;z-index:5002;font-family:Rajdhani,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);transition:left .22s,top .22s;}'+
+  '.us3tour-box.centered{width:min(560px,92vw);padding:26px 28px;}'+
+  '.us3tour-box h2{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:21px;margin:0 0 4px;line-height:1.15;}'+
   '.us3tour-box .step{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.08em;color:#0071BC;text-transform:uppercase;}'+
-  '.us3tour-box p{font-size:16px;line-height:1.5;color:#cdd6e2;}'+
+  '.us3tour-box .chap{font-family:Oswald,sans-serif;font-size:10px;letter-spacing:.14em;color:#8a97a8;text-transform:uppercase;margin-bottom:2px;}'+
+  '.us3tour-box p{font-size:15px;line-height:1.5;color:#cdd6e2;}'+
+  '.us3tour-fab{position:fixed;right:18px;bottom:18px;z-index:4900;width:46px;height:46px;border-radius:50%;border:1px solid var(--accent,#0071BC);background:#0b0f17;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s;}'+
+  '.us3tour-fab:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,113,188,.4);}'+
+  'body.light .us3tour-fab{background:#fff;color:#0071BC;}'+
   /* ── compact summary cards (navy border, radius 6, row format) ── */
   '.us3sum-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}'+
   '.us3sum{background:var(--panel-bg,#121826);border:2px solid #11365f;border-radius:6px;padding:4px 18px 10px;}'+
@@ -6910,37 +6920,232 @@ function us3GroupRows(arr,prep){
     return '<div class="us3grp"><div class="us3grp-h" onclick="us3ToggleColl(this)"><span><b style="font-family:Oswald,sans-serif;color:var(--text,#e8edf4);">'+grp.items.length+'</b> device'+(grp.items.length>1?'s':'')+place+'<span class="sub2" style="color:#8a97a8;font-size:11px;margin-left:8px;">'+fmtDate(grp.date)+'</span></span><span class="us3coll-ar">▾</span></div><div class="us3grp-body" style="padding-left:6px;">'+devs+'</div></div>';
   }).join('');
 }
-/* ---- guided tour ---- */
-var TOUR=[
-  {h:'Welcome to US3 Operations',p:'This is your live operations hub. The data here is pulled automatically from three places — your Airtable job tracker, the Fulcrum field app, and the warehouse door-scanner log. Nothing here is typed by hand. Let me show you around.'},
-  {h:'Dashboard',p:'The landing page. Top row = live counts (jobs in the ground, devices deployed, devices out the door). Below are the things that need your attention: studies ending soon, equipment overdue for return, upcoming jobs, and data-hygiene alerts. Every card is clickable.'},
-  {h:'Where the jobs come from',p:'“Jobs” are your company Airtable project tracker (synced automatically every night). That includes early sales-stage jobs (“New”) you may not recognise yet — they only become warehouse-relevant once devices ship. “In the ground” now means a job that actually has deployed devices, not just an open record.'},
-  {h:'Ship Station',p:'Your daily tool. Look up any device by ID to see its full ship/receive history. Build a shipment: scan/paste device IDs, hit “Copy for email”, and tick them off the packing checklist as they go in the box. Station tiles + activity show the door scanners.'},
-  {h:'Projects & Schedule',p:'Two views of the same live jobs. Projects = cards; Schedule = a list of what’s in the ground. Click any job to open its page: real Fulcrum devices, sites, dates, value, and links out to the map and each device.'},
-  {h:'Device pages',p:'Click any device ID anywhere and you get its page: current field location (Fulcrum), full movement history (the door scans), kit membership, and a Notes section you can add to — handy for flagging a faulty unit.'},
-  {h:'Device Map & the rest',p:'Device Map plots deployed devices (filter by job). Build Kit packs/ships totes with a scannable QR manifest. Station Scanner logs devices at a bench. Availability / Fleet Map / Decommission are the older inventory tools. That’s the tour — explore, then tell me what to change.'}
-];
-var tourI=0;
+/* ════════════════════════════════════════════════════════════════════
+   GUIDED TOUR ENGINE (rebuilt)
+   ────────────────────────────────────────────────────────────────────
+   One engine drives two things:
+     • the GRAND tour  — chains through every tab in nav order
+     • per-page tours  — a short tutorial for one tab, replayable via the
+                         floating 🧭 button (US3.pageTour) or the per-page
+                         "Take the tour" buttons.
+   A step = { sw:'<tabId>'|fn, sel:'<css>', h:'title', p:'body', center:bool }.
+     sw   — switch to this tab/sub-page before showing the step (string id
+            routed through gotoTab/swTech, or a function for custom moves).
+     sel  — element to spotlight + anchor the tooltip to. Omit (or set
+            center:true) to show a centered modal with no spotlight.
+   Selectors are resolved live each step, AFTER the tab is switched and a
+   short paint delay, so dynamically-rendered pages target real elements.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Per-page tutorials. Keyed by the page/sub-page id used by sw(). */
+var TOUR_PAGES={
+  mc:[
+    {sel:'#dashWrap .us3w-h',h:'Dashboard = morning command view',p:'Your first stop each day. Everything here is live — pulled automatically from Airtable (jobs), Fulcrum (field devices) and the warehouse door-scan log. Nothing is typed by hand. It answers one question fast: what needs attention today?'},
+    {sel:'#avFleetCompany',h:'Fleet Availability',p:'Company-wide, how much hardware is actually free to deploy right now, by product. This is the number to trust before you promise equipment to a new job — it nets out what is reserved, deployed or in maintenance.'},
+    {sel:'#houstonInfoBar',h:'Houston level project',p:'Houston is our biggest standing deployment (~3,000 Cricket), so it gets its own line. This bar links straight into the Houston portal; the full fleet-health breakdown lives on the Houston tab.'},
+    {sel:'.us3detail-grid',h:'The attention panels',p:'Six collapsible panels: studies ending soon, equipment overdue for return, upcoming jobs, data-hygiene alerts, and recent shipments/returns. Every row is clickable — it jumps you to the job or device.'},
+    {sel:'#avGrid',h:'By office',p:'The same availability, broken out per office — El Cajon, Downey, Puerto Rico, Houston. Use it to see where the free hardware physically is before you plan a shipment.'}
+  ],
+  fleet:[
+    {sel:'#fleetViewToggle',h:'Two ways to read the fleet',p:'Toggle between “Availability by month” (a calendar of how many of each product are free per month) and “Device timeline” (one row per device, weeks across — the deployment grid).'},
+    {sel:'#fleetFilters',h:'Filter by product',p:'Narrow the grid to one product line — FlexFlow, Cricket, Hach, Rain Gauge — plus a Houston button for the big standing deployment.'},
+    {sel:'#fleetCanvasRow',h:'The dot grid',p:'Each dot is a device-week, coloured by status (available / reserved / deployed / maintenance — see the legend). Scroll right to look further ahead; hover a dot for detail.'}
+  ],
+  assetmap:[
+    {sel:'.am-toolbar',h:'Asset Map toolbar',p:'Filter the dots by status (Available / Reserved / Deployed / Maintenance), and zoom the dot size in/out. The legend shows what each colour means.'},
+    {sel:'#amCanvas',h:'Every asset, one dot',p:'Office product cards up top, then horizontal deployed-job cards. Each dot is one physical device; deployed devices pulse. Hover any dot for its detail tooltip; click to open the device.'}
+  ],
+  houston:[
+    {sel:'#houstonInner',h:'Houston Fleet Health',p:'A single dashboard for our biggest deployment — ~2,615 devices — built from the weekly health upload, not the live scan feed. Use it to spot Houston-specific failures and maintenance load at a glance.'}
+  ],
+  sched:[
+    {sel:'.sch-title',h:'Schedule = the reservation calendar',p:'Every bar is a hold on a kit or device for a job over a date range. This is how you see what is already spoken for before you promise it to someone new.'},
+    {sel:'.sch-period',h:'Move through weeks',p:'Use Prev / Next to walk the calendar week by week; the period label shows where you are.'},
+    {sel:'.add-res-btn',h:'Book a hold',p:'“+ Add Reservation” places a new hold — pick the equipment, the job, and the dates. It then shows up as a bar everyone can see.'}
+  ],
+  projects:[
+    {sel:'#us3projFbar',h:'Projects = live jobs from the database',p:'Every active job as its own tile, straight from the company database. Use this filter bar to switch between in-the-ground work and the wider ongoing pipeline.'},
+    {sel:'#us3projGrid',h:'Open a project',p:'Click any tile to open that job’s page — its real Fulcrum devices, sites, dates, value, and links out to the map and each device.'},
+    {sel:'#pjGrid',h:'Portals',p:'Shortcut links straight into the external customer portals (Houston and others) where the raw monitoring data lives — one click out, no hunting for the URL.'}
+  ],
+  devmap:[
+    {sel:'#devmapInner',h:'Device Map = deployed in the field',p:'Plots deployed devices on a map. Filter by job to see only one study’s units in the ground. Click a marker to open that device’s page.'}
+  ],
+  decomm:[
+    {sel:'#dcInner',h:'Decommission',p:'The retirement view for end-of-life hardware — devices being pulled out of service. Older inventory tool; use it when you are formally taking units off the books.'}
+  ],
+  /* ── Technicians Area sub-pages ── */
+  scan:[
+    {sel:'#scanInner',h:'Station Scanner',p:'Log devices in at a bench. Scan a unit to record it at the station you’re working — this feeds the activity and station tiles you see on Ship Station.'}
+  ],
+  kit:[
+    {sel:'#kitInner',h:'Build Kit',p:'Pack and ship a tote as one unit. Add the devices, and Build Kit prints a scannable QR manifest so the whole kit moves and tracks together instead of device-by-device.'}
+  ],
+  count:[
+    {sel:'#countInner',h:'Inventory & Kit Availability',p:'The count view — how many of each product are on hand and free, and which built kits are available to grab. Cross-check this against the Dashboard availability before a big ship.'}
+  ],
+  shop:[
+    {sel:'#shopSearchInput',h:'Look up any device',p:'Type or scan a device ID to open its full ship/receive history and notes. This is the fastest way to answer “where has this unit been?”'},
+    {sel:'#shipIds',h:'Build a shipment',p:'Paste or scan the device IDs going out, fill in the recipient/job/date, and it generates a clean shipment block you can copy into an email.'},
+    {sel:'#shipChecklist',h:'Packing checklist',p:'Each ID becomes a checkbox — tick them off as they physically go in the box so nothing gets left on the bench.'}
+  ],
+  parts:[
+    {sel:'#redTagSection',h:'Red Tag = the maintenance shelf',p:'Devices flagged for repair live here. Scan the red shelf to tag units green (good) or red (needs work), then manage and return them.'},
+    {sel:'#failureAnalysis',h:'Why things fail',p:'Failure analysis, Pareto and fishbone views turn the red-tag history into patterns — so recurring faults get caught instead of just cycling through repair.'}
+  ],
+  viewer:[
+    {sel:'#viewerInner',h:'Product 3D',p:'An interactive 3D model of the hardware — drag to rotate, zoom to inspect. Useful for training, for showing a customer the unit, or for confirming a part.'}
+  ]
+};
+
+/* Order the per-page tours are chained in for the GRAND tour (nav order). */
+var TOUR_ORDER=['mc','fleet','assetmap','houston','sched','projects','devmap','scan','kit','count','shop','parts','viewer','decomm'];
+
+/* Friendly labels for the chapter line shown during the grand tour. */
+var TOUR_LABELS={mc:'Dashboard',fleet:'Fleet Map',assetmap:'Asset Map',houston:'Houston',sched:'Schedule',projects:'Projects',devmap:'Device Map',scan:'Station Scanner',kit:'Build Kit',count:'Inventory',shop:'Ship Station',parts:'Red Tag',viewer:'Product 3D',decomm:'Decommission'};
+
+/* Build the flat grand-tour step list: intro → each page's steps (with a
+   tab-switch on the first step of each page) → outro. */
+function buildGrandTour(){
+  var steps=[{center:true,h:'Welcome to US3 Operations',p:'This is your live operations hub — Airtable jobs, Fulcrum field devices and the warehouse scan log, all in one place, none of it typed by hand. I’ll walk you through every tab. Use Next / Back, or Skip to bail out any time.'}];
+  TOUR_ORDER.forEach(function(pg){
+    var arr=TOUR_PAGES[pg]||[];
+    arr.forEach(function(st,i){
+      var s={h:st.h,p:st.p,sel:st.sel,center:st.center,chapter:TOUR_LABELS[pg]||pg};
+      if(i===0)s.sw=pg; // switch to this tab on its first step
+      steps.push(s);
+    });
+  });
+  steps.push({sw:'mc',center:true,h:'That’s the tour',p:'You’ve seen every tab. Re-run a single page’s walkthrough any time with the 🧭 button (bottom-right), or replay this whole tour from the Dashboard. Now go — and tell me what to change.'});
+  return steps;
+}
+
+/* ── engine state ── */
+var tourSteps=[],tourI=0,tourMode='grand';
+
 function tourEnsure(){
   if(document.getElementById('us3Tour'))return;
-  var b=document.createElement('div');b.id='us3TourBack';b.className='us3tour-back';
+  var back=document.createElement('div');back.id='us3TourBack';back.className='us3tour-back';
+  var spot=document.createElement('div');spot.id='us3TourSpot';spot.className='us3tour-spot';
   var box=document.createElement('div');box.id='us3Tour';box.className='us3tour-box';box.style.display='none';
-  b.style.display='none';document.body.appendChild(b);document.body.appendChild(box);
-  b.addEventListener('click',endTour);
+  back.style.display='none';spot.style.display='none';
+  document.body.appendChild(back);document.body.appendChild(spot);document.body.appendChild(box);
+  back.addEventListener('click',endTour);
+  window.addEventListener('resize',function(){if(box.style.display==='block')positionTour();});
 }
-function startTour(){injectCSS();tourEnsure();tourI=0;paintTour();}
+
+/* Start the GRAND tour (nav-order chain through every page). */
+function startTour(){injectCSS();tourEnsure();tourSteps=buildGrandTour();tourMode='grand';tourI=0;paintTour();}
+
+/* Start a single page's tutorial. id defaults to the active page. */
+function pageTour(id){
+  injectCSS();tourEnsure();
+  if(!id){var a=document.querySelector('.page.active');id=a?a.id.replace('page-',''):'mc';}
+  var arr=TOUR_PAGES[id];
+  if(!arr||!arr.length){return;}
+  tourSteps=arr.map(function(st){return {h:st.h,p:st.p,sel:st.sel,center:st.center,chapter:TOUR_LABELS[id]||id};});
+  // make sure we're on that page
+  tourSteps[0].sw=id;
+  tourMode='page';tourI=0;paintTour();
+}
+
+/* Route a step's tab switch through the app's own navigation. */
+function tourGo(id){
+  try{
+    if(typeof gotoTab==='function')gotoTab(id);
+    else{var el=document.querySelector('[data-page="'+id+'"]');if(el&&typeof sw==='function')sw(id,el);}
+  }catch(e){}
+}
+
 function paintTour(){
-  var b=document.getElementById('us3TourBack'),box=document.getElementById('us3Tour');if(!box)return;
-  b.style.display='block';box.style.display='block';
-  var t=TOUR[tourI];
-  box.innerHTML='<div class="step">Step '+(tourI+1)+' of '+TOUR.length+'</div><h2>'+esc(t.h)+'</h2><p>'+esc(t.p)+'</p>'+
-    '<div style="display:flex;justify-content:space-between;margin-top:18px;">'+
+  var step=tourSteps[tourI];if(!step)return endTour();
+  var doPaint=function(){renderTourStep(step);};
+  if(typeof step.sw==='function'){try{step.sw();}catch(e){}setTimeout(doPaint,260);}
+  else if(step.sw){tourGo(step.sw);setTimeout(doPaint,300);} // wait for the page to render
+  else doPaint();
+}
+
+function renderTourStep(step){
+  var back=document.getElementById('us3TourBack'),box=document.getElementById('us3Tour'),spot=document.getElementById('us3TourSpot');
+  if(!box)return;
+  back.style.display='block';box.style.display='block';
+  var total=tourSteps.length;
+  var chap=step.chapter?('<div class="chap">'+esc(step.chapter)+'</div>'):'';
+  box.innerHTML=chap+'<div class="step">Step '+(tourI+1)+' of '+total+'</div><h2>'+esc(step.h)+'</h2><p>'+esc(step.p)+'</p>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;">'+
       '<button class="us3w-back" onclick="US3.tour(\'end\')">Skip</button>'+
       '<div style="display:flex;gap:8px;">'+(tourI>0?'<button class="us3w-back" onclick="US3.tour(\'prev\')">‹ Back</button>':'')+
-      '<button class="us3b2-btn" onclick="US3.tour(\''+(tourI<TOUR.length-1?'next':'end')+'\')">'+(tourI<TOUR.length-1?'Next ›':'Done')+'</button></div></div>';
+      '<button class="us3b2-btn" onclick="US3.tour(\''+(tourI<total-1?'next':'end')+'\')">'+(tourI<total-1?'Next ›':'Done')+'</button></div></div>';
+  var el=(!step.center&&step.sel)?document.querySelector(step.sel):null;
+  if(el&&el.getClientRects().length){
+    back.classList.remove('dim');           // spotlight shadow provides the dim
+    try{el.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
+    // spotlight once, then re-measure after the smooth-scroll settles so the
+    // hole lands on the element's final on-screen position.
+    setTimeout(function(){spotlight(el);},step.sw?60:0);
+    setTimeout(function(){if(document.getElementById('us3Tour').style.display==='block')spotlight(el);},step.sw?360:340);
+  }else{
+    // no target → centered modal, dim everything via the backdrop
+    back.classList.add('dim');
+    spot.style.display='none';
+    box.classList.add('centered');
+    box.style.left='50%';box.style.top='50%';box.style.transform='translate(-50%,-50%)';
+  }
 }
-function tourNav(dir){if(dir==='end')return endTour();if(dir==='next')tourI=Math.min(TOUR.length-1,tourI+1);if(dir==='prev')tourI=Math.max(0,tourI-1);paintTour();}
-function endTour(){var b=document.getElementById('us3TourBack'),box=document.getElementById('us3Tour');if(b)b.style.display='none';if(box)box.style.display='none';try{localStorage.setItem('us3_tour_seen','1');}catch(e){}}
+
+/* Cut a hole around el and anchor the tooltip beside it. */
+function spotlight(el){
+  var box=document.getElementById('us3Tour'),spot=document.getElementById('us3TourSpot');
+  if(!el||!box||!spot)return;
+  var r=el.getBoundingClientRect();
+  if(!r.width&&!r.height){spot.style.display='none';box.classList.add('centered');box.style.left='50%';box.style.top='50%';box.style.transform='translate(-50%,-50%)';return;}
+  var pad=8;
+  spot.style.display='block';
+  spot.style.left=(r.left-pad)+'px';spot.style.top=(r.top-pad)+'px';
+  spot.style.width=(r.width+pad*2)+'px';spot.style.height=(r.height+pad*2)+'px';
+  positionTour();
+}
+
+/* Place the tooltip near the spotlighted element, kept on-screen. */
+function positionTour(){
+  var box=document.getElementById('us3Tour'),spot=document.getElementById('us3TourSpot');
+  if(!box||spot.style.display==='none')return;
+  box.classList.remove('centered');box.style.transform='none';
+  var vw=window.innerWidth,vh=window.innerHeight;
+  var bw=Math.min(box.offsetWidth||420,vw-24),bh=box.offsetHeight||200;
+  var sr={left:parseFloat(spot.style.left),top:parseFloat(spot.style.top),w:parseFloat(spot.style.width),h:parseFloat(spot.style.height)};
+  var below=sr.top+sr.h+14, above=sr.top-bh-14;
+  var top,left;
+  if(below+bh<=vh-12)top=below;            // prefer below
+  else if(above>=12)top=above;             // else above
+  else top=Math.max(12,(vh-bh)/2);         // else center vertically
+  left=sr.left+sr.w/2-bw/2;                // center horizontally on target
+  left=Math.max(12,Math.min(left,vw-bw-12));
+  box.style.left=left+'px';box.style.top=top+'px';
+}
+
+function tourNav(dir){
+  if(dir==='end')return endTour();
+  if(dir==='next')tourI=Math.min(tourSteps.length-1,tourI+1);
+  if(dir==='prev')tourI=Math.max(0,tourI-1);
+  paintTour();
+}
+function endTour(){
+  var back=document.getElementById('us3TourBack'),box=document.getElementById('us3Tour'),spot=document.getElementById('us3TourSpot');
+  if(back)back.style.display='none';
+  if(box){box.style.display='none';box.classList.remove('centered');}
+  if(spot)spot.style.display='none';
+  try{localStorage.setItem('us3_tour_seen','1');}catch(e){}
+}
+
+/* Floating 🧭 button → replay the CURRENT page's tutorial. */
+function ensureTourFab(){
+  if(document.getElementById('us3TourFab'))return;
+  var b=document.createElement('button');b.id='us3TourFab';b.className='us3tour-fab';
+  b.title='Tour this page';b.innerHTML='🧭';
+  b.onclick=function(){pageTour();};
+  document.body.appendChild(b);
+}
 function jobRow(j,right){return '<div class="us3prow" onclick="US3.openProject(\''+js(j.job_number)+'\')"><div><b>'+esc(j.job_number||'—')+'</b> <span style="color:#8a97a8;font-size:13px;">'+esc(jobWho(j))+'</span></div>'+(right||'')+'</div>';}
 function paintDashboard(ops){
   var LV=window.US3Live,jobs=LV.jobs;
@@ -7163,7 +7368,7 @@ function onHash(){
   if(md){renderDevicePage(decodeURIComponent(md[1]));return;}
   hideOverlay();
 }
-window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
+window.US3={openProject:openProject,openDevice:openDevice,close:closeDetail,projFilter:function(f){projFilter=f;paintProjFbar();paintProjGrid();},schedFilter:function(f){schedFilter=f;paintSched();},mapJob:mapJob,clearMapFilter:clearMapFilter,go:gotoTab,renderShop:renderShop,search:shopSearch,shipPull:shipPull,shipGen:shipGen,shipCopy:shipCopy,shipPack:shipPack,addNote:deviceAddNote,startTour:startTour,pageTour:pageTour,tour:tourNav,downloadDevice:downloadDevice,refresh:function(){load(true).then(function(){loadOps(true).catch(function(){});onHash();});},live:load};
 window.US3._dev=null;
 function downloadDevice(){
   var d=window.US3&&window.US3._dev;if(!d){alert('Open a device first.');return;}
@@ -7196,13 +7401,15 @@ function repaintInventory(){
   if(active.id==='page-fleet'&&typeof renderFleet==='function'){try{renderFleet();}catch(e){}}
 }
 function init(){
-  injectCSS();patchMap();
+  injectCSS();patchMap();ensureTourFab();
   window.addEventListener('hashchange',onHash);
   load().then(function(){
     // repaint whichever live tab is currently showing
     var active=document.querySelector('.page.active');
     if(active){if(active.id==='page-projects'&&typeof renderProjects==='function')renderProjects();if(active.id==='page-sched')paintSched();if(active.id==='page-mc')renderDashboard();if(active.id==='page-shop')renderShop();}
-    try{if(!localStorage.getItem('us3_tour_seen')&&active&&active.id==='page-mc')setTimeout(startTour,1100);}catch(e){}
+    // First visit: auto-run just the Dashboard tutorial (not the whole grand tour — too jarring).
+    // The "Take the tour" button runs the full chained grand tour on demand.
+    try{if(!localStorage.getItem('us3_tour_seen')&&active&&active.id==='page-mc')setTimeout(function(){var lo=document.getElementById('loginOverlay');if(lo&&lo.style.display!=='none'&&!lo.classList.contains('fade-out'))return;pageTour('mc');},1100);}catch(e){}
     repaintInventory();
     onHash();
   },function(){});
