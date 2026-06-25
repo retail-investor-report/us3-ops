@@ -707,7 +707,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <div class="page" id="page-fleet">
   <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg);">
     <div style="display:flex;align-items:center;gap:12px;padding:8px 22px;border-bottom:1px solid var(--border);background:var(--nav-bg);flex-shrink:0;flex-wrap:wrap;">
-      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);display:flex;align-items:center;gap:8px;">Fleet Map <span title="A planning view for sales, booking & scheduling. Every device the company owns is one row (device ID on the left); the columns run left-to-right across the next 52 weeks (time). Each dot shows whether that unit is available, deployed, reserved, or in maintenance that week — so you can see what's free to book at any time of year. A deployed (blue) device turns green once its job's end-date passes and it frees up. Stock you haven't entered yet won't appear as available." style="cursor:help;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--muted);color:var(--muted);font-size:11px;font-weight:700;flex-shrink:0;">?</span><span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· green = available · blue = deployed (turns green after job ends) · amber = maintenance</span></div>
+      <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text);display:flex;align-items:center;gap:8px;">Fleet Map</div>
       <div id="fleetViewToggle" style="display:flex;margin-left:12px;border:1.5px solid var(--accent);border-radius:7px;overflow:hidden;flex-shrink:0;background:var(--card-bg);box-shadow:0 1px 4px rgba(0,0,0,.15);">
         <div id="fleetViewMonthBtn" onclick="setFleetView('month')" style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;user-select:none;transition:all .15s;">📊 Availability by month</div>
         <div id="fleetViewGridBtn" onclick="setFleetView('grid')" style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;user-select:none;border-left:1.5px solid var(--accent);transition:all .15s;">▦ Device timeline</div>
@@ -4324,6 +4324,15 @@ function renderFleet(){
     btn.onclick=(function(pid2){return function(){fleetAvailNowOn=false;fleetProduct=pid2;renderFleet();};})(pid);
     filDiv.appendChild(btn);
   });
+  // "Houston" jump button — NOT a product; navigates to the Houston tab
+  (function(){
+    var hBtn=document.createElement('div');
+    hBtn.style.cssText="font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;padding:10px 22px;border:1.5px solid var(--border);border-radius:5px;cursor:pointer;user-select:none;text-transform:uppercase;letter-spacing:.1em;color:#c0d0e8;background:transparent;transition:all .15s;";
+    hBtn.textContent='🛢 Houston';
+    hBtn.className='fleet-btn-text';
+    hBtn.onclick=function(){if(typeof gotoTab==='function'){gotoTab('houston');}else{sw('houston',document.querySelector('[data-page="houston"]'));}};
+    filDiv.appendChild(hBtn);
+  })();
   // "Available now" snapshot toggle — shows ALL products' current free/deployed counts at once
   (function(){
     var anActive=fleetAvailNowOn;
@@ -4474,8 +4483,9 @@ function renderFleet(){
     var wl=document.createElement('div');
     wl.style.cssText='width:'+cellSize+'px;flex-shrink:0;text-align:left;font-family:"Rajdhani",sans-serif;font-size:'+hdrFontSize+'px;font-weight:700;color:var(--text);line-height:'+headerHeight+'px;white-space:nowrap;overflow:visible;letter-spacing:.02em;padding-left:2px;';
     var mo=weeks[c].toLocaleDateString('en-US',{month:'short'});
+    var yy=String(weeks[c].getFullYear()).slice(-2);
     var day=weeks[c].getDate();
-    wl.textContent=(day<=7)?mo:'';
+    wl.textContent=(day<=7)?(mo+" '"+yy):'';
     wl.title='Wk of '+weeks[c].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     header.appendChild(wl);
   }
@@ -4589,7 +4599,8 @@ function renderFleet(){
       else if(st==='maintenance'){statusLabel='Maintenance';statusColor='#e8a020';detail='Under Assessment';}
       else{statusLabel='Available';statusColor='#00c49a';}
       var weekLabel=weeks[col].toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      showFleetDotTooltip(e,'#'+asset.id,statusLabel,statusColor,detail,asset.office,weekLabel);
+      var prodLabel=US3_PROD_LABELS[fleetProduct]||(p&&p.label)||'';
+      showFleetDotTooltip(e,'#'+asset.id,statusLabel,statusColor,detail,asset.office,weekLabel,prodLabel);
     } else {
       _lastTipRow=-1;_lastTipCol=-1;
       hideFleetDotTooltip();
@@ -4631,7 +4642,7 @@ function fmtShort(dateStr){
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 
-function showFleetDotTooltip(e,unit,statusLabel,statusColor,detail,loc,weekLabel){
+function showFleetDotTooltip(e,unit,statusLabel,statusColor,detail,loc,weekLabel,prodLabel){
   var tip=document.getElementById('fleetTooltip');
   if(!tip){
     tip=document.createElement('div');
@@ -4642,14 +4653,15 @@ function showFleetDotTooltip(e,unit,statusLabel,statusColor,detail,loc,weekLabel
   tip.innerHTML=
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'+
       '<span style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;color:#fff;">'+unit+'</span>'+
-      '<span style="font-size:10px;color:#8aa4c4;">'+weekLabel+'</span>'+
+      '<span style="font-size:10px;color:#fff;">'+weekLabel+'</span>'+
     '</div>'+
+    (prodLabel?'<div style="font-size:11px;color:#eaf1ff;font-weight:600;margin-bottom:2px;">'+prodLabel+'</div>':'')+
     '<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">'+
       '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+statusColor+';"></span>'+
       '<span style="font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'+
     '</div>'+
     (detail?'<div style="font-size:11px;color:#8aa4c4;">'+detail+'</div>':'')+
-    '<div style="font-size:10px;color:#556;margin-top:2px;">'+loc+'</div>';
+    '<div style="font-size:10px;color:#fff;margin-top:2px;">'+loc+'</div>';
   tip.style.display='block';
   updateFleetTooltipPos(e);
 }
