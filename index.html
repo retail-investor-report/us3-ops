@@ -7422,9 +7422,15 @@ function positionTour(){
   var sr={left:parseFloat(spot.style.left),top:parseFloat(spot.style.top),w:parseFloat(spot.style.width),h:parseFloat(spot.style.height)};
   var below=sr.top+sr.h+14, above=sr.top-bh-14;
   var top,left;
-  if(below+bh<=vh-12)top=below;            // prefer below
-  else if(above>=12)top=above;             // else above
-  else top=Math.max(12,(vh-bh)/2);         // else center vertically
+  if(below+bh<=vh-12)top=below;            // prefer below the target
+  else if(above>=12)top=above;             // else above it
+  else{
+    // Not enough room either side (tall target on a small/mobile screen). Centering would land
+    // the tooltip ON TOP of the target — instead pin it to the edge OPPOSITE the target's center
+    // so it never covers what it's describing.
+    var cy=sr.top+sr.h/2;
+    top=(cy<vh/2)?(vh-bh-12):12;
+  }
   left=sr.left+sr.w/2-bw/2;                // center horizontally on target
   left=Math.max(12,Math.min(left,vw-bw-12));
   box.style.left=left+'px';box.style.top=top+'px';
