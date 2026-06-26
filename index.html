@@ -937,7 +937,7 @@ window.addEventListener('DOMContentLoaded',function(){
   <div id="sidebarCollapseTab" onclick="toggleQuerySidebar()">&#9664;</div>
   <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);">Availability Query</div>
   <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--text);line-height:1.5;">Check if devices are available for a date range.</div>
-  <div class="form-row"><label>Product</label><select id="aq-type"><option value="hach">Hach</option><option value="ff">Flex Flow</option><option value="rg">Rain Gauge</option><option value="cric">Level</option></select></div>
+  <div class="form-row"><label>Product</label><select id="aq-type"><option value="hach">Hach</option><option value="ff">FlexFlow IQ</option><option value="rg">Rain Gauge</option><option value="cric">Level</option></select></div>
   <div class="form-row"><label>Quantity Needed</label><input id="aq-qty" type="number" min="1" value="3" style="font-size:15px;font-weight:600;"></div>
   <div class="form-row"><label>Start Date</label><input id="aq-start" type="date"></div>
   <div class="form-row"><label>End Date</label><input id="aq-end" type="date"></div>
@@ -970,7 +970,7 @@ window.addEventListener('DOMContentLoaded',function(){
     <div class="form-row"><label>Source Office</label><select id="res-loc"><option value="elcajon">El Cajon</option><option value="downey">Downey</option><option value="puertorico">Puerto Rico</option></select></div>
     <div class="form-row" style="display:block;"><label style="margin-bottom:6px;">Devices</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#3a8fe8;letter-spacing:.06em;min-width:78px;">Flex Flow</span><input id="res-dev-ff" type="number" min="0" value="0" style="flex:1;"></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#3a8fe8;letter-spacing:.06em;min-width:78px;">FlexFlow IQ</span><input id="res-dev-ff" type="number" min="0" value="0" style="flex:1;"></div>
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#e8a020;letter-spacing:.06em;min-width:78px;">Level</span><input id="res-dev-cric" type="number" min="0" value="0" style="flex:1;"></div>
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#A7A9AC;letter-spacing:.06em;min-width:78px;">Hach</span><input id="res-dev-hach" type="number" min="0" value="0" style="flex:1;"></div>
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-size:11px;text-transform:uppercase;color:#44bb88;letter-spacing:.06em;min-width:78px;">Rain Gauge</span><input id="res-dev-rg" type="number" min="0" value="0" style="flex:1;"></div>
@@ -989,7 +989,7 @@ window.addEventListener('DOMContentLoaded',function(){
   <div class="modal" style="max-width:440px;">
     <h2 style="color:#e8a020;">Check Availability</h2>
     <div class="modal-sub">Request a reservation — admin will confirm</div>
-    <div class="form-row"><label>Product</label><select id="ca-type"><option value="hach">Hach</option><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="rg">Rain Gauge</option></select></div>
+    <div class="form-row"><label>Product</label><select id="ca-type"><option value="hach">Hach</option><option value="ff">FlexFlow IQ</option><option value="cric">Level</option><option value="rg">Rain Gauge</option></select></div>
     <div class="form-row"><label>Quantity Needed</label><input id="ca-qty" type="number" min="1" value="1"></div>
     <div class="form-row"><label>Start Date</label><input id="ca-start" type="date"></div>
     <div class="form-row"><label>End Date</label><input id="ca-end" type="date"></div>
@@ -1016,13 +1016,13 @@ function prodLogoHtml(pid, h) {
 var ADMIN_PASSWORD = 'admin123';
 
 // ═══ PRODUCTS ═══
-// Order: Hach (white, top), FlexFlow (blue), Rain Gauge (green), Cricket (orange)
-// Vocab (Build 02): canonical product names are FlexFlow / Cricket (not "Flex Flow" / "Level").
+// Order: Hach (white, top), FlexFlow IQ (blue), Rain Gauge (green), Cricket (orange)
+// Vocab (Build 02): canonical product names are FlexFlow IQ / Cricket (not "Flex Flow" / "FlexFlow" / "Level").
 // ids stay 'ff'/'cric' \u2014 only display labels changed (no logic keys on these strings).
 var PRODUCTS = [
   {id:'hach',label:'Hach',       icon:'\u25C9', color:'#e8e8f0'},
-  {id:'ff',  label:'FlexFlow',   icon:'\u301C', color:'#3a8fe8'},
-  {id:'ffpr',label:'PR FlexFlow',icon:'\uD83C\uDF34', color:'#9b59b6'},
+  {id:'ff',  label:'FlexFlow IQ',   icon:'\u301C', color:'#3a8fe8'},
+  {id:'ffpr',label:'PR FlexFlow IQ',icon:'\uD83C\uDF34', color:'#9b59b6'},
   {id:'rg',  label:'Rain Gauge', icon:'\uD83C\uDF27', color:'#44bb88'},
   {id:'cric',label:'Cricket',    icon:'\u25C8', color:'#e8a020'},
 ];
@@ -1043,7 +1043,7 @@ var OFFICES = [
    products:null,
    customCards:[
      {id:'link', label:'Houston Project', icon:'\uD83C\uDF10', color:'#1a7fe8', url:'https://houstontx.uscubed.com/login.aspx', north:true},
-     {id:'ff',   label:'FlexFlow',       icon:'\u301C', color:'#3a8fe8', note:'Should be 0'},
+     {id:'ff',   label:'FlexFlow IQ',       icon:'\u301C', color:'#3a8fe8', note:'Should be 0'},
      {id:'hach', label:'Hach',            icon:'\u25C9',  color:'#e8e8f0', note:'Should be 0'},
    ]},
   {id:'puertorico', label:'Puerto Rico', icon:'\uD83C\uDF34',
@@ -1054,7 +1054,7 @@ var OFFICES = [
 var DEF_PIN = {elcajon:{x:12,y:55},downey:{x:11,y:38},houston:{x:40,y:62},puertorico:{x:88,y:72}};
 var PJ_LINKS = [
   {name:'Houston Project',    icon:'\uD83C\uDFD7', url:'https://houstontx.uscubed.com/login.aspx',  sub:'houstontx.uscubed.com',color:'#1a7fe8'},
-  {name:'Flex Flow Projects', icon:'\u301C', url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#3a8fe8'},
+  {name:'FlexFlow IQ Projects', icon:'\u301C', url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#3a8fe8'},
   {name:'Level Projects',     icon:'\u25C8',  url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#e8a020'},
   {name:'Rain Gauge Projects',icon:'\uD83C\uDF27', url:'https://cloud.uscubed.com/',         sub:'cloud.uscubed.com',    color:'#44bb88'},
   {name:'Hach Projects',      icon:'\u25C9',  url:'https://us3.uscubed.com/main.aspx?Session=Fa6GdGUMrKdAezOzwczlGHlldkMvpoD9T0sXazm5UQXUDy9YMrorPdFFNWnfsj46lHx/HEoMMddiqp7YujDcuZnIKduOOFathAVo1w1wc6DeEPPZgG8Pomvzjm/JGVcuuwUuNbK0ikyvj0bTqiaVLyVMvvwUwvtMksVr+Z6xFKyjCFvRdsenDajZL69RO8PMDRJhzNfMIxthv8R1LEf/M8n3fgkNWDoh',sub:'us3.uscubed.com',color:'#e8e8f0'},
@@ -1644,7 +1644,7 @@ var reservations=[
   {type:'cric',loc:'elcajon',qty:17,job:'West County Wastewater District',jobNum:'WCWD-001',location:'Richmond, CA',start:'2026-04-13',end:'2027-04-13',sites:17,devices:{cric:17},contact:'Gordon Times',notes:'1 year Level study',status:'confirmed'},
   {type:'ff',loc:'puertorico',qty:19,job:'Parsons',jobNum:'PARSONS-001',location:'TBD',start:'2026-04-27',end:'2026-05-27',sites:19,devices:{ff:19,rg:5},contact:'TBD',notes:'30 day study. 5 RG sourced: 4 from PR, 1 from El Cajon',status:'confirmed'},
   {type:'ff',loc:'puertorico',qty:33,job:'Ardurra',jobNum:'ARDURRA-001',location:'TBD',start:'2026-05-04',end:'2026-08-02',sites:33,devices:{ff:33,rg:3},contact:'TBD',notes:'90 day study. 5 FF from PR, 28 from production, 3 RG from El Cajon',status:'confirmed'},
-  {type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO-001',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow deployed. Returning to El Cajon maintenance on 4/20.',status:'confirmed'},
+  {type:'ff',loc:'elcajon',qty:49,job:'Corona',jobNum:'CORO-001',location:'Corona, CA',start:'2026-01-16',end:'2026-04-20',sites:49,devices:{ff:49},contact:'',notes:'49 FlexFlow IQ deployed. Returning to El Cajon maintenance on 4/20.',status:'confirmed'},
 ];
 
 // Deployed count is CALCULATED from active confirmed reservations — no manual storage.
@@ -2188,7 +2188,7 @@ function renderFleetStatus(){
   var card=document.getElementById('fleetStatusCard');
   if(!card)return;
   var products=[
-    {id:'ff',label:'FlexFlow',color:'#3a8fe8'},
+    {id:'ff',label:'FlexFlow IQ',color:'#3a8fe8'},
     {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#e8e8f0'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'}
@@ -2474,7 +2474,7 @@ function renderAvail(){
       var p=PRODUCTS.find(function(x){return x.id===pid;});
       var cells=LOC_STATUS.map(function(st){return '<td class="'+st+'">'+liveCount(off.id,pid,st)+'</td>';}).join('');
       // Brand logo where one exists (ff/cric/hach already spell out the product),
-      // text name for products without a logo (ffpr=PR FlexFlow, rg=Rain Gauge).
+      // text name for products without a logo (ffpr=PR FlexFlow IQ, rg=Rain Gauge).
       var pLogo=(typeof prodLogoHtml==='function')?prodLogoHtml(pid,18):'';
       var pCell=pLogo
         ? '<span style="display:inline-flex;align-items:center;height:18px;vertical-align:middle;">'+pLogo+'</span>'
@@ -2922,7 +2922,7 @@ function editReservation(idx){
   // Backward-compat: if no devices map, seed from type+qty
   if(!res.devices&&res.type){devs={};devs[res.type]=res.qty||0;}
   var pidRows=[
-    {id:'ff',label:'FlexFlow',color:'#3a8fe8'},
+    {id:'ff',label:'FlexFlow IQ',color:'#3a8fe8'},
     {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#A7A9AC'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'}
@@ -3009,7 +3009,7 @@ function getReturns(){return lv('us3_returns')||[];}
 function saveReturns(arr){sv('us3_returns',arr);}
 
 // ═══ RED TAG / SHELF SCAN (Phase 2) — green/red device tagging → warehouse_devices ═══
-var US3_DEV_PRODUCTS=[['ff','FlexFlow'],['cric','Cricket'],['rg','Rain Gauge']]; // serial RTUs only (Hach isn't serialized)
+var US3_DEV_PRODUCTS=[['ff','FlexFlow IQ'],['cric','Cricket'],['rg','Rain Gauge']]; // serial RTUs only (Hach isn't serialized)
 function redTagRender(){
   if(typeof us3b2InjectCSS==='function')us3b2InjectCSS();
   var host=document.getElementById('redTagSection');if(!host)return;
@@ -3152,7 +3152,7 @@ function renderParts(){
     '<div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:12px;">Log Device Return</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'+
       '<div class="form-row"><label>Device ID</label><div style="display:flex;gap:6px;"><input id="pr-id" placeholder="e.g. 4501" style="flex:1;"><button type="button" class="us3b2-btn alt" style="white-space:nowrap;padding:6px 10px;" onclick="prIdCamera()">📷</button></div></div>'+
-      '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">Flex Flow</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
+      '<div class="form-row"><label>Product</label><select id="pr-type"><option value="ff">FlexFlow IQ</option><option value="cric">Level</option><option value="hach">Hach</option><option value="rg">Rain Gauge</option></select></div>'+
       '<div class="form-row"><label>Return Date</label><input id="pr-date" type="date"></div>'+
       '<div class="form-row"><label>Failure Category</label><select id="pr-fail">'+FAIL_CATS.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
     '</div>'+
@@ -3641,7 +3641,7 @@ function renderFleetOverview(){
   var host=document.getElementById('avFleetCompany');
   if(!host)return;
   var products=[
-    {id:'ff',label:'FlexFlow',color:'#0071BC'},
+    {id:'ff',label:'FlexFlow IQ',color:'#0071BC'},
     {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#A7A9AC'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'},
@@ -3683,7 +3683,7 @@ function renderFleetOverview(){
 function renderProjects(){
   document.getElementById('pjGrid').innerHTML=PJ_LINKS.map(function(p){
     var logoHtml='';
-    if(p.name.indexOf('Flex Flow')>=0) logoHtml=prodLogoHtml('ff',36);
+    if(p.name.indexOf('FlexFlow IQ')>=0) logoHtml=prodLogoHtml('ff',36);
     else if(p.name.indexOf('Level')>=0) logoHtml=prodLogoHtml('cric',36);
     else if(p.name.indexOf('Hach')>=0) logoHtml=prodLogoHtml('hach',36);
     return '<a class="pj-card" href="'+p.url+'" target="_blank" rel="noopener"><div class="pj-card-icon">'+(logoHtml||p.icon)+'</div><div class="pj-card-name"'+(p.color?' style="color:'+p.color+'"':'')+'">'+p.name+'</div><div class="pj-card-url">'+p.sub+'</div><div class="pj-card-arrow">\u2192 Open Portal</div></a>';}).join('');
@@ -5340,7 +5340,7 @@ function renderMCMobile(){
   var el=document.getElementById('mcMobile');
   if(!el)return;
   var products=[
-    {id:'ff',label:'FlexFlow',color:'#3a8fe8'},
+    {id:'ff',label:'FlexFlow IQ',color:'#3a8fe8'},
     {id:'cric',label:'Cricket',color:'#e8a020'},
     {id:'hach',label:'Hach',color:'#e8e8f0'},
     {id:'rg',label:'Rain Gauge',color:'#44bb88'}
@@ -5479,7 +5479,7 @@ window.addEventListener('hashchange',function(){
 var US3_STATUS_COLORS={available:'#2ecc71',reserved:'#A7A9AC',deployed:'#0071BC',maintenance:'#e8a020','in production':'#9b59b6',decommissioned:'#7a2520'};
 // ---- device-type (product) color tokens — single source of truth for type-colored views (map, schedule) ----
 var US3_PROD_COLORS={ff:'#0071BC',ffpr:'#9b59b6',cric:'#e8a020',hach:'#9aa3b2',rg:'#44bb88',unknown:'#5a6472'};
-var US3_PROD_LABELS={ff:'FlexFlow',ffpr:'PR FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge',unknown:'Other / Unknown'};
+var US3_PROD_LABELS={ff:'FlexFlow IQ',ffpr:'PR FlexFlow IQ',cric:'Cricket',hach:'Hach',rg:'Rain Gauge',unknown:'Other / Unknown'};
 // Fulcrum sensor_type string -> product id. Shared by computeDeployed() and the map/schedule colorers.
 // Reusable sensor_type -> product mapper. Single source of truth for "what product is
 // this device" from its field history. A device with no recognizable history → null (unknown).
@@ -5540,9 +5540,9 @@ function us3ResolveProducts(ids){
 window.us3ResolveProducts=us3ResolveProducts;
 // Scanner status options — NO "Decommissioned": decommission is the sacred deliberate flow.
 var US3_SCAN_STATUSES=['Available','Reserved','Deployed','Maintenance','In Production'];
-var US3_KIT_PRODUCTS=[{id:'FF',label:'FlexFlow (FF)'},{id:'Cricket',label:'Cricket'},{id:'Hach',label:'Hach'},{id:'RG',label:'Rain Gauge (RG)'}];
+var US3_KIT_PRODUCTS=[{id:'FF',label:'FlexFlow IQ (FF)'},{id:'Cricket',label:'Cricket'},{id:'Hach',label:'Hach'},{id:'RG',label:'Rain Gauge (RG)'}];
 // Voice aliases applied to free-text entry fields.
-var US3_ALIASES=[[/\bhawk\b/gi,'Hach'],[/\bring gauge\b/gi,'Rain Gauge'],[/\balcahon\b/gi,'El Cajon'],[/\bflexfoil\b/gi,'FlexFlow']];
+var US3_ALIASES=[[/\bhawk\b/gi,'Hach'],[/\bring gauge\b/gi,'Rain Gauge'],[/\balcahon\b/gi,'El Cajon'],[/\bflexfoil\b/gi,'FlexFlow IQ']];
 function us3ApplyAliases(s){if(!s)return s;US3_ALIASES.forEach(function(a){s=s.replace(a[0],a[1]);});return s;}
 function us3esc(s){return (s===null||s===undefined)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function us3v(id){var e=document.getElementById(id);return e?e.value.trim():'';}
@@ -6423,7 +6423,7 @@ function kitPrintManifest(kitId){
 // ═══ PHASE 3 — WAREHOUSE COUNT ═══
 // Reconciles a physical count vs expected on-hand inventory (us3_counts, localStorage).
 // On-hand = available + reserved + maintenance (deployed is in the field, not the warehouse).
-function us3ProdLabel(pid){var m={ff:'FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};return m[pid]||pid;}
+function us3ProdLabel(pid){var m={ff:'FlexFlow IQ',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};return m[pid]||pid;}
 var countState=null;
 function countLoad(){try{countState=JSON.parse(localStorage.getItem('us3_count_state')||'null');}catch(e){countState=null;}if(!countState||typeof countState!=='object')countState={office:null,counts:{}};if(!countState.counts)countState.counts={};}
 function countSave(){try{localStorage.setItem('us3_count_state',JSON.stringify(countState));}catch(e){}}
@@ -6432,10 +6432,10 @@ function countExpected(office,prod){return (typeof gc!=='undefined')?(gc(office,
 // ═══ INVENTORY MODEL (Phase 1) — components are counted, kits are COMPUTED ═══
 // A kit is only as available as its scarcest part. Source of truth for company-wide kit availability.
 var US3_COMPONENTS=[
-  {key:'ff_rtu',product:'ff',label:'FlexFlow RTU (potted/US)',serial:true},
-  {key:'ff_sensor',product:'ff',label:'FlexFlow sensor',serial:false},
-  {key:'ffpr_rtu',product:'ffpr',label:'PR FlexFlow RTU (un-potted)',serial:true},
-  {key:'ffpr_sensor',product:'ffpr',label:'PR FlexFlow sensor',serial:false},
+  {key:'ff_rtu',product:'ff',label:'FlexFlow IQ RTU (potted/US)',serial:true},
+  {key:'ff_sensor',product:'ff',label:'FlexFlow IQ sensor',serial:false},
+  {key:'ffpr_rtu',product:'ffpr',label:'PR FlexFlow IQ RTU (un-potted)',serial:true},
+  {key:'ffpr_sensor',product:'ffpr',label:'PR FlexFlow IQ sensor',serial:false},
   {key:'cric_rtu',product:'cric',label:'Cricket RTU',serial:true},
   {key:'cric_sensor',product:'cric',label:'Cricket radar sensor',serial:false},
   {key:'hach_logger',product:'hach',label:'Hach logger',serial:false},
@@ -6445,7 +6445,7 @@ var US3_COMPONENTS=[
   {key:'rg_tripod',product:'rg',label:'Rain Gauge tripod',serial:false}
 ];
 var US3_KIT_RECIPES={ff:[['ff_rtu',1],['ff_sensor',1]],ffpr:[['ffpr_rtu',1],['ffpr_sensor',1]],cric:[['cric_rtu',1],['cric_sensor',1]],hach:[['hach_logger',1],['hach_flodar',1]],rg:[['rg_rtu',1],['rg_bucket',1],['rg_tripod',1]]};
-var US3_KIT_LABELS={ff:'FlexFlow',ffpr:'PR FlexFlow',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
+var US3_KIT_LABELS={ff:'FlexFlow IQ',ffpr:'PR FlexFlow IQ',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
 var invState={}; // office -> {component_key: qty}
 var invGreen={}; // product -> count of green-tagged serial devices (warehouse_devices)
 function invLoadAndRender(office){
@@ -6553,7 +6553,7 @@ function invMatrixHtml(){
     var totSty=rowTot>0?('color:'+c+';font-weight:700;'):'color:var(--muted);opacity:.55;';
     // Brand logos (ff/cric/hach) already contain the product name — show the logo ONLY,
     // no redundant text (mirrors the dashboard Company-Wide table). Products without a
-    // logo (ffpr=PR FlexFlow, rg=Rain Gauge) fall back to the text name.
+    // logo (ffpr=PR FlexFlow IQ, rg=Rain Gauge) fall back to the text name.
     var nameCell=logo
       ? '<span style="display:inline-flex;align-items:center;">'+logo+'</span>'
       : '<span style="font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:13px;color:'+c+';">'+us3esc(US3_KIT_LABELS[p])+'</span>';
@@ -7868,7 +7868,7 @@ function sampleHistoryReport(n){
   var maintCount=0;d.devs.forEach(function(dev){dev.events.forEach(function(e){if(e.type==='maint')maintCount++;});});
   var mixBar='';var mixTot=d.deviceCount;['ff','cric','hach','rg'].forEach(function(p){if(!d.mix[p])return;mixBar+='<span style="width:'+(d.mix[p]/mixTot*100)+'%;background:'+US3_PROD_COLORS[p]+';" title="'+US3_PROD_LABELS[p]+': '+d.mix[p]+'"></span>';});
   var mixTile='<div class="us3w-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><div class="us3w-h" style="font-size:16px;">Product Mix &amp; Maintenance'+
-    ' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">FlexFlow / Cricket / Hach / Rain Gauge on this job</span></div>'+
+    ' <span style="font-size:12px;color:#8a97a8;font-family:Rajdhani,sans-serif;font-weight:400;">FlexFlow IQ / Cricket / Hach / Rain Gauge on this job</span></div>'+
     '<button class="us3w-back" onclick="US3.sampleAssetMap()">Asset Map ›</button></div>'+
     '<div class="shr-cbar" style="height:14px;margin-top:12px;">'+mixBar+'</div>'+
     '<div class="shr-leg">'+['ff','cric','hach','rg'].filter(function(p){return d.mix[p];}).map(function(p){return '<span><span class="shr-dot" style="background:'+US3_PROD_COLORS[p]+';"></span>'+US3_PROD_LABELS[p]+' · '+d.mix[p]+'</span>';}).join('')+'<span style="margin-left:auto;">'+maintCount+' maintenance event'+(maintCount===1?'':'s')+' logged</span></div></div>';
@@ -8113,7 +8113,7 @@ window.renderProjects=function(){
   '</div>';
   if(typeof PJ_LINKS!=='undefined'&&document.getElementById('pjGrid')){
     document.getElementById('pjGrid').innerHTML=PJ_LINKS.map(function(p){
-      var logo='';if(typeof prodLogoHtml==='function'){if(p.name.indexOf('Flex Flow')>=0)logo=prodLogoHtml('ff',36);else if(p.name.indexOf('Level')>=0)logo=prodLogoHtml('cric',36);else if(p.name.indexOf('Hach')>=0)logo=prodLogoHtml('hach',36);}
+      var logo='';if(typeof prodLogoHtml==='function'){if(p.name.indexOf('FlexFlow IQ')>=0)logo=prodLogoHtml('ff',36);else if(p.name.indexOf('Level')>=0)logo=prodLogoHtml('cric',36);else if(p.name.indexOf('Hach')>=0)logo=prodLogoHtml('hach',36);}
       return '<a class="pj-card" href="'+p.url+'" target="_blank" rel="noopener"><div class="pj-card-icon">'+(logo||p.icon)+'</div><div class="pj-card-name"'+(p.color?' style="color:'+p.color+'"':'')+'">'+p.name+'</div><div class="pj-card-url">'+p.sub+'</div><div class="pj-card-arrow">→ Open Portal</div></a>';
     }).join('');
   }
@@ -8299,7 +8299,7 @@ var TOUR_PAGES={
   ],
   fleet:[
     {sel:'#fleetViewToggle',h:'Two ways to read the fleet',p:'Toggle between “Availability by month” (a calendar of how many of each product are free per month) and “Device timeline” (one row per device, weeks across — the deployment grid).'},
-    {sel:'#fleetFilters',h:'Filter by product',p:'Narrow the grid to one product line — FlexFlow, Cricket, Hach, Rain Gauge — plus a Houston button for the big standing deployment.'},
+    {sel:'#fleetFilters',h:'Filter by product',p:'Narrow the grid to one product line — FlexFlow IQ, Cricket, Hach, Rain Gauge — plus a Houston button for the big standing deployment.'},
     {sel:'#fleetCanvasRow',h:'The dot grid',p:'Each dot is a device-week, coloured by status (available / reserved / deployed / maintenance — see the legend). Scroll right to look further ahead; hover a dot for detail.'}
   ],
   assetmap:[
