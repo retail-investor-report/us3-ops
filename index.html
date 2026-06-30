@@ -5439,12 +5439,9 @@ function updateTabBadges(){
 
 // ═══ WELCOME GUIDE ═══
 function showWelcomeGuide(){
-  var el=document.getElementById('welcomeGuide');
-  if(!el)return;
-  el.style.display='flex';
-  var logo=document.getElementById('guideLogo');
-  var navImg=document.querySelector('.nb img');
-  if(logo&&navImg)logo.src=navImg.src;
+  // Welcome tutorial retired (Lenny 2026-06-30) — no longer shown on the homepage.
+  try{localStorage.setItem('us3_seen_guide','true');}catch(e){}
+  var el=document.getElementById('welcomeGuide'); if(el)el.style.display='none';
 }
 function dismissWelcomeGuide(){
   var el=document.getElementById('welcomeGuide');
@@ -9361,10 +9358,12 @@ function renderCmd(){
   ensureCmdPage();
   var inner=document.getElementById('cmdInner'); if(!inner) return;
   if(!isMgr(ID.active||ID.session)){ inner.innerHTML='<div class="us3id-note">Command Center is for managers only.</div>'; return; }
-  var tabs=[['map','🗺 Bench Map'],['people','👥 People'],['perms','🔑 Access'],['activity','📜 Activity']];
+  var tabs=[['map','🗺 Bench Map'],['avail','📊 Availability'],['resv','📅 Reservations'],['people','👥 People'],['perms','🔑 Access'],['activity','📜 Activity']];
   var nav=tabs.map(function(t){return '<button class="us3id-ctab'+(cmdView===t[0]?' on':'')+'" onclick="US3ID.cmdGo(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
   inner.innerHTML='<div class="us3id-ch"><div class="us3id-ct">🎛 Admin</div><div class="us3id-ctabs">'+nav+'</div></div><div id="cmdBody"></div>';
   if(cmdView==='map') cmdMap();
+  else if(cmdView==='avail') cmdAvail();
+  else if(cmdView==='resv') cmdResv();
   else if(cmdView==='people') cmdPeople();
   else if(cmdView==='perms') cmdPerms();
   else if(cmdView==='activity') cmdActivity();
@@ -9545,6 +9544,102 @@ function cmdActivity(silent){
     },15000);
   });
 }
+
+// ═══ ADMIN: AVAILABILITY — hotel-room-block, by equipment TYPE (Sheila IMS spec) ═══
+var US3_AVAIL_CELL={full:'background:#eaf3de;color:#3b6d11',part:'background:#e6f1fb;color:#185fa5',low:'background:#faeeda;color:#854f0b',out:'background:#eeedfe;color:#534ab7',none:'background:#fcebeb;color:#a32d2d'};
+function us3AvailTypeKey(s){ s=(s||'').toString().toLowerCase();
+  if(s==='ff'||s==='ffpr'||s==='cric'||s==='hach'||s==='rg')return s;
+  if(s.indexOf('pr')>=0&&s.indexOf('flex')>=0)return 'ffpr';
+  if(s.indexOf('flex')>=0)return 'ff'; if(s.indexOf('cric')>=0||s.indexOf('level')>=0)return 'cric';
+  if(s.indexOf('hach')>=0||s.indexOf('hawk')>=0)return 'hach'; if(s.indexOf('rain')>=0)return 'rg'; return null; }
+function cmdAvail(){
+  var body=document.getElementById('cmdBody'); if(!body)return;
+  body.innerHTML='<div class="us3id-empty">Loading availability…</div>';
+  var TYPES=(typeof US3_KIT_LABELS!=='undefined')?US3_KIT_LABELS:{ff:'FlexFlow IQ',ffpr:'PR FlexFlow IQ',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
+  var RECIPES=(typeof US3_KIT_RECIPES!=='undefined')?US3_KIT_RECIPES:null;
+  var COL=(typeof US3_PROD_COLORS!=='undefined')?US3_PROD_COLORS:{};
+  Promise.all([ ID.supa.from('inventory_components').select('office,component_key,qty'), ID.supa.from('equipment_requests').select('*') ]).then(function(r){
+    var host=document.getElementById('cmdBody'); if(!host)return;
+    var comps=(r[0]&&r[0].data)||[]; var reqs=(r[1]&&r[1].data)||[];
+    var byOffice={}; comps.forEach(function(c){ (byOffice[c.office]=byOffice[c.office]||{})[c.component_key]=Number(c.qty)||0; });
+    var total={}; Object.keys(TYPES).forEach(function(p){ var sum=0; Object.keys(byOffice).forEach(function(off){ var m=byOffice[off],recipe=RECIPES&&RECIPES[p]; if(recipe){var min=Infinity;recipe.forEach(function(rec){var a=Math.floor((m[rec[0]]||0)/rec[1]);if(a<min)min=a;});sum+=isFinite(min)?min:0;} }); total[p]=sum; });
+    var days=[],base=new Date(); base.setHours(0,0,0,0);
+    for(var i=0;i<14;i++)days.push(new Date(base.getTime()+i*86400000));
+    var reserved={}; Object.keys(TYPES).forEach(function(p){reserved[p]=days.map(function(){return 0;});});
+    reqs.forEach(function(rq){ var st=(rq.status||'').toLowerCase(); if(st.indexOf('cancel')>=0||st.indexOf('complete')>=0||st.indexOf('closed')>=0)return;
+      var dn=rq.date_needed?new Date(rq.date_needed):null; if(!dn)return; dn.setHours(0,0,0,0);
+      var di=-1; for(var k=0;k<days.length;k++){ if(days[k].getTime()===dn.getTime()){di=k;break;} } if(di<0)return;
+      var items=rq.items; if(items&&typeof items==='object'){ Object.keys(items).forEach(function(key){ var pid=us3AvailTypeKey(key); if(pid&&reserved[pid])reserved[pid][di]+=Number(items[key])||0; }); }
+    });
+    var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function fmtDay(d){ return MON[d.getMonth()]+' '+d.getDate(); }
+    function cell(tot,resv){ var free=Math.max(0,tot-resv); var cls; if(tot<=0)cls='none'; else if(free===tot)cls='full'; else if(free===0)cls='none'; else if(free<=Math.max(1,tot*0.2))cls='low'; else cls='part';
+      var sub=(tot<=0)?'—':(free===tot?'free':(free===0?'FULL':resv+' res\'d'));
+      return '<td style="padding:3px;"><div style="'+US3_AVAIL_CELL[cls]+';border-radius:5px;padding:4px 2px;text-align:center;font-size:10px;font-weight:700;line-height:1.25;">'+free+'/'+tot+'<br>'+sub+'</div></td>'; }
+    var head='<th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--muted);">Equipment</th>'+days.map(function(d){return '<th style="padding:4px;font-size:10px;color:var(--muted);font-weight:600;">'+fmtDay(d)+'</th>';}).join('');
+    var rows=Object.keys(TYPES).map(function(p){ var c=COL[p]||'#888'; var tot=total[p]||0;
+      return '<tr><td style="padding:5px 8px;white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+c+';margin-right:6px;"></span><b style="font-size:12px;">'+esc(TYPES[p])+'</b><br><span style="font-size:10px;color:var(--muted);margin-left:15px;">'+tot+' total</span></td>'+days.map(function(d,di){return cell(tot,reserved[p][di]);}).join('')+'</tr>'; }).join('');
+    var legend=[['full','Full — all free'],['part','Partially reserved (on shelf)'],['low','Low — few left'],['out','Checked out (in field)'],['none','Fully booked']].map(function(l){return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-right:14px;"><span style="width:13px;height:13px;border-radius:3px;'+US3_AVAIL_CELL[l[0]]+';"></span>'+l[1]+'</span>';}).join('');
+    host.innerHTML=
+      '<div class="us3id-sub">Availability by <b>equipment type</b> (hotel-room-block) — next 14 days. Live totals from inventory; reserved blocks come from the Reservations tab.</div>'+
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:760px;"><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div style="margin-top:12px;">'+legend+'</div>'+
+      '<div style="margin-top:12px;background:var(--panel-bg,#f5f4f0);border:1px solid var(--borderb);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--muted);line-height:1.55;"><b style="color:var(--text);">Reserved vs Checked Out:</b> a <b>Reserved</b> unit is still physically on the shelf — inspectable, prep-able, just blocked from another job for those dates. It becomes <b>Checked Out</b> only when a scanner QR-scans it to the field. So a job can reserve weeks ahead and the device stays on-shelf and trackable until deployment day.</div>';
+  },function(){ var h=document.getElementById('cmdBody'); if(h)h.innerHTML='<div class="us3id-note">Could not load availability.</div>'; });
+}
+
+// ═══ ADMIN: RESERVATIONS — combines Reservations + Equipment-by-Job + request→reserve flow ═══
+var US3_RESV_STATUS={submitted:['Submitted','#5f5e5a','#f1efe8'],pending:['Pending','#854f0b','#faeeda'],reserved:['Reserved','#185fa5','#e6f1fb'],'checked out':['Checked Out','#534ab7','#eeedfe'],completed:['Completed','#3b6d11','#eaf3de'],cancelled:['Cancelled','#a32d2d','#fcebeb']};
+function us3ResvBadge(st){ var s=US3_RESV_STATUS[(st||'').toLowerCase()]||['—','#888','#eee']; return '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+s[2]+';color:'+s[1]+';">'+esc(s[0])+'</span>'; }
+function cmdResv(){
+  var body=document.getElementById('cmdBody'); if(!body)return;
+  body.innerHTML='<div class="us3id-empty">Loading reservations…</div>';
+  Promise.all([ ID.supa.from('jobs').select('job_number,customer_name,location,project_status,install_date,deinstall_date,no_of_sites').order('install_date',{ascending:true}), ID.supa.from('equipment_requests').select('*').order('date_needed',{ascending:true}) ]).then(function(r){
+    var host=document.getElementById('cmdBody'); if(!host)return;
+    var jobs=(r[0]&&r[0].data)||[]; var reqs=(r[1]&&r[1].data)||[];
+    var KL=(typeof US3_KIT_LABELS!=='undefined')?US3_KIT_LABELS:{ff:'FlexFlow IQ',ffpr:'PR FlexFlow IQ',cric:'Cricket',hach:'Hach',rg:'Rain Gauge'};
+    var jobOpts=jobs.slice(0,400).map(function(j){return '<option value="'+esc(j.job_number||'')+'">'+esc((j.job_number||'?')+' — '+(j.customer_name||''))+'</option>';}).join('');
+    var typeOpts=Object.keys(KL).map(function(p){return '<option value="'+p+'">'+esc(KL[p])+'</option>';}).join('');
+    var form='<div style="background:var(--panel-bg,#f5f4f0);border:1px solid var(--borderb);border-radius:8px;padding:12px 14px;margin-bottom:16px;">'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;margin-bottom:8px;">＋ Request equipment for a job</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">'+
+        '<label style="font-size:11px;color:var(--muted);">Job<br><select id="resvJob" style="min-width:200px;padding:5px;">'+jobOpts+'</select></label>'+
+        '<label style="font-size:11px;color:var(--muted);">Type<br><select id="resvType" style="padding:5px;">'+typeOpts+'</select></label>'+
+        '<label style="font-size:11px;color:var(--muted);">Qty<br><input id="resvQty" type="number" min="1" value="1" style="width:64px;padding:5px;"></label>'+
+        '<label style="font-size:11px;color:var(--muted);">Needed<br><input id="resvDate" type="date" style="padding:5px;"></label>'+
+        '<label style="font-size:11px;color:var(--muted);">Days<br><input id="resvDays" type="number" min="1" value="14" style="width:64px;padding:5px;"></label>'+
+        '<button class="us3id-btn" onclick="US3ID.resvSubmit()">Check &amp; Reserve →</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Auto-approves at ≤3 units &amp; ≤14 days → <b style="color:#185fa5;">Reserved</b>. Bigger → <b style="color:#854f0b;">Pending</b> admin approval.</div>'+
+      '<div id="resvFlash" style="font-size:12px;font-weight:600;margin-top:6px;"></div></div>';
+    var lifecycle='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;align-items:center;"><span style="color:var(--muted);">Lifecycle:</span>'+['submitted','pending','reserved','checked out','completed','cancelled'].map(function(k){return us3ResvBadge(k);}).join('<span style="color:#bbb;">→</span>')+'</div>';
+    var reqRows=reqs.map(function(q){ var qty=q.item_total||0; return '<tr><td style="padding:6px 8px;"><b>'+esc(q.job_number||q.name||'—')+'</b></td><td style="padding:6px 8px;font-size:12px;color:var(--muted);">'+esc(q.prepared_for||q.requested_by||'')+'</td><td style="padding:6px 8px;font-size:12px;">'+esc(q.date_needed||'')+'</td><td style="padding:6px 8px;font-size:12px;">'+(qty?qty+' units':'')+'</td><td style="padding:6px 8px;">'+us3ResvBadge(q.status)+'</td></tr>'; }).join('');
+    var jobRows=jobs.slice(0,60).map(function(j){ var st=(j.project_status||'').toLowerCase(); var badge=st.indexOf('monitor')>=0?us3ResvBadge('checked out'):(st.indexOf('complete')>=0?us3ResvBadge('completed'):'<span style="font-size:10px;color:var(--muted);">'+esc(j.project_status||'—')+'</span>');
+      return '<tr><td style="padding:6px 8px;"><b>'+esc(j.job_number||'—')+'</b></td><td style="padding:6px 8px;font-size:12px;color:var(--muted);">'+esc(j.customer_name||'')+'</td><td style="padding:6px 8px;font-size:12px;">'+esc(j.install_date||'')+(j.deinstall_date?(' → '+esc(j.deinstall_date)):'')+'</td><td style="padding:6px 8px;font-size:12px;">'+esc(j.no_of_sites!=null?(j.no_of_sites+' sites'):'')+'</td><td style="padding:6px 8px;">'+badge+'</td></tr>'; }).join('');
+    function th(t){return '<th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--muted);">'+t+'</th>';}
+    host.innerHTML=form+lifecycle+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:13px;margin:4px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Equipment requests</div>'+
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr>'+th('Job')+th('For')+th('Needed')+th('Qty')+th('Status')+'</tr></thead><tbody>'+(reqRows||'<tr><td colspan="5" style="padding:10px;color:var(--muted);font-size:12px;">No equipment requests yet — use the form above.</td></tr>')+'</tbody></table></div>'+
+      '<div style="font-family:Oswald,sans-serif;font-weight:700;font-size:13px;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Jobs · Equipment by Job (combined in)</div>'+
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr>'+th('Job')+th('Customer')+th('Dates')+th('Sites')+th('Status')+'</tr></thead><tbody>'+jobRows+'</tbody></table></div>';
+  },function(){ var h=document.getElementById('cmdBody'); if(h)h.innerHTML='<div class="us3id-note">Could not load reservations.</div>'; });
+}
+ID.resvSubmit=function(){
+  var job=document.getElementById('resvJob'),type=document.getElementById('resvType'),qtyEl=document.getElementById('resvQty'),dateEl=document.getElementById('resvDate'),daysEl=document.getElementById('resvDays'),flash=document.getElementById('resvFlash');
+  if(!job||!type||!flash)return; var qty=parseInt(qtyEl.value,10)||0,days=parseInt(daysEl.value,10)||0,date=dateEl.value;
+  if(qty<1){flash.style.color='#a32d2d';flash.textContent='Enter a quantity.';return;}
+  if(!date){flash.style.color='#a32d2d';flash.textContent='Pick a needed date.';return;}
+  var auto=(qty<=3&&days<=14),status=auto?'Reserved':'Pending';
+  var w=ID.active||ID.session,by=w?(w.email||workerName(w)):null;
+  var KL=(typeof US3_KIT_LABELS!=='undefined')?US3_KIT_LABELS:{}; var items={}; items[type.value]=qty;
+  var rec={airtable_id:'res-'+(new Date().getTime()),name:(job.value||'')+' · '+(KL[type.value]||type.value)+' x'+qty,job_number:job.value||null,status:status,requested_by:by,date_requested:new Date().toISOString().slice(0,10),date_needed:date,request_type:'reservation',items:items,item_total:qty};
+  flash.style.color='#185fa5'; flash.textContent='Saving…';
+  ID.supa.from('equipment_requests').insert([rec]).then(function(r){ if(r&&r.error){flash.style.color='#a32d2d';flash.textContent='Failed: '+r.error.message;return;}
+    flash.style.color=auto?'#3b6d11':'#854f0b'; flash.textContent=auto?('✅ Reserved — '+qty+' '+(KL[type.value]||type.value)+' held for '+(job.value||'job')):('⏳ Submitted for admin approval (over the auto-approve threshold).');
+    if(typeof logEvent==='function')try{logEvent('action',{action:'reservation',target:job.value,detail:items});}catch(e){}
+    setTimeout(function(){cmdResv();},1000);
+  });
+};
 
 // ═══ MONKEY-PATCHES: log page views, log actions, enforce perms ═══
 function patchSw(){
