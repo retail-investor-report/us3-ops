@@ -9178,11 +9178,11 @@ function applyPagePerms(){
     }
     t.style.display = canSee(w,pg)? '' : 'none';
   });
-  // Admin (command center) is NEVER a visible top-level tab — it's reachable
-  // ONLY via the identity chip (owner/admin only). Keep its hidden .ntab hidden
-  // for everyone; the canSee(w,'cmd') owner/admin gate lives on the chip.
+  // Admin (Command Center) is a visible top-level tab ONLY for the owner/admin —
+  // everyone else never sees it. (Still also reachable via the identity chip.)
+  ensureCmdTab();
   var cmd=document.querySelector('#nav .ntab[data-page="cmd"]');
-  if(cmd) cmd.style.display = 'none';
+  if(cmd) cmd.style.display = canSee(w,'cmd') ? '' : 'none';
 }
 
 // ═══ THE STATION + WORKER CHIP (top of nav) ═══
@@ -9519,20 +9519,30 @@ ID.setAllPages=function(id,all){
   ID.supa.from('workers').update({allowed_pages:val,updated_at:nowISO()}).eq('id',id).then(function(){ w.allowed_pages=val; renderCmd(); applyPagePerms(); });
 };
 
-function cmdActivity(){
-  var body=document.getElementById('cmdBody'); body.innerHTML='<div class="us3id-empty">Loading activity…</div>';
+var _cmdActTimer=null;
+function cmdActivity(silent){
+  var body=document.getElementById('cmdBody'); if(!body)return;
+  if(!silent) body.innerHTML='<div class="us3id-empty">Loading activity…</div>';
   ID.supa.from('activity_log').select('*').order('ts',{ascending:false}).limit(200).then(function(r){
+    var host=document.getElementById('cmdBody'); if(!host)return;
     var rows=(r&&!r.error)?r.data:[];
     var byWorker={},byPage={};
     rows.forEach(function(a){ if(a.worker_name)byWorker[a.worker_name]=(byWorker[a.worker_name]||0)+1; if(a.kind==='page_view'&&a.page)byPage[a.page]=(byPage[a.page]||0)+1; });
     var topW=Object.keys(byWorker).sort(function(a,b){return byWorker[b]-byWorker[a];}).slice(0,6).map(function(k){return '<span class="us3id-stat">'+esc(k)+' <b>'+byWorker[k]+'</b></span>';}).join('');
     var topP=Object.keys(byPage).sort(function(a,b){return byPage[b]-byPage[a];}).slice(0,6).map(function(k){return '<span class="us3id-stat">'+esc(PAGE_LABEL[k]||k)+' <b>'+byPage[k]+'</b></span>';}).join('');
     var feed=rows.map(activityRow).join('') || '<div class="us3id-empty">No activity yet.</div>';
-    document.getElementById('cmdBody').innerHTML=
-      '<div class="us3id-sub">The full record — every visit, page view, and action, by who and where. Last 200 events.</div>'+
+    host.innerHTML=
+      '<div class="us3id-sub">The full record — every visit, page view, and action, by who and where. Last 200 events. <span style="color:#44bb88;font-weight:700;">● live</span> · auto-refreshes every 15s.</div>'+
       '<div class="us3id-statrow"><div class="us3id-statbox"><div class="us3id-statt">Most active people</div>'+(topW||'—')+'</div>'+
       '<div class="us3id-statbox"><div class="us3id-statt">Most viewed pages</div>'+(topP||'—')+'</div></div>'+
       '<div class="us3id-feedh">Live activity feed</div><div class="us3id-feed">'+feed+'</div>';
+    // Keep it "running": re-poll every 15s while the Activity tab is actually on screen.
+    if(_cmdActTimer)clearInterval(_cmdActTimer);
+    _cmdActTimer=setInterval(function(){
+      var p=document.getElementById('page-cmd');
+      if(cmdView==='activity' && p && p.offsetParent!==null){ cmdActivity(true); }
+      else { clearInterval(_cmdActTimer); _cmdActTimer=null; }
+    },15000);
   });
 }
 
