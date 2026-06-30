@@ -3,6 +3,11 @@
 .env.*
 *.env
 .env.txt
+# Credential / API-info drops (e.g. Google Cloud OAuth client secret)
+*API INFO*.txt
+*api info*.txt
+GOOGLE CLOUD*.txt
+grainger.txt
 
 # Local build helper
 .us3validate.sh
@@ -11,3 +16,4 @@
 .DS_Store
 Thumbs.db
 .wrangler/
+desktop.ini
