@@ -5544,6 +5544,11 @@ var US3_KIT_PRODUCTS=[{id:'FF',label:'FlexFlow IQ (FF)'},{id:'Cricket',label:'Cr
 // Voice aliases applied to free-text entry fields.
 var US3_ALIASES=[[/\bhawk\b/gi,'Hach'],[/\bring gauge\b/gi,'Rain Gauge'],[/\balcahon\b/gi,'El Cajon'],[/\bflexfoil\b/gi,'FlexFlow IQ']];
 function us3ApplyAliases(s){if(!s)return s;US3_ALIASES.forEach(function(a){s=s.replace(a[0],a[1]);});return s;}
+// QR stickers encode the device page URL (http://p.us3.ca/cricket.aspx?id=NNNN). A handheld
+// gun captures the whole link — so pull the bare device number out of ?id=NNNN. Only fires on
+// a p.us3.ca URL, so a plain numeric/serial scan is returned untouched.
+function us3DeviceCode(s){if(s==null)return s;s=String(s).trim();var m=s.match(/[?&]id=(\d+)/i);return (m&&/p\.us3\.ca/i.test(s))?m[1]:s;}
+window.us3DeviceCode=us3DeviceCode;
 function us3esc(s){return (s===null||s===undefined)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function us3v(id){var e=document.getElementById(id);return e?e.value.trim():'';}
 function us3StatusPill(st){if(!st)return '<span class="us3b2-pill" style="background:#3a3f4a;color:#cfd6e0;">—</span>';var c=US3_STATUS_COLORS[String(st).toLowerCase()]||'#3a3f4a';return '<span class="us3b2-pill" style="background:'+c+';color:#0a0e16;">'+us3esc(st)+'</span>';}
@@ -5758,7 +5763,7 @@ window.scanRenderBulkControls=scanRenderBulkControls;
 // Add a scanned ID: dedupe, append, re-focus. (Handheld guns send code+Enter.)
 function scanBulkAdd(){
   var inp=document.getElementById('scanBulkInput');if(!inp)return;
-  var v=us3ApplyAliases(inp.value.trim());inp.value='';inp.focus();
+  var v=us3ApplyAliases(us3DeviceCode(inp.value.trim()));inp.value='';inp.focus();
   if(!v)return;
   var flash=document.getElementById('scanBulkFlash');
   var dup=scanBulk.ids.some(function(r){return r.id.toLowerCase()===v.toLowerCase();});
@@ -6021,7 +6026,7 @@ function scanRedTag(code,prod){
   });
 }
 function scanLookup(code,skipRecent){
-  code=(code||'').trim();if(!code)return;
+  code=us3DeviceCode((code||'').trim());if(!code)return;
   scanSaveTechStation();
   us3b2OpenModal('<div class="us3b2-mhead"><div class="us3b2-h" style="font-size:20px;">'+us3esc(code)+'</div><button class="us3b2-x" onclick="us3b2CloseModal()">&times;</button></div><div class="us3b2-mbody"><div class="us3b2-empty">Loading device history…</div></div>');
   if(typeof supa==='undefined'||!supa){
@@ -6702,21 +6707,33 @@ function renderScannedDevices(){
         'style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--borderb);border-left:3px solid '+col+';border-radius:5px;background:var(--panel-bg);font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--text);cursor:pointer;margin:3px 6px 3px 0;">'+
         '<b>'+us3esc(d.device_id)+'</b>'+warn+'</span>';
     }
+    // Unknown-group devices get an inline product picker so a tech can assign the type on the spot.
+    function assignSelect(d){
+      var opts=Object.keys(US3_KIT_LABELS).map(function(pp){return '<option value="'+pp+'">'+us3esc(US3_KIT_LABELS[pp])+'</option>';}).join('');
+      return '<select onchange="us3AssignUnknown(\''+us3esc(d.device_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-left:6px;font-size:11px;padding:2px 4px;border-radius:4px;background:var(--input-bg,#0c1018);color:var(--text);border:1px solid var(--borderb);cursor:pointer;"><option value="">set type ▾</option>'+opts+'</select>';
+    }
+    function chipUnk(d,kind){
+      var col=kind==='green'?'#00c49a':'#ED1C24';
+      return '<span style="display:inline-flex;align-items:center;gap:2px;padding:4px 9px;border:1px solid var(--borderb);border-left:3px solid '+col+';border-radius:5px;background:var(--panel-bg);font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--text);margin:3px 6px 3px 0;">'+
+        '<b class="us3w-link" onclick="US3.openDevice(\''+us3esc(d.device_id)+'\')" style="cursor:pointer;">'+us3esc(d.device_id)+'</b>'+assignSelect(d)+'</span>';
+    }
     var cards=prodOrder.filter(function(p){return grp[p].green.length||grp[p].red.length;}).map(function(p){
       var g=grp[p],col=US3_PROD_COLORS[p]||'var(--text)';
-      var logo=(typeof prodLogoHtml==='function'&&p!=='unknown')?prodLogoHtml(p,18):'';
+      var isUnk=(p==='unknown'),rc=isUnk?chipUnk:chip;
+      var logo=(typeof prodLogoHtml==='function'&&!isUnk)?prodLogoHtml(p,18):'';
+      var unkNote=isUnk?'<div style="font-family:Rajdhani,sans-serif;font-size:12px;color:#e8a020;margin-top:6px;">⚠ No type detected from history — pick each device\'s product and it jumps to the right group (and starts counting toward availability).</div>':'';
       var greenSec=g.green.length?(
         '<div style="margin-top:8px;"><div style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#00c49a;margin-bottom:4px;">🟢 Available <b>'+g.green.length+'</b></div>'+
-        '<div style="display:flex;flex-wrap:wrap;">'+g.green.map(function(d){return chip(d,'green');}).join('')+'</div></div>'):'';
+        '<div style="display:flex;flex-wrap:wrap;">'+g.green.map(function(d){return rc(d,'green');}).join('')+'</div></div>'):'';
       var redSec=g.red.length?(
         '<div style="margin-top:8px;"><div style="font-family:Oswald,sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#e8a020;margin-bottom:4px;">🟠 Maintenance <b>'+g.red.length+'</b></div>'+
-        '<div style="display:flex;flex-wrap:wrap;">'+g.red.map(function(d){return chip(d,'red');}).join('')+'</div></div>'):'';
+        '<div style="display:flex;flex-wrap:wrap;">'+g.red.map(function(d){return rc(d,'red');}).join('')+'</div></div>'):'';
       return '<div style="break-inside:avoid;background:var(--panel-bg);border:1px solid var(--borderb);border-left:3px solid '+col+';border-radius:6px;padding:10px 14px;margin-bottom:12px;">'+
         '<div style="display:flex;align-items:center;gap:8px;">'+(logo||'')+
           '<span style="font-family:Oswald,sans-serif;font-weight:700;font-size:14px;color:'+col+';text-transform:uppercase;letter-spacing:.04em;">'+us3esc(US3_KIT_LABELS[p]||US3_PROD_LABELS[p]||p)+'</span>'+
           '<span style="margin-left:auto;font-family:Rajdhani,sans-serif;font-size:12px;color:var(--muted);">'+
             (g.green.length?('🟢 '+g.green.length):'')+(g.green.length&&g.red.length?' · ':'')+(g.red.length?('🟠 '+g.red.length):'')+'</span>'+
-        '</div>'+greenSec+redSec+
+        '</div>'+unkNote+greenSec+redSec+
       '</div>';
     }).join('');
     host.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'+
@@ -6728,6 +6745,20 @@ function renderScannedDevices(){
   },function(){host.innerHTML='<div class="us3b2-warn">Could not load scanned devices.</div>';});
 }
 window.renderScannedDevices=renderScannedDevices;
+// Assign a product type to a scanned device that came in unknown (no field history).
+// Updates warehouse_devices.product → the device moves to its product group + counts toward stock.
+function us3AssignUnknown(deviceId,product){
+  if(!deviceId||!product)return;
+  if(typeof supa==='undefined'||!supa){alert('Offline — Supabase not connected.');return;}
+  var by=((localStorage.getItem('us3_scan_tech')||localStorage.getItem('us3_user_email')||'').replace(/^"|"$/g,''))||null;
+  supa.from('warehouse_devices').update({product:product,updated_by:by,updated_at:new Date().toISOString()}).eq('device_id',deviceId).then(function(r){
+    if(r&&r.error){alert('Could not set type: '+r.error.message);return;}
+    if(typeof toast==='function')toast('✅ '+deviceId+' → '+(((typeof US3_KIT_LABELS!=='undefined')&&US3_KIT_LABELS[product])||product));
+    renderScannedDevices();
+    if(typeof liveStockRefresh==='function')liveStockRefresh();
+  });
+}
+window.us3AssignUnknown=us3AssignUnknown;
 
 // ═══ PHASE 4 — DEVICE MAP ═══
 // Data layer auto-switches: device_locations when populated (Fulcrum), else sites fallback.
